@@ -119,10 +119,23 @@ export async function* streamQuery(
     },
   });
 
-  // Yield the final text result
-  for (const message of result) {
-    if (message.type === "text") {
-      yield message.text;
+  // Stream messages as they arrive
+  for await (const message of result) {
+    if (message.type === "assistant") {
+      // Extract text blocks from the assistant message
+      const content = (message as any).message?.content;
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          if (block.type === "text" && block.text) {
+            yield block.text;
+          }
+        }
+      }
+    } else if (message.type === "result") {
+      const res = message as any;
+      if (res.subtype === "success" && res.result) {
+        yield res.result;
+      }
     }
   }
 }

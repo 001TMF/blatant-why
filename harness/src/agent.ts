@@ -116,26 +116,28 @@ export async function* streamQuery(
       permissionMode: "bypassPermissions",
       mcpServers,
       abortController,
+      includePartialMessages: true,
     },
   });
 
-  // Stream messages as they arrive
+  // Stream messages as they arrive, including partial text deltas
   for await (const message of result) {
-    if (message.type === "assistant") {
-      // Extract text blocks from the assistant message
-      const content = (message as any).message?.content;
-      if (Array.isArray(content)) {
-        for (const block of content) {
-          if (block.type === "text" && block.text) {
-            yield block.text;
-          }
-        }
+    if (message.type === "stream_event") {
+      // Partial streaming event — extract text deltas for real-time display
+      const event = (message as any).event;
+      if (event?.type === "content_block_delta" && event.delta?.type === "text_delta" && event.delta.text) {
+        yield event.delta.text;
       }
     } else if (message.type === "result") {
+      // Final result — only yield if we somehow missed streaming content
       const res = message as any;
       if (res.subtype === "success" && res.result) {
+        // Result text is typically redundant with streamed deltas, but yield
+        // as a fallback if nothing was streamed
         yield res.result;
       }
     }
+    // Skip full "assistant" messages — we already yielded their content
+    // incrementally via stream_event deltas above
   }
 }

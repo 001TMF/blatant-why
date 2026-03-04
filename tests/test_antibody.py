@@ -8,6 +8,7 @@ import yaml
 
 from proteus_cli.antibody import (
     PROTOCOLS,
+    _residues_to_ranges,
     build_design_spec,
     parse_antibody_results,
     run_antibody_design,
@@ -25,18 +26,34 @@ class TestProtocols:
         assert PROTOCOLS["antibody-anything"] == "antibody-anything"
 
 
+class TestResidueToRanges:
+    """Tests for the _residues_to_ranges helper."""
+
+    def test_contiguous_range(self):
+        assert _residues_to_ranges([7, 8, 9, 10, 11, 12]) == "7..12"
+
+    def test_multiple_ranges(self):
+        assert _residues_to_ranges([7, 8, 9, 10, 11, 12, 27, 28, 29, 30, 31, 32, 33, 34]) == "7..12,27..34"
+
+    def test_single_residue(self):
+        assert _residues_to_ranges([42]) == "42"
+
+    def test_empty(self):
+        assert _residues_to_ranges([]) == ""
+
+
 class TestBuildDesignSpec:
     """Tests for build_design_spec."""
 
     def test_build_spec_creates_yaml(self, tmp_path):
-        """Spec file is written as valid, loadable YAML with correct structure."""
+        """Spec file is written as valid, loadable YAML with entities structure."""
         pdb = tmp_path / "target.pdb"
         pdb.touch()
 
         spec_path = build_design_spec(
             target_pdb=pdb,
             target_chains=["A"],
-            epitope_residues=[45, 50, 52],
+            binding_residues={"A": [45, 50, 52]},
             output_dir=tmp_path,
         )
 
@@ -46,58 +63,51 @@ class TestBuildDesignSpec:
         with open(spec_path) as fh:
             cfg = yaml.safe_load(fh)
 
-        assert cfg["target"]["pdb_path"] == str(pdb)
-        assert cfg["target"]["chains"] == ["A"]
-        assert cfg["target"]["epitope_residues"] == [45, 50, 52]
-        assert cfg["protocol"] == "nanobody-anything"
-        assert cfg["design"]["num_designs"] == 10
-        assert cfg["output"]["directory"] == str(tmp_path)
+        assert "entities" in cfg
+        assert len(cfg["entities"]) >= 1
+        target_entity = cfg["entities"][0]
+        assert target_entity["file"]["path"] == str(pdb)
+        assert target_entity["file"]["include"][0]["chain"]["id"] == "A"
 
-    def test_build_spec_default_protocol(self, tmp_path):
-        """Default protocol is nanobody-anything."""
+    def test_build_spec_binding_types(self, tmp_path):
+        """Binding residues are converted to range notation in binding_types."""
         pdb = tmp_path / "target.pdb"
         pdb.touch()
 
         spec_path = build_design_spec(
             target_pdb=pdb,
             target_chains=["A"],
-            epitope_residues=[45],
+            binding_residues={"A": [7, 8, 9, 10, 11, 12, 27, 28, 29, 30]},
             output_dir=tmp_path,
         )
 
         with open(spec_path) as fh:
             cfg = yaml.safe_load(fh)
 
-        assert cfg["protocol"] == "nanobody-anything"
+        target_entity = cfg["entities"][0]
+        binding_types = target_entity["file"]["binding_types"]
+        assert len(binding_types) == 1
+        assert binding_types[0]["chain"]["id"] == "A"
+        assert "7..12" in binding_types[0]["chain"]["binding"]
+        assert "27..30" in binding_types[0]["chain"]["binding"]
 
-    def test_build_spec_custom_params(self, tmp_path):
-        """Custom budget, diversity_alpha, and msa_mode appear in spec."""
+    def test_build_spec_with_scaffolds(self, tmp_path):
+        """Scaffold paths produce a second entity."""
         pdb = tmp_path / "target.pdb"
         pdb.touch()
 
         spec_path = build_design_spec(
             target_pdb=pdb,
-            target_chains=["A", "B"],
-            epitope_residues=[10, 20, 30],
-            protocol="antibody-anything",
-            num_designs=50,
+            target_chains=["A"],
+            scaffold_paths=["/data/scaffolds/adalimumab.yaml"],
             output_dir=tmp_path,
-            prefilter=False,
-            msa_mode="colabfold",
-            budget=200,
-            diversity_alpha=0.8,
         )
 
         with open(spec_path) as fh:
             cfg = yaml.safe_load(fh)
 
-        assert cfg["protocol"] == "antibody-anything"
-        assert cfg["design"]["budget"] == 200
-        assert cfg["design"]["diversity_alpha"] == 0.8
-        assert cfg["design"]["msa_mode"] == "colabfold"
-        assert cfg["design"]["prefilter"] is False
-        assert cfg["design"]["num_designs"] == 50
-        assert cfg["target"]["chains"] == ["A", "B"]
+        assert len(cfg["entities"]) == 2
+        assert cfg["entities"][1]["file"]["path"] == "/data/scaffolds/adalimumab.yaml"
 
 
 class TestRunAntibodyDesign:
@@ -113,7 +123,7 @@ class TestRunAntibodyDesign:
             calls.append(name)
             return tmp_path
 
-        def mock_run(cmd, cwd=None, timeout=3600):
+        def mock_run(cmd, cwd=None, timeout=3600, env=None):
             """Return a fake successful CompletedProcess."""
 
             class FakeProc:
@@ -145,33 +155,31 @@ class TestParseAntibodyResults:
         assert results == []
 
     def test_parse_results_from_csv(self, tmp_path):
-        """Parses a mock final_designs_metrics_run1.csv correctly and sorts by ipTM descending."""
-        csv_path = tmp_path / "final_designs_metrics_run1.csv"
+        """Parses a mock final_designs_metrics CSV correctly and sorts by iptm descending."""
+        ranked_dir = tmp_path / "final_ranked_designs"
+        ranked_dir.mkdir()
+        csv_path = ranked_dir / "final_designs_metrics_run1.csv"
         csv_path.write_text(
-            "design_name,ipTM,pLDDT,ca_rmsd,sequence\n"
-            "nb_design_1,0.72,85.3,2.1,EVQLVESGGGLVQPGG\n"
-            "nb_design_2,0.91,92.1,1.2,QVQLVESGGGLVQAGG\n"
-            "nb_design_3,0.85,88.7,1.8,DVQLVESGGGLVQPGG\n"
+            "design_id,iptm,ptm,plddt,design_iptm,ipsae_min,rmsd,sequence\n"
+            "nb_design_1,0.72,0.70,85.3,0.68,0.55,2.1,EVQLVESGGGLVQPGG\n"
+            "nb_design_2,0.91,0.89,92.1,0.88,0.82,1.2,QVQLVESGGGLVQAGG\n"
+            "nb_design_3,0.85,0.82,88.7,0.80,0.70,1.8,DVQLVESGGGLVQPGG\n"
         )
 
         results = parse_antibody_results(tmp_path)
 
         assert len(results) == 3
-        # Sorted by ipTM descending
-        assert results[0]["design_name"] == "nb_design_2"
-        assert results[0]["ipTM"] == 0.91
-        assert results[1]["design_name"] == "nb_design_3"
-        assert results[1]["ipTM"] == 0.85
-        assert results[2]["design_name"] == "nb_design_1"
-        assert results[2]["ipTM"] == 0.72
-        # Verify all fields are present
+        # Sorted by iptm descending
+        assert results[0]["design_id"] == "nb_design_2"
+        assert results[0]["iptm"] == 0.91
+        assert results[1]["design_id"] == "nb_design_3"
+        assert results[1]["iptm"] == 0.85
+        assert results[2]["design_id"] == "nb_design_1"
+        assert results[2]["iptm"] == 0.72
+        # Verify key fields present
         for r in results:
-            assert "design_name" in r
-            assert "ipTM" in r
-            assert "pLDDT" in r
-            assert "ca_rmsd" in r
+            assert "design_id" in r
+            assert "iptm" in r
+            assert "plddt" in r
+            assert "ipsae_min" in r
             assert "sequence" in r
-        # Verify specific field values for the top design
-        assert results[0]["pLDDT"] == 92.1
-        assert results[0]["ca_rmsd"] == 1.2
-        assert results[0]["sequence"] == "QVQLVESGGGLVQAGG"

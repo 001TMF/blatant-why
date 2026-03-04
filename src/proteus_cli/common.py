@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -48,5 +49,31 @@ def validate_tool_path(tool_name: str) -> Path:
     return path
 
 
-def run_command(cmd: list[str], cwd: Path | None = None, timeout: int = 3600) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+def get_tool_env(tool_name: str) -> dict[str, str]:
+    """Return environment variables needed for a specific tool."""
+    base = dict(os.environ)
+    tool_dir = TOOL_PATHS[tool_name]
+
+    if tool_name == "proteus-fold":
+        base["PROTENIX_ROOT_DIR"] = str(tool_dir)
+    elif tool_name == "proteus-prot":
+        base["PROTENIX_DATA_ROOT_DIR"] = str(tool_dir / "release_data" / "ccd_cache")
+        base["TOOL_WEIGHTS_ROOT"] = str(tool_dir / "tool_weights")
+        base.setdefault("CUTLASS_PATH", str(Path.home() / "cutlass"))
+    elif tool_name == "proteus-ab":
+        base["PROTEUS_MODELS_DIR"] = str(Path.home() / ".cache" / "proteus-ab")
+        base["LAYERNORM_TYPE"] = "openfold"
+
+    return base
+
+
+def run_command(
+    cmd: list[str],
+    cwd: Path | None = None,
+    timeout: int = 3600,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout,
+        env=env,
+    )

@@ -125,7 +125,7 @@ class TestRunFold:
             called_with.append(tool_name)
             return Path("/fake/protenix")
 
-        def fake_run_command(cmd, cwd=None, timeout=3600):
+        def fake_run_command(cmd, cwd=None, timeout=3600, env=None):
             from types import SimpleNamespace
 
             return SimpleNamespace(returncode=1, stdout="", stderr="no gpu")

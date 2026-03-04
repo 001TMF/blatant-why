@@ -114,7 +114,8 @@ def proteus_prot_design(
     hotspot_residues: list[str] | None = None,
     output_dir: str = "/tmp/pxdesign",
     preset: str = "extended",
-    num_designs: int = 10,
+    num_samples: int = 500,
+    binder_length: int = 100,
 ) -> str:
     """Run PXDesign de novo protein binder design against a target structure.
 
@@ -122,12 +123,13 @@ def proteus_prot_design(
     the result status and output directory.
 
     Args:
-        target_pdb: Path to the target PDB file.
+        target_pdb: Path to the target structure file (CIF or PDB).
         target_chains: Chain identifiers to target (e.g. ["A"]).
         hotspot_residues: Optional hotspot residue IDs (e.g. ["A45", "A50"]).
         output_dir: Directory for outputs (default "/tmp/pxdesign").
         preset: PXDesign preset — "preview" or "extended" (default "extended").
-        num_designs: Number of designs to generate (default 10).
+        num_samples: Number of design samples (default 500).
+        binder_length: Length of the designed binder in residues (default 100).
 
     Returns:
         JSON ToolResult with status and output_dir.
@@ -151,14 +153,15 @@ def proteus_prot_design(
             target_chains=target_chains,
             hotspot_residues=hotspot_residues,
             output_dir=output_dir,
-            preset=preset,
-            num_designs=num_designs,
+            binder_length=binder_length,
         )
 
         # Run design pipeline
         result = run_protein_design(
             config_path=config_path,
             preset=preset,
+            num_samples=num_samples,
+            output_dir=output_dir,
         )
 
         return _result_json(result)
@@ -176,10 +179,12 @@ def proteus_prot_design(
 def proteus_ab_design(
     target_pdb: str,
     target_chains: list[str],
-    epitope_residues: list[int],
+    binding_residues: dict[str, list[int]],
     protocol: str = "nanobody-anything",
     num_designs: int = 10,
     output_dir: str = "/tmp/proteus_ab",
+    msa_mode: str = "none",
+    budget: int = 10,
 ) -> str:
     """Run Proteus-AB antibody/nanobody design against a target structure.
 
@@ -187,12 +192,14 @@ def proteus_ab_design(
     the result status and output directory.
 
     Args:
-        target_pdb: Path to the target PDB file.
+        target_pdb: Path to the target structure file (CIF or PDB).
         target_chains: Chain identifiers to target (e.g. ["A"]).
-        epitope_residues: Residue indices defining the epitope (e.g. [45, 50, 52]).
+        binding_residues: Per-chain binding residue indices, e.g. {"A": [7,8,9,27,28]}.
         protocol: Design protocol — "nanobody-anything" or "antibody-anything".
         num_designs: Number of designs to generate (default 10).
         output_dir: Directory for outputs (default "/tmp/proteus_ab").
+        msa_mode: MSA generation mode — "none", "precomputed", or "nim".
+        budget: Computational budget for the design run.
 
     Returns:
         JSON ToolResult with status and output_dir.
@@ -205,8 +212,8 @@ def proteus_ab_design(
         if not target_chains:
             return _error("At least one target chain is required.")
 
-        if not epitope_residues:
-            return _error("At least one epitope residue is required.")
+        if not binding_residues:
+            return _error("At least one binding residue is required.")
 
         if protocol not in ("nanobody-anything", "antibody-anything"):
             return _error(
@@ -218,14 +225,19 @@ def proteus_ab_design(
         spec_path = build_design_spec(
             target_pdb=target_pdb,
             target_chains=target_chains,
-            epitope_residues=epitope_residues,
-            protocol=protocol,
-            num_designs=num_designs,
+            binding_residues=binding_residues,
             output_dir=output_dir,
         )
 
         # Run antibody design
-        result = run_antibody_design(spec_path=spec_path)
+        result = run_antibody_design(
+            spec_path=spec_path,
+            protocol=protocol,
+            num_designs=num_designs,
+            output_dir=output_dir,
+            msa_mode=msa_mode,
+            budget=budget,
+        )
 
         return _result_json(result)
 

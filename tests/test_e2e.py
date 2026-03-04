@@ -59,24 +59,26 @@ def _write_pxdesign_summary_csv(output_dir: Path) -> Path:
     """Write a mock PXDesign summary.csv with 5 fake designs."""
     csv_path = output_dir / "summary.csv"
     csv_path.write_text(
-        "design_name,score,sc_score,mpnn_score\n"
-        "design_001,0.92,0.88,0.75\n"
-        "design_002,0.87,0.82,0.80\n"
-        "design_003,0.95,0.91,0.83\n"
-        "design_004,0.78,0.70,0.65\n"
-        "design_005,0.83,0.79,0.72\n"
+        "rank,name,sequence,af2_opt_success,af2_easy_success,ptx_success,ptx_basic_success,ptx_iptm,af2_binder_plddt,af2_complex_pred_design_rmsd\n"
+        "1,design_001,AAAAA,True,True,True,True,0.92,88.0,1.5\n"
+        "2,design_002,BBBBB,True,True,True,True,0.87,82.0,2.1\n"
+        "3,design_003,CCCCC,True,True,True,True,0.95,91.0,1.2\n"
+        "4,design_004,DDDDD,True,True,True,True,0.78,70.0,3.0\n"
+        "5,design_005,EEEEE,True,True,True,True,0.83,79.0,2.5\n"
     )
     return csv_path
 
 
 def _write_antibody_metrics_csv(output_dir: Path) -> Path:
     """Write a mock proteus-ab final_designs_metrics CSV with fake designs."""
-    csv_path = output_dir / "final_designs_metrics_run1.csv"
+    ranked_dir = output_dir / "final_ranked_designs"
+    ranked_dir.mkdir(exist_ok=True)
+    csv_path = ranked_dir / "final_designs_metrics_run1.csv"
     csv_path.write_text(
-        "design_name,ipTM,pLDDT,ca_rmsd,sequence\n"
-        f"nb_design_1,0.82,90.5,1.5,{DESIGN_SEQUENCE}\n"
-        f"nb_design_2,0.91,93.2,1.1,{CLEAN_SEQUENCE}\n"
-        f"nb_design_3,0.75,85.3,2.3,{DESIGN_SEQUENCE}\n"
+        "design_id,iptm,ptm,plddt,design_iptm,ipsae_min,rmsd,sequence\n"
+        f"nb_design_1,0.82,0.80,90.5,0.78,0.65,1.5,{DESIGN_SEQUENCE}\n"
+        f"nb_design_2,0.91,0.89,93.2,0.88,0.82,1.1,{CLEAN_SEQUENCE}\n"
+        f"nb_design_3,0.75,0.72,85.3,0.70,0.55,2.3,{DESIGN_SEQUENCE}\n"
     )
     return csv_path
 
@@ -103,24 +105,23 @@ class TestE2EProteinDesignPipeline:
             target_chains=["A"],
             hotspot_residues=["A1", "A2"],
             output_dir=tmp_path,
-            preset="extended",
-            num_designs=5,
+            binder_length=80,
         )
         assert config_path.exists()
         assert config_path.name == "pxdesign_config.yaml"
 
         with open(config_path) as fh:
             cfg = yaml.safe_load(fh)
-        assert cfg["target"]["pdb_path"] == str(pdb_path)
-        assert cfg["target"]["chains"] == ["A"]
-        assert cfg["target"]["hotspot_residues"] == ["A1", "A2"]
-        assert cfg["design"]["num_designs"] == 5
+        assert cfg["target"]["file"] == str(pdb_path)
+        assert "A" in cfg["target"]["chains"]
+        assert cfg["target"]["chains"]["A"]["hotspots"] == [1, 2]
+        assert cfg["binder_length"] == 80
 
         # --- Step 3: Mock run_protein_design to return success ---
         def mock_validate(name: str) -> Path:
             return tmp_path
 
-        def mock_run(cmd, cwd=None, timeout=3600):
+        def mock_run(cmd, cwd=None, timeout=3600, env=None):
             class FakeProc:
                 returncode = 0
                 stdout = ""
@@ -131,10 +132,9 @@ class TestE2EProteinDesignPipeline:
         monkeypatch.setattr(protein_mod, "run_command", mock_run)
 
         from proteus_cli.protein import run_protein_design
-        result = run_protein_design(config_path)
+        result = run_protein_design(config_path, output_dir=tmp_path)
         assert result.status == "success"
         assert result.tool == "proteus-prot"
-        assert result.output_dir == tmp_path
 
         # --- Step 4: Create a mock summary.csv ---
         _write_pxdesign_summary_csv(tmp_path)
@@ -142,17 +142,13 @@ class TestE2EProteinDesignPipeline:
         # --- Step 5: Parse results ---
         designs = parse_design_results(tmp_path)
         assert len(designs) == 5
-        # Sorted by score descending
-        assert designs[0]["design_name"] == "design_003"
-        assert designs[0]["score"] == 0.95
-        assert designs[-1]["design_name"] == "design_004"
-        assert designs[-1]["score"] == 0.78
-        # All fields present
-        for d in designs:
-            assert set(d.keys()) == {"design_name", "score", "sc_score", "mpnn_score"}
+        # Sorted by ptx_iptm descending
+        assert designs[0]["name"] == "design_003"
+        assert designs[0]["ptx_iptm"] == 0.95
+        assert designs[-1]["name"] == "design_004"
+        assert designs[-1]["ptx_iptm"] == 0.78
 
         # --- Step 6: Score with interpret_ipsae and interpret_pbind ---
-        # Simulate ipSAE scores for top 3 designs
         mock_ipsae_scores = [0.85, 0.55, 0.25]
         mock_pbind_probs = [0.90, 0.45, 0.15]
 
@@ -188,11 +184,11 @@ class TestE2EProteinDesignPipeline:
 
         # --- Step 8: Verify the full pipeline produces ranked, screened results ---
         assert len(screened) == 3
-        # Ranked by original score (descending)
-        assert screened[0]["score"] > screened[1]["score"] > screened[2]["score"]
+        # Ranked by original ptx_iptm (descending)
+        assert screened[0]["ptx_iptm"] > screened[1]["ptx_iptm"] > screened[2]["ptx_iptm"]
         # Each result has all expected keys
         expected_keys = {
-            "design_name", "score", "sc_score", "mpnn_score",
+            "name", "ptx_iptm",
             "ipsae", "ipsae_interpretation", "pbind", "pbind_interpretation",
             "liability_count", "overall_risk", "flags",
         }
@@ -224,30 +220,23 @@ class TestE2EAntibodyDesignPipeline:
         spec_path = build_design_spec(
             target_pdb=pdb_path,
             target_chains=["A"],
-            epitope_residues=[1, 2],
-            protocol="nanobody-anything",
-            num_designs=3,
+            binding_residues={"A": [1, 2]},
             output_dir=tmp_path,
-            budget=50,
-            diversity_alpha=0.7,
         )
         assert spec_path.exists()
         assert spec_path.name == "design_spec.yaml"
 
         with open(spec_path) as fh:
             spec = yaml.safe_load(fh)
-        assert spec["target"]["pdb_path"] == str(pdb_path)
-        assert spec["target"]["epitope_residues"] == [1, 2]
-        assert spec["protocol"] == "nanobody-anything"
-        assert spec["design"]["num_designs"] == 3
-        assert spec["design"]["budget"] == 50
-        assert spec["design"]["diversity_alpha"] == 0.7
+        assert "entities" in spec
+        target_entity = spec["entities"][0]
+        assert target_entity["file"]["path"] == str(pdb_path)
 
         # --- Step 3: Mock run_antibody_design ---
         def mock_validate(name: str) -> Path:
             return tmp_path
 
-        def mock_run(cmd, cwd=None, timeout=3600):
+        def mock_run(cmd, cwd=None, timeout=3600, env=None):
             class FakeProc:
                 returncode = 0
                 stdout = ""
@@ -258,7 +247,7 @@ class TestE2EAntibodyDesignPipeline:
         monkeypatch.setattr(antibody_mod, "run_command", mock_run)
 
         from proteus_cli.antibody import run_antibody_design
-        result = run_antibody_design(spec_path)
+        result = run_antibody_design(spec_path, output_dir=tmp_path)
         assert result.status == "success"
         assert result.tool == "proteus-ab"
 
@@ -268,24 +257,21 @@ class TestE2EAntibodyDesignPipeline:
         # --- Step 5: Parse antibody results ---
         designs = parse_antibody_results(tmp_path)
         assert len(designs) == 3
-        # Sorted by ipTM descending
-        assert designs[0]["design_name"] == "nb_design_2"
-        assert designs[0]["ipTM"] == 0.91
-        assert designs[1]["design_name"] == "nb_design_1"
-        assert designs[1]["ipTM"] == 0.82
-        assert designs[2]["design_name"] == "nb_design_3"
-        assert designs[2]["ipTM"] == 0.75
-        # All expected fields
-        for d in designs:
-            assert set(d.keys()) == {"design_name", "ipTM", "pLDDT", "ca_rmsd", "sequence"}
+        # Sorted by iptm descending
+        assert designs[0]["design_id"] == "nb_design_2"
+        assert designs[0]["iptm"] == 0.91
+        assert designs[1]["design_id"] == "nb_design_1"
+        assert designs[1]["iptm"] == 0.82
+        assert designs[2]["design_id"] == "nb_design_3"
+        assert designs[2]["iptm"] == 0.75
 
         # --- Step 6: Score and screen each design ---
         ranked_screened = []
         for design in designs:
             seq = design["sequence"]
-            # Simulate ipSAE/pbind from ipTM (proxy in tests)
-            mock_ipsae = design["ipTM"] * 0.9
-            mock_pbind = design["ipTM"] * 0.85
+            # Simulate ipSAE/pbind from iptm (proxy in tests)
+            mock_ipsae = design["iptm"] * 0.9
+            mock_pbind = design["iptm"] * 0.85
 
             liabilities = scan_liabilities(seq)
             dev_report = assess_developability(seq, liabilities=liabilities)
@@ -305,8 +291,8 @@ class TestE2EAntibodyDesignPipeline:
 
         # --- Step 7: Verify results ---
         assert len(ranked_screened) == 3
-        # Maintained ipTM ranking
-        assert ranked_screened[0]["ipTM"] > ranked_screened[1]["ipTM"] > ranked_screened[2]["ipTM"]
+        # Maintained iptm ranking
+        assert ranked_screened[0]["iptm"] > ranked_screened[1]["iptm"] > ranked_screened[2]["iptm"]
         # Each has full scoring + screening data
         for entry in ranked_screened:
             assert "ipsae" in entry
@@ -315,7 +301,6 @@ class TestE2EAntibodyDesignPipeline:
             assert "overall_risk" in entry
             assert entry["overall_risk"] in ("low", "medium", "high")
             assert isinstance(entry["net_charge"], float)
-            # Scoring interpretations are non-empty strings
             assert len(entry["ipsae_interpretation"]) > 0
             assert len(entry["pbind_interpretation"]) > 0
 

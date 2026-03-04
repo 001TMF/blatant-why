@@ -29,7 +29,7 @@ class TestBuildPxdesignConfig:
     """Tests for build_pxdesign_config."""
 
     def test_build_config_creates_yaml(self, tmp_path):
-        """Config file is written as valid, loadable YAML."""
+        """Config file is written as valid, loadable YAML with correct structure."""
         pdb = tmp_path / "target.pdb"
         pdb.touch()
 
@@ -45,14 +45,12 @@ class TestBuildPxdesignConfig:
         with open(config_path) as fh:
             cfg = yaml.safe_load(fh)
 
-        assert cfg["target"]["pdb_path"] == str(pdb)
-        assert cfg["target"]["chains"] == ["A"]
-        assert cfg["design"]["preset"] == "extended"
-        assert cfg["design"]["num_designs"] == 10
-        assert cfg["output"]["directory"] == str(tmp_path)
+        assert cfg["target"]["file"] == str(pdb)
+        assert "A" in cfg["target"]["chains"]
+        assert cfg["binder_length"] == 100
 
     def test_build_config_with_hotspots(self, tmp_path):
-        """Hotspot residues appear in the written config."""
+        """Hotspot residues appear in the per-chain config."""
         pdb = tmp_path / "target.pdb"
         pdb.touch()
         hotspots = ["A45", "A50", "A52"]
@@ -67,7 +65,7 @@ class TestBuildPxdesignConfig:
         with open(config_path) as fh:
             cfg = yaml.safe_load(fh)
 
-        assert cfg["target"]["hotspot_residues"] == hotspots
+        assert cfg["target"]["chains"]["A"]["hotspots"] == [45, 50, 52]
 
     def test_build_config_without_hotspots(self, tmp_path):
         """Config is valid without hotspot_residues."""
@@ -83,8 +81,27 @@ class TestBuildPxdesignConfig:
         with open(config_path) as fh:
             cfg = yaml.safe_load(fh)
 
-        assert "hotspot_residues" not in cfg["target"]
-        assert cfg["target"]["chains"] == ["A", "B"]
+        assert "A" in cfg["target"]["chains"]
+        assert "B" in cfg["target"]["chains"]
+
+    def test_build_config_with_crop_and_msa(self, tmp_path):
+        """Crop ranges and MSA dirs appear in per-chain config."""
+        pdb = tmp_path / "target.pdb"
+        pdb.touch()
+
+        config_path = build_pxdesign_config(
+            target_pdb=pdb,
+            target_chains=["A"],
+            crop_ranges={"A": ["1-116"]},
+            msa_dirs={"A": "./msa/chain_A"},
+            output_dir=tmp_path,
+        )
+
+        with open(config_path) as fh:
+            cfg = yaml.safe_load(fh)
+
+        assert cfg["target"]["chains"]["A"]["crop"] == ["1-116"]
+        assert cfg["target"]["chains"]["A"]["msa"] == "./msa/chain_A"
 
 
 class TestRunProteinDesign:
@@ -100,7 +117,7 @@ class TestRunProteinDesign:
             calls.append(name)
             return tmp_path
 
-        def mock_run(cmd, cwd=None, timeout=3600):
+        def mock_run(cmd, cwd=None, timeout=3600, env=None):
             """Return a fake successful CompletedProcess."""
 
             class FakeProc:
@@ -132,28 +149,27 @@ class TestParseDesignResults:
         assert results == []
 
     def test_parse_results_from_csv(self, tmp_path):
-        """Parses a mock summary.csv correctly and sorts by score descending."""
+        """Parses a mock summary.csv correctly and sorts by ptx_iptm descending."""
         csv_path = tmp_path / "summary.csv"
         csv_path.write_text(
-            "design_name,score,sc_score,mpnn_score\n"
-            "design_1,0.75,0.60,0.80\n"
-            "design_2,0.92,0.85,0.70\n"
-            "design_3,0.88,0.72,0.91\n"
+            "rank,name,sequence,af2_opt_success,af2_easy_success,ptx_success,ptx_basic_success,ptx_iptm,af2_binder_plddt,af2_complex_pred_design_rmsd\n"
+            "1,design_1,AAAAAA,True,True,True,True,0.75,85.0,2.1\n"
+            "2,design_2,BBBBBB,True,True,True,True,0.92,90.0,1.2\n"
+            "3,design_3,CCCCCC,True,True,True,True,0.88,87.0,1.8\n"
         )
 
         results = parse_design_results(tmp_path)
 
         assert len(results) == 3
-        # Sorted by score descending
-        assert results[0]["design_name"] == "design_2"
-        assert results[0]["score"] == 0.92
-        assert results[1]["design_name"] == "design_3"
-        assert results[1]["score"] == 0.88
-        assert results[2]["design_name"] == "design_1"
-        assert results[2]["score"] == 0.75
-        # Verify all fields are present
+        # Sorted by ptx_iptm descending
+        assert results[0]["name"] == "design_2"
+        assert results[0]["ptx_iptm"] == 0.92
+        assert results[1]["name"] == "design_3"
+        assert results[1]["ptx_iptm"] == 0.88
+        assert results[2]["name"] == "design_1"
+        assert results[2]["ptx_iptm"] == 0.75
+        # Verify key fields are present
         for r in results:
-            assert "design_name" in r
-            assert "score" in r
-            assert "sc_score" in r
-            assert "mpnn_score" in r
+            assert "name" in r
+            assert "sequence" in r
+            assert "ptx_iptm" in r

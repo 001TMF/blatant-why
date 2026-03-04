@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from proteus_cli.common import ToolResult, run_command, validate_tool_path
+from proteus_cli.common import ToolResult, get_tool_env, run_command, validate_tool_path
 
 
 def build_protenix_json(
@@ -71,6 +71,8 @@ MODELS: dict[str, str] = {
     "base_default": "protenix_base_default_v1.0.0",
     "base_20250630": "protenix_base_20250630_v1.0.0",
     "mini": "protenix_mini_default_v0.5.0",
+    "tiny": "protenix_tiny_default_v0.5.0",
+    "mini_esm": "protenix_mini_esm_v0.5.0",
 }
 
 
@@ -118,13 +120,16 @@ def run_fold(
         "protenix", "pred",
         "-i", str(input_path),
         "-n", model_name,
+        "--use_default_params", "true",
+        "--dtype", "bf16",
     ]
     if output_dir is not None:
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)
         cmd.extend(["-o", str(out)])
 
-    proc = run_command(cmd, cwd=tool_dir)
+    env = get_tool_env("proteus-fold")
+    proc = run_command(cmd, cwd=tool_dir, env=env)
 
     if proc.returncode != 0:
         return ToolResult(

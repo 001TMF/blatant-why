@@ -57,7 +57,7 @@ export function App({ queryFn, mode, onModeChange }: AppProps) {
 
       {/* Input prompt */}
       <Box>
-        <Text>{theme.prompt}</Text>
+        <Text>{theme.primary("◆ ")}{theme.primaryBold(modeConfig.displayName)}{theme.primary(" > ")}</Text>
         <TextInput value={input} onChange={setInput} onSubmit={handleSubmit} />
       </Box>
     </Box>

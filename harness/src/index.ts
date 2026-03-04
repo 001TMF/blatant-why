@@ -3,11 +3,10 @@ import React from "react";
 import { App } from "./app.js";
 import { ProteusMode } from "./modes.js";
 import { streamQuery, AgentConfig } from "./agent.js";
-import { renderBanner, renderSubtitle } from "./banner.js";
+import { renderBanner } from "./banner.js";
 
 // Print banner immediately
-console.log(renderBanner());
-console.log(renderSubtitle("Binder Designer"));
+console.log(renderBanner("Binder Designer"));
 console.log();
 
 async function main() {

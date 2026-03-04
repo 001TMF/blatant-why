@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { renderBanner, renderSubtitle } from "./banner.js";
+import { renderBanner } from "./banner.js";
 import { ProteusMode, cycleMode, getModeConfig } from "./modes.js";
 import { theme } from "./theme.js";
 
@@ -32,15 +32,7 @@ export function App({ onSubmit, output, mode, onModeChange }: AppProps) {
   return (
     <Box flexDirection="column" padding={1}>
       {/* Banner */}
-      <Text>{renderBanner()}</Text>
-      <Text>{renderSubtitle(modeConfig.displayName)}</Text>
-      <Text>{""}</Text>
-
-      {/* Mode indicator */}
-      <Box>
-        <Text>{theme.dim("Mode: ")}{theme.accent(modeConfig.displayName)}</Text>
-        <Text>{theme.dim("  (Shift+Tab to switch)")}</Text>
-      </Box>
+      <Text>{renderBanner(modeConfig.displayName)}</Text>
       <Text>{""}</Text>
 
       {/* Output area */}

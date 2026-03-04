@@ -1,0 +1,1 @@
+"""Proteus CLI package."""

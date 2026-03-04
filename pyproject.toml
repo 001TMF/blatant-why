@@ -1,0 +1,27 @@
+[project]
+name = "proteus-agent"
+version = "0.1.0"
+description = "Proteus protein design agent - CLI wrappers, scoring, and screening"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.0",
+    "pydantic>=2.0",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+    "numpy>=2.0",
+    "biopython>=1.80",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov", "pytest-asyncio"]
+screening = ["fair-esm>=2.0"]
+
+[project.scripts]
+proteus = "proteus_cli.main:cli"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

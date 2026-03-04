@@ -3,12 +3,6 @@ import React from "react";
 import { App } from "./app.js";
 import { ProteusMode } from "./modes.js";
 import { streamQuery, AgentConfig } from "./agent.js";
-import { renderBanner } from "./banner.js";
-
-// Print banner immediately
-console.log(renderBanner("Binder Designer"));
-console.log();
-
 async function main() {
   let mode: ProteusMode = "binder";
   const output: string[] = [];

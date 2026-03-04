@@ -10,7 +10,6 @@ async function main() {
   const config: AgentConfig = {
     projectDir: process.cwd(),
     mode,
-    mcpServers: {},
   };
 
   async function* queryFn(input: string): AsyncGenerator<string> {

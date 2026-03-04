@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "proteus-pdb": {
+      "command": "python",
+      "args": ["mcp_servers/pdb/server.py"]
+    },
+    "proteus-uniprot": {
+      "command": "python",
+      "args": ["mcp_servers/uniprot/server.py"]
+    },
+    "proteus-sabdab": {
+      "command": "python",
+      "args": ["mcp_servers/sabdab/server.py"]
+    },
+    "proteus-tools": {
+      "command": "python",
+      "args": ["mcp_servers/proteus_tools/server.py"]
+    },
+    "proteus-screening": {
+      "command": "python",
+      "args": ["mcp_servers/screening/server.py"]
+    }
+  }
+}

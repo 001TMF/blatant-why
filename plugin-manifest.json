@@ -1,0 +1,53 @@
+{
+  "name": "proteus-agent",
+  "version": "0.1.0",
+  "description": "Proteus protein design agent — conversational protein and antibody design with custom scoring",
+  "author": "Proteus",
+  "tools": {
+    "proteus-fold": {
+      "description": "AF3-class structure prediction with Protenix v1",
+      "engine": "Protenix",
+      "path": "/data/proteus/Protenix"
+    },
+    "proteus-prot": {
+      "description": "De novo protein binder design with PXDesign",
+      "engine": "PXDesign",
+      "path": "/data/proteus/PXDesign"
+    },
+    "proteus-ab": {
+      "description": "Antibody/nanobody design with BoltzGen + Protenix",
+      "engine": "Proteus-AB",
+      "path": "/data/proteus/proteus-design"
+    }
+  },
+  "mcpServers": [
+    "proteus-pdb",
+    "proteus-uniprot",
+    "proteus-sabdab",
+    "proteus-tools",
+    "proteus-screening"
+  ],
+  "skills": [
+    "proteus-design-workflow",
+    "proteus-scoring",
+    "proteus-epitope-analysis",
+    "proteus-screening",
+    "proteus-campaign-manager",
+    "proteus-database"
+  ],
+  "scoring": {
+    "ipSAE": {
+      "description": "TM-align-inspired interface score from PAE matrices",
+      "range": [0.0, 1.0],
+      "thresholds": {"poor": 0.3, "good": 0.5, "excellent": 0.8}
+    },
+    "p_bind": {
+      "description": "ML binding probability from Protenix trunk features",
+      "range": [0.0, 1.0],
+      "thresholds": {"unlikely": 0.3, "likely": 0.5, "high_confidence": 0.8},
+      "status": "awaiting_training"
+    }
+  },
+  "modes": ["binder", "antibody", "structure"],
+  "commands": ["/watch", "/status", "/results", "/screen"]
+}

@@ -6,14 +6,15 @@ import { ProteusMode, cycleMode, getModeConfig } from "./modes.js";
 import { theme } from "./theme.js";
 
 interface AppProps {
-  onSubmit: (input: string) => void;
-  output: string[];
+  queryFn: (input: string) => AsyncGenerator<string>;
   mode: ProteusMode;
   onModeChange: (mode: ProteusMode) => void;
 }
 
-export function App({ onSubmit, output, mode, onModeChange }: AppProps) {
+export function App({ queryFn, mode, onModeChange }: AppProps) {
   const [input, setInput] = useState("");
+  const [output, setOutput] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const modeConfig = getModeConfig(mode);
 
   useInput((_, key) => {
@@ -22,12 +23,23 @@ export function App({ onSubmit, output, mode, onModeChange }: AppProps) {
     }
   });
 
-  const handleSubmit = useCallback((value: string) => {
-    if (value.trim()) {
-      onSubmit(value.trim());
-      setInput("");
+  const handleSubmit = useCallback(async (value: string) => {
+    if (!value.trim()) return;
+    const trimmed = value.trim();
+    setInput("");
+    setOutput(prev => [...prev, `> ${trimmed}`]);
+    setLoading(true);
+    try {
+      for await (const chunk of queryFn(trimmed)) {
+        setOutput(prev => [...prev, chunk]);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setOutput(prev => [...prev, `Error: ${msg}`]);
+    } finally {
+      setLoading(false);
     }
-  }, [onSubmit]);
+  }, [queryFn]);
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -39,6 +51,9 @@ export function App({ onSubmit, output, mode, onModeChange }: AppProps) {
       {output.map((line, i) => (
         <Text key={i}>{line}</Text>
       ))}
+
+      {/* Loading indicator */}
+      {loading && <Text color="#66BB6A">Thinking...</Text>}
 
       {/* Input prompt */}
       <Box>

@@ -3,9 +3,9 @@ import React from "react";
 import { App } from "./app.js";
 import { ProteusMode } from "./modes.js";
 import { streamQuery, AgentConfig } from "./agent.js";
+
 async function main() {
   let mode: ProteusMode = "binder";
-  const output: string[] = [];
 
   const config: AgentConfig = {
     projectDir: process.cwd(),
@@ -13,17 +13,9 @@ async function main() {
     mcpServers: {},
   };
 
-  const handleSubmit = async (input: string) => {
-    output.push(`> ${input}`);
-    try {
-      for await (const chunk of streamQuery(input, config)) {
-        output.push(chunk);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      output.push(`Error: ${msg}`);
-    }
-  };
+  async function* queryFn(input: string): AsyncGenerator<string> {
+    yield* streamQuery(input, config);
+  }
 
   const handleModeChange = (newMode: ProteusMode) => {
     mode = newMode;
@@ -32,8 +24,7 @@ async function main() {
 
   const { unmount } = render(
     React.createElement(App, {
-      onSubmit: handleSubmit,
-      output,
+      queryFn,
       mode,
       onModeChange: handleModeChange,
     })

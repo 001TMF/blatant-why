@@ -182,7 +182,80 @@ async def score_ipsae(
 
 
 # ---------------------------------------------------------------------------
-# Tool 5: screen_composite
+# Tool 5: score_ipsae_multi_seed
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def score_ipsae_multi_seed(
+    npz_paths: list[str] | None = None,
+    npz_dir: str | None = None,
+    design_chain_ids: list[int] | None = None,
+    target_chain_ids: list[int] | None = None,
+    design_chain: str = "A",
+    target_chain: str = "B",
+    pae_cutoff: float = 10.0,
+    aggregation: str = "best",
+) -> str:
+    """Score ipSAE across multiple Protenix seed outputs and select the best seed.
+
+    For the refolding workflow: BoltzGen top designs are refolded on Protenix
+    with 20+ seeds, then ipSAE is computed from each seed's PAE and the best
+    seed is selected.
+
+    Provide EITHER ``npz_paths`` (explicit list of files) OR ``npz_dir``
+    (directory to scan for *.npz and *confidence*.json files).
+
+    Aggregation modes:
+    - "best" (default): seed with highest ipsae_min
+    - "mean": seed closest to mean ipsae_min
+    - "median": seed closest to median ipsae_min
+
+    Args:
+        npz_paths: List of paths to Protenix NPZ or confidence JSON files.
+        npz_dir: Directory containing seed output files (alternative to npz_paths).
+        design_chain_ids: asym_id integers for design chains (NPZ format).
+        target_chain_ids: asym_id integers for target chains (NPZ format).
+        design_chain: Chain letter for design (JSON format, default "A").
+        target_chain: Chain letter for target (JSON format, default "B").
+        pae_cutoff: PAE threshold (default 10.0 for Protenix/AF3).
+        aggregation: Seed selection strategy — "best", "mean", or "median".
+
+    Returns:
+        JSON object with best_seed_idx, best_ipsae_min, per-seed scores,
+        mean/std statistics, and interpretation.
+    """
+    if not npz_paths and not npz_dir:
+        return _error("Provide either npz_paths (list) or npz_dir (directory).")
+
+    try:
+        from proteus_cli.scoring.ipsae import (
+            score_multi_seed,
+            score_multi_seed_dir,
+            interpret_ipsae,
+        )
+
+        if npz_dir:
+            result = score_multi_seed_dir(
+                npz_dir, design_chain_ids, target_chain_ids,
+                design_chain, target_chain, pae_cutoff, aggregation,
+            )
+        else:
+            result = score_multi_seed(
+                npz_paths, design_chain_ids, target_chain_ids,
+                design_chain, target_chain, pae_cutoff, aggregation,
+            )
+
+        if "error" not in result:
+            result["interpretation"] = interpret_ipsae(result["best_ipsae_min"])
+
+        return json.dumps(result, indent=2)
+    except Exception as exc:
+        return _error(f"Multi-seed ipSAE scoring failed: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Tool 6: screen_composite
 # ---------------------------------------------------------------------------
 
 
@@ -314,7 +387,7 @@ async def screen_composite(
 
 
 # ---------------------------------------------------------------------------
-# Tool 6: interpret_scores
+# Tool 7: interpret_scores
 # ---------------------------------------------------------------------------
 
 
@@ -386,7 +459,7 @@ async def interpret_scores(
 
 
 # ---------------------------------------------------------------------------
-# Tool 7: screen_diversity
+# Tool 8: screen_diversity
 # ---------------------------------------------------------------------------
 
 
@@ -443,7 +516,7 @@ async def screen_diversity(
 
 
 # ---------------------------------------------------------------------------
-# Tool 8: screen_diagnose_failures
+# Tool 9: screen_diagnose_failures
 # ---------------------------------------------------------------------------
 
 
@@ -522,7 +595,7 @@ async def screen_diagnose_failures(
 
 
 # ---------------------------------------------------------------------------
-# Tool 9: screen_pareto_front
+# Tool 10: screen_pareto_front
 # ---------------------------------------------------------------------------
 
 

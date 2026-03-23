@@ -583,12 +583,10 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
             ]);
           } else {
             const lines = [
-              "Previous campaigns:\n",
-              ...campaigns.map((c, i) => {
-                const date = new Date(c.lastUpdated).toLocaleString();
-                return `  ${i + 1}. ${c.name}  [${c.status}]  (${date})`;
-              }),
-              "\nReply with the number to resume, or start a new campaign with /campaign.",
+              "  Previous Campaigns\n",
+              ...campaigns.flatMap((c, i) => formatCampaignDetail(c, i + 1)),
+              "",
+              `  Select (1-${campaigns.length}) or /campaign for new:`,
             ];
             setMessages((prev) => [
               ...prev,

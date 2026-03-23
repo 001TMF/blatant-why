@@ -19,6 +19,7 @@ export const SLASH_COMMANDS = [
   { name: "/resume", description: "Resume a previous campaign" },
   { name: "/export", description: "Export conversation log (markdown or csv)" },
   { name: "/compare", description: "Compare metrics across campaign rounds" },
+  { name: "/pareto", description: "Show Pareto-optimal designs (multi-objective trade-offs)" },
 ] as const;
 
 export function getCompletions(input: string): typeof SLASH_COMMANDS[number][] {
@@ -49,6 +50,7 @@ export function handleSlashCommand(input: string): SlashCommandResult {
         "  /resume       Resume a previous campaign",
         "  /export       Export conversation log (markdown or csv)",
         "  /compare      Compare metrics across campaign rounds",
+        "  /pareto       Show Pareto-optimal designs (multi-objective trade-offs)",
         "",
         "Shift+Tab to cycle modes: Binder → Antibody → Structure",
         "",
@@ -94,7 +96,7 @@ export function handleSlashCommand(input: string): SlashCommandResult {
     return { handled: true, local: "export_markdown" };
   }
 
-  // /status, /results, /screen, /watch, /load, /campaign are handled by the agent
+  // /status, /results, /screen, /watch, /load, /campaign, /pareto are handled by the agent
   // Note: /watch is intercepted in app.tsx before this function is called
   return { handled: false };
 }

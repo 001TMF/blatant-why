@@ -55,7 +55,7 @@ User wants to...
 |
 +-- SCORE an existing design
 |   +-- ipSAE from PAE matrix --> screening MCP: score_ipsae
-|   +-- Binding probability   --> screening MCP: score_pbind
+|   +-- Full battery          --> screening MCP: screen_composite
 |   +-- Full battery          --> screening MCP: screen_composite
 |
 +-- ANALYZE a target
@@ -105,15 +105,15 @@ Target Prep --> Hotspot Analysis --> Design Generation --> Screening --> Ranking
 - *protenix (validation):* Follow the `protenix` skill: Write input JSON → `Bash: protenix pred ...` → Read `*_summary_confidence_sample_*.json`.
 
 **Stage 4 -- Screening Battery:**
-Run all screens via the screening MCP: structural confidence (ipTM, pTM, pLDDT), interface quality (ipSAE directional), binding prediction (p_bind if checkpoint available), refolding quality (CA-RMSD), PTM liabilities (deamidation NG/NS, isomerization DG, oxidation Met, free Cys, glycosylation NXS/T), developability (net charge, hydrophobic fraction, CDR length).
+Run all screens via the screening MCP: structural confidence (ipTM, pTM, pLDDT), interface quality (ipSAE directional, DunbrackLab formula), refolding quality (CA-RMSD), PTM liabilities (deamidation NG/NS, isomerization DG, oxidation Met, free Cys, glycosylation NXS/T), developability (net charge, hydrophobic fraction, CDR length).
 
 **Stage 5 -- Ranking and Filtering:**
 Hard filters first: ipTM > 0.5, pLDDT > 70, CA-RMSD < 3.5A, high-severity liabilities <= 2.
-Soft ranking: `composite = 0.25*ipTM + 0.25*ipSAE_min + 0.20*p_bind + 0.15*(1-RMSD/5.0) + 0.15*(pLDDT/100)`. If p_bind unavailable, redistribute its weight to ipTM and ipSAE_min.
+Soft ranking: `composite = 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)`.
 Diversity selection: cluster at 80% sequence identity, pick top from each cluster.
 
 **Stage 6 -- Review and Decision:**
-Present ranked table: `Rank | Design | ipTM | pLDDT | ipSAE | p_bind | CA-RMSD | Liabilities | Status`.
+Present ranked table: `Rank | Design | ipSAE | ipTM | pLDDT | CA-RMSD | Liabilities | Status`.
 Include: quality tier summary, campaign health, warnings, numbered next-step options.
 
 ---
@@ -125,7 +125,6 @@ Include: quality tier summary, campaign health, warnings, numbered next-step opt
 | ipTM | > 0.5 | > 0.7 | > 0.85 | < 0.4 |
 | pLDDT | > 70 | > 80 | > 90 | < 60 |
 | ipSAE (min) | > 0.3 | > 0.5 | > 0.8 | < 0.2 |
-| p_bind | > 0.3 | > 0.5 | > 0.8 | < 0.2 |
 | CA-RMSD | < 3.5 A | < 2.0 A | < 1.5 A | > 5.0 A |
 | Liability count (high sev) | <= 2 | 0-1 | 0 | > 3 |
 | Net charge (abs) | < 15 | < 10 | < 6 | > 20 |
@@ -135,7 +134,6 @@ Include: quality tier summary, campaign health, warnings, numbered next-step opt
 
 **ipSAE notes:** Directional metric. Always report `dt_ipsae`, `td_ipsae`, and `design_ipsae_min`. Asymmetry > 0.3 between dt and td suggests partial interface -- flag to user.
 
-**p_bind notes:** Requires trained checkpoint. v2 chain_design_mask (full VH/VL chains) is critical -- CDR-only (v1) gives ROC 0.60 vs 0.906. Most informative for boltzgen designs.
 
 ---
 
@@ -268,10 +266,10 @@ Do not silently run more campaigns without reporting repeated failures.
 ## 8. Presenting Results
 
 Always include in result presentation:
-1. Ranked table with ipTM, pLDDT, ipSAE, p_bind, RMSD, liabilities.
+1. Ranked table with ipSAE, ipTM, pLDDT, RMSD, liabilities.
 2. Quality tier summary: "X excellent, Y good, Z minimum, W failed."
 3. Campaign health: pass rate vs typical (pxdesign preview 10-30%, extended 20-50%; boltzgen nanobody 15-40%, antibody 10-30%).
-4. Warnings: p_bind awaiting checkpoint, ipSAE asymmetry > 0.3, high liabilities, RMSD > 2.0A, charge > 10.
+4. Warnings: ipSAE asymmetry > 0.3, high liabilities, RMSD > 2.0A, charge > 10.
 5. Numbered next-step options for the user.
 
 **File conventions:** CIF preferred for structures. CSV for metrics. NPZ for PAE matrices. JSON for campaign state. FASTA for sequences with metrics in header: `>design_42 ipTM=0.82 pLDDT=87.3 ipSAE_min=0.71`.

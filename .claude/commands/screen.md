@@ -13,8 +13,7 @@ Use the proteus-screening MCP server to run:
 2. Net charge at pH 7.4
 3. Developability assessment (CDR length, hydrophobic fraction, composition)
 4. ipSAE scoring (if NPZ available)
-5. p_bind prediction (if checkpoint available)
-6. Composite score with pass/fail verdict
+5. Composite score with pass/fail verdict
 
 Present results with:
 - Per-category breakdown with severity levels

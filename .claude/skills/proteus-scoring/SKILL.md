@@ -2,7 +2,7 @@
 
 ## Overview
 
-You are an expert at interpreting and applying Proteus custom scoring metrics for protein and antibody design. This skill covers ipSAE (interface Predicted Structural Accuracy Error) and p_bind (binding probability prediction) -- the two custom metrics that differentiate Proteus from generic structure prediction tools. Use this skill whenever you need to score designs, interpret scoring output, troubleshoot disagreements between metrics, or advise on candidate ranking.
+You are an expert at interpreting and applying Proteus custom scoring metrics for protein and antibody design. This skill covers ipSAE (interface Predicted Structural Accuracy Error) -- the primary custom metric that differentiates Proteus from generic structure prediction tools. ipSAE uses the open-source DunbrackLab formula with no proprietary dependencies. Use this skill whenever you need to score designs, interpret scoring output, troubleshoot disagreements between metrics, or advise on candidate ranking.
 
 ---
 
@@ -14,6 +14,8 @@ ipSAE is a **TM-align-inspired metric** computed from Protenix PAE (Predicted Al
 
 Unlike ipTM (which captures global inter-chain confidence), ipSAE focuses specifically on how well the interface geometry is predicted. It is directional: the score changes depending on which chain is used as the reference frame.
 
+Reference: Dunbrack et al., "Res ipSAE loquuntur" (2025). Open-source implementation: https://github.com/DunbrackLab/IPSAE
+
 ### Directional Scores
 
 ipSAE produces three values for every design:
@@ -22,9 +24,9 @@ ipSAE produces three values for every design:
 |--------|-----------|---------|
 | `design_to_target_ipsae` (dt_ipsae) | Design as source, target as reference | How confidently the design's interface residues are placed relative to the target |
 | `target_to_design_ipsae` (td_ipsae) | Target as source, design as reference | How confidently the target's interface residues are placed relative to the design |
-| `design_ipsae_min` | min(dt, td) | Most stringent assessment -- both directions must be confident |
+| `ipsae_min` | min(dt, td) | Most stringent assessment -- both directions must be confident |
 
-Always report `design_ipsae_min` as the primary ranking metric. Report the directional scores when diagnosing asymmetric interfaces or when one direction is significantly stronger than the other.
+Always report `ipsae_min` as the primary ranking metric. Report the directional scores when diagnosing asymmetric interfaces or when one direction is significantly stronger than the other.
 
 ### Algorithm (Step by Step)
 
@@ -32,36 +34,39 @@ When you need to explain ipSAE computation or debug scoring issues, this is the 
 
 1. **Extract PAE matrix** from Protenix output. Shape is `[N_sample, N_token, N_token]`. Each entry PAE[i][j] is the predicted error in Angstroms of token j's position when aligned on token i's predicted frame. Lower PAE = higher confidence.
 
-2. **Build chain masks** from `token_asym_id`. Protenix assigns integer asym_ids (0, 1, 2, ...) to chains in entity order. Construct boolean masks:
+2. **Build chain masks** from `token_asym_id` or `token_chain_ids`. Construct boolean masks:
    - `design_mask`: True for all tokens belonging to design chain(s)
    - `target_mask`: True for all tokens belonging to target chain(s)
-   - `frame_mask`: True for all tokens with valid backbone frames (`token_has_frame`)
-   - `pad_mask`: True for all real (non-padding) tokens
 
-3. **Apply PAE cutoff at 15.0 Angstroms**. Pairs with PAE above 15.0A are excluded from the score. This removes noise from high-error predictions.
+3. **Extract interchain PAE block** and compute minimum PAE per target residue across all source residues.
 
-4. **Compute the TM-align d0 reference distance**. For a target of length n0 residues:
+4. **Apply PAE cutoff at 10.0 Angstroms** (for Protenix/AF3; 15.0 for AF2). Residues with min PAE above the cutoff are excluded from the score. This removes noise from high-error predictions.
+
+5. **Compute the TM-align d0 reference distance**. For n0 residues passing the cutoff:
    ```
    d0 = 1.24 * (clamp(n0, min=19) - 15) ^ (1/3) - 1.8
+   d0 = max(d0, 0.5)  # prevent division issues
    ```
    The `clamp(n0, 19)` ensures d0 is always positive. d0 normalizes the score so it is comparable across targets of different sizes.
 
-5. **Score each valid pair**:
+6. **Score each residue using TM-score kernel**:
    ```
-   pair_score = 1.0 / (1.0 + (pae / d0)^2)
+   score = 1.0 / (1.0 + (min_pae / d0)^2)
    ```
-   This is the TM-score kernel applied to predicted error instead of actual distance deviation. Pairs with low PAE contribute scores near 1.0; pairs with PAE approaching d0 contribute ~0.5.
+   This is the TM-score kernel applied to predicted error instead of actual distance deviation. Residues with low PAE contribute scores near 1.0; residues with PAE approaching d0 contribute ~0.5.
 
-6. **Aggregate**: For each source residue, average the pair scores over all valid target residues. Then take the **maximum** across all source residues. This makes ipSAE robust to partial interfaces where only a subset of residues are confidently placed.
+7. **Aggregate**: Average the scores over all residues that passed the PAE cutoff.
 
-7. **Iterate across samples**: When Protenix generates multiple samples (seeds), compute ipSAE for each sample independently and select the sample where `min(dt, td)` is highest.
+8. **Iterate across samples**: When Protenix generates multiple samples (seeds), compute ipSAE for each sample independently and select the sample where `ipsae_min` is highest.
 
 ### Implementation Files
 
-- **Core function**: `compute_ipsae_score()` in BoltzGen at `src/boltzgen/model/layers/confidence_utils.py`
-- **Protenix wrapper**: `compute_ipsae_from_protenix()` in `BoltzGen src/proteus_ab/pipeline/scoring.py`
-- **CLI wrapper**: `score_npz()` in `src/proteus_cli/scoring/ipsae.py`
+- **Standalone implementation**: `compute_ipsae()` and `_directional_ipsae()` in `src/proteus_cli/scoring/ipsae.py`
+- **NPZ scorer**: `score_npz()` in `src/proteus_cli/scoring/ipsae.py`
+- **JSON scorer**: `score_from_protenix_output()` in `src/proteus_cli/scoring/ipsae.py`
 - **Interpretation**: `interpret_ipsae()` in `src/proteus_cli/scoring/ipsae.py`
+
+No external dependencies required beyond numpy. No BoltzGen dependency.
 
 ### How to Score via MCP
 
@@ -77,10 +82,11 @@ For antibody designs (Fab), typical chain IDs are `[0, 1]` for VH+VL (design) an
 
 | ipSAE Range | Interpretation | Action |
 |-------------|---------------|--------|
-| > 0.8 | **Excellent** -- high confidence interface, strong predicted binding geometry | Advance to experimental validation |
-| 0.5 - 0.8 | **Good** -- likely binder, confident interface | Advance if other metrics agree |
-| 0.3 - 0.5 | **Moderate** -- possible binder, interface partially resolved | Consider redesign or additional sampling |
-| < 0.3 | **Poor** -- unlikely to bind, interface poorly predicted | Reject or redesign from scratch |
+| >= 0.8 | **Excellent** -- strong predicted binding interface | Advance to experimental validation |
+| 0.6 - 0.8 | **Good** -- likely binder | Advance if other metrics agree |
+| 0.4 - 0.6 | **Moderate** -- possible binder, interface partially resolved | Consider redesign or additional sampling |
+| 0.2 - 0.4 | **Weak** -- unlikely to bind | Reject or redesign from scratch |
+| < 0.2 | **Poor** -- no predicted binding | Reject |
 
 ### When ipSAE Disagrees with ipTM
 
@@ -103,113 +109,7 @@ When `design_to_target_ipsae` and `target_to_design_ipsae` diverge significantly
 
 - **td >> dt**: The target anchors the design well, but the design itself has structural uncertainty at the interface. Common with flexible loop-mediated binding (e.g., long CDR-H3 loops). Consider constraining the design.
 
-Always report `design_ipsae_min` (the minimum of both directions) as the primary metric -- it requires BOTH directions to be confident.
-
----
-
-## p_bind Scoring
-
-### What It Is
-
-p_bind is a **learned binding probability predictor** -- a small MLP that takes Protenix trunk representations as input and outputs a probability (0 to 1) that the antibody-antigen complex actually binds. It provides an orthogonal signal to structure-based metrics like ipTM and ipSAE.
-
-### Architecture
-
-```
-Input: v_ab(384) + v_ag(384) + v_if(256) = 1024 dimensions
-  |
-  v
-Linear(1024, 512) + ReLU + Dropout(0.2)
-  |
-Linear(512, 256) + ReLU + Dropout(0.2)
-  |
-Linear(256, 128) + ReLU + Dropout(0.2)
-  |
-Linear(128, 1) + Sigmoid
-  |
-  v
-Output: binding probability [0, 1]
-```
-
-The three input feature vectors are:
-- **v_ab (384-dim)**: Antibody single-representation summary, pooled from Protenix's pairformer `s_trunk` output over all antibody chain tokens
-- **v_ag (384-dim)**: Antigen single-representation summary, pooled over antigen chain tokens
-- **v_if (256-dim)**: Interface pair-representation summary, pooled from `z_trunk` over design-target token pairs
-
-These features are extracted by `extract_pbind_features()` in BoltzGen's `binding_utils.py`. The extraction uses `chain_design_mask` to determine which tokens are antibody vs antigen.
-
-### CRITICAL: chain_design_mask Must Use Full VH/VL Chains
-
-This is the single most important implementation detail for p_bind accuracy:
-
-- **v1 (CDR-only mask)**: `chain_design_mask` covered only CDR loop residues. Result: **ROC AUC = 0.60** (barely above random).
-- **v2 (full chain mask)**: `chain_design_mask` covers the ENTIRE VH and VL chains, including framework residues. Result: **ROC AUC = 0.906**.
-
-The fix is in `build_chain_design_mask()` at `BoltzGen src/proteus_ab/pbind/trunk.py`. The logic is simple: all chains except the last one (antigen) are marked as design (antibody). This ensures framework residues contribute to v_ab and v_if representations.
-
-**If you see anyone using CDR-only masks for p_bind feature extraction, flag it immediately.** The performance difference is catastrophic.
-
-### Feature Extraction Pipeline
-
-p_bind features come from a **trunk-only forward pass** through Protenix. The pipeline:
-
-1. Build Protenix JSON input from sequences (chain order: VH first, then VL if present, then antigen last)
-2. Run `get_pairformer_output()` to get `s_trunk [1, N, 384]` and `z_trunk [1, N, N, 128]`
-3. Build `chain_design_mask` from `asym_id` using `build_chain_design_mask()` (full chains, NOT CDR-only)
-4. Call `extract_pbind_features(s_trunk, z_trunk, design_mask, chain_design_mask, token_pad_mask)`
-5. Concatenate `[v_ab, v_ag, v_if]` into 1024-dim input vector
-6. Pass through trained MLP to get binding probability
-
-This is a **trunk-only** pass -- no diffusion, no coordinate generation, no confidence heads. It is significantly faster than full Protenix inference (~2s per sample vs ~30s).
-
-### When to Use p_bind
-
-- **After proteus-ab designs are refolded** by Protenix. The trunk features come from the refolding prediction, which gives a more accurate representation than the design-stage backbone alone.
-- **Before final candidate selection**, as an additional discriminator alongside ipTM and ipSAE.
-- **NOT as a standalone metric**. p_bind should always be used in combination with structure-based metrics. A design with high p_bind but low ipTM/ipSAE may have a sequence that looks binding-like but folds incorrectly.
-
-### Implementation Files
-
-- **MLP model**: `PBindHead` in BoltzGen at `src/boltzgen/pbind/model.py`
-- **Feature extraction**: `extract_pbind_features()` in BoltzGen `src/boltzgen/model/layers/binding_utils.py`
-- **Chain mask construction**: `build_chain_design_mask()` in `BoltzGen src/proteus_ab/pbind/trunk.py`
-- **Trunk forward pass**: `get_trunk_output()` in `BoltzGen src/proteus_ab/pbind/trunk.py`
-- **CLI wrapper**: `predict_binding()` and `load_pbind_model()` in `src/proteus_cli/scoring/pbind.py`
-- **Training configs**: `BoltzGen src/proteus_ab/pbind/train_config.py`
-- **Featurization**: `BoltzGen src/proteus_ab/pbind/featurize.py`
-
-### How to Score via MCP
-
-Use the `score_pbind` tool from the `proteus-screening` MCP server:
-```
-Tool: score_pbind
-Args: { "checkpoint_path": "/path/to/pbind_checkpoint.pt", "npz_path": "/path/to/refolded_output.npz" }
-```
-
-### Interpretation Table
-
-| p_bind | Interpretation | Action |
-|--------|---------------|--------|
-| > 0.8 | **High confidence binder** | Strong candidate for experimental validation |
-| 0.5 - 0.8 | **Likely binder** | Include in shortlist, verify with structural metrics |
-| 0.3 - 0.5 | **Marginal** -- borderline binding signal | Consider redesign; only advance if ipTM and ipSAE are strong |
-| < 0.3 | **Unlikely to bind** | Reject unless structural metrics are exceptional |
-
-### Current Status
-
-p_bind code is **complete** but the model is **awaiting GPU featurization and training**. The 5 training configurations are defined in `train_config.py`:
-
-| Config Name | Loss Function | Optimizer |
-|-------------|--------------|-----------|
-| `mlp_sam` | Weighted BCE (default) | SAM (rho=0.05) |
-| `adaptive_focal_sam` | Adaptive focal loss | SAM (rho=0.05) |
-| `poly1_sam` | Poly-1 loss | SAM (rho=0.05) |
-| `focal_gamma1` | Focal loss (gamma=1.0) | Standard AdamW |
-| `focal_mega` | Focal loss (gamma=2.0) | Standard AdamW |
-
-All configs use hidden_dims=[512, 256, 128], dropout=0.2, batch_size=512, max_epochs=100, patience=15.
-
-**When p_bind is not yet available**: Report it as unavailable with a warning. Do NOT fabricate p_bind scores. Instead, rely on ipTM + ipSAE for ranking, and note in the results that p_bind scoring will be available once the model is trained.
+Always report `ipsae_min` (the minimum of both directions) as the primary metric -- it requires BOTH directions to be confident.
 
 ---
 
@@ -217,7 +117,7 @@ All configs use hidden_dims=[512, 256, 128], dropout=0.2, batch_size=512, max_ep
 
 ### Recommended Ranking Formula
 
-When all three metrics are available, rank designs using this composite approach:
+Rank designs using a two-metric composite with liability penalty:
 
 **Tier 1 -- Hard Filters (must pass all):**
 - ipTM > 0.5
@@ -226,29 +126,22 @@ When all three metrics are available, rank designs using this composite approach
 
 **Tier 2 -- Soft Ranking (weighted composite):**
 ```
-composite_score = 0.35 * ipSAE_min + 0.30 * p_bind + 0.20 * ipTM + 0.15 * (1 - normalized_liability_count)
+composite_score = 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)
 ```
 
-When p_bind is unavailable, re-weight:
-```
-composite_score = 0.45 * ipSAE_min + 0.35 * ipTM + 0.20 * (1 - normalized_liability_count)
-```
+ipSAE has been validated as the best single predictor of binding success in meta-analysis (n=3,766 binders).
 
 **Tier 3 -- Diversity Selection:**
 After ranking by composite score, select diverse candidates by clustering on CDR-H3 sequence (for antibodies) or interface residue identity (for protein binders). Pick the top candidate from each cluster.
 
 ### Failure Modes and What They Indicate
 
-| ipTM | ipSAE | p_bind | Diagnosis | Action |
-|------|-------|--------|-----------|--------|
-| High | High | High | Ideal candidate | Advance to experiment |
-| High | High | Low | Structure looks good but learned model disagrees | Verify interface contacts manually; may have unusual binding mode |
-| High | Low | High | Global placement confident but interface uncertain | Increase sampling (more seeds); may need interface-focused redesign |
-| High | Low | Low | Likely false positive from ipTM | Reject -- ipTM inflated by non-interface chain proximity |
-| Low | High | High | Strong interface, poor global fold | Check for flexible tails/loops pulling down ipTM; may still be viable |
-| Low | High | Low | Conflicting signals | Increase sampling; investigate structural details manually |
-| Low | Low | High | Learned model sees binding signal in sequence features | Suspicious -- verify sequence is not trivially similar to training data |
-| Low | Low | Low | Poor design across all metrics | Reject and redesign |
+| ipTM | ipSAE | Diagnosis | Action |
+|------|-------|-----------|--------|
+| High | High | Ideal candidate | Advance to experiment |
+| High | Low | Global placement confident but interface uncertain | Increase sampling (more seeds); may need interface-focused redesign |
+| Low | High | Strong interface, poor global fold | Check for flexible tails/loops pulling down ipTM; may still be viable |
+| Low | Low | Poor design across all metrics | Reject and redesign |
 
 ### Recommended Scoring Workflow
 
@@ -260,24 +153,22 @@ Follow this sequence for every batch of new designs:
 
 3. **Compute ipSAE** from PAE matrices for all designs passing hard filters. Report directional scores and flag any with large dt/td asymmetry (>0.15 difference).
 
-4. **Compute p_bind** (when checkpoint is available) using trunk features from the refolding run. Flag any designs where p_bind and ipSAE strongly disagree.
+4. **Run liability screening** (deamidation, isomerization, oxidation, free Cys, glycosylation) on all candidate sequences. Count high-severity liabilities.
 
-5. **Run liability screening** (deamidation, isomerization, oxidation, free Cys, glycosylation) on all candidate sequences. Count high-severity liabilities.
-
-6. **Compute composite score** and rank. Present results as a table:
+5. **Compute composite score** and rank. Present results as a table:
    ```
-   Rank  Design       ipTM   ipSAE   p_bind  RMSD   Liabilities  Composite
-   1     design-008   0.87   0.82    0.91    1.2A   0 high       0.86
-   2     design-015   0.84   0.78    0.88    1.5A   1 medium     0.82
-   3     design-003   0.81   0.71    --      1.8A   0 high       0.77
+   Rank  Design       ipSAE   ipTM   pLDDT  RMSD   Liabilities  Composite
+   1     design-008   0.82    0.87   88.3   1.2A   0 high       0.86
+   2     design-015   0.78    0.84   85.1   1.5A   1 medium     0.82
+   3     design-003   0.71    0.81   82.7   1.8A   0 high       0.77
    ```
 
-7. **Provide interpretation** for the top candidates, noting any disagreements between metrics and recommending next steps (e.g., visualize structure, run developability, approve for experiment).
+6. **Provide interpretation** for the top candidates, noting any disagreements between metrics and recommending next steps (e.g., visualize structure, run developability, approve for experiment).
 
 ### Key Conventions
 
-- **Chain ordering**: Antibody chains (VH first, VL second if present) before antigen (last). This ordering is essential for correct `chain_design_mask` construction and ipSAE chain mask building.
+- **Chain ordering**: Antibody chains (VH first, VL second if present) before antigen (last). This ordering is essential for correct ipSAE chain mask building.
 - **Residue numbering**: Use `label_seq_id` (1-indexed, sequential) for all residue references.
-- **Score precision**: Report ipTM and ipSAE to 2 decimal places. Report p_bind to 2 decimal places. Report RMSD to 1 decimal place with Angstrom unit.
-- **Sample selection**: When Protenix generates multiple samples per design, select the sample with the highest `design_ipsae_min`. Report which sample index was selected.
-- **Missing metrics**: Always indicate when a metric is unavailable (p_bind before training, ipSAE without PAE matrix). Never substitute zeros or placeholders that could be confused with real scores. Use `--` in tables for unavailable values.
+- **Score precision**: Report ipTM and ipSAE to 2 decimal places. Report RMSD to 1 decimal place with Angstrom unit.
+- **Sample selection**: When Protenix generates multiple samples per design, select the sample with the highest `ipsae_min`. Report which sample index was selected.
+- **Missing metrics**: Always indicate when a metric is unavailable. Never substitute zeros or placeholders that could be confused with real scores. Use `--` in tables for unavailable values.

@@ -51,7 +51,7 @@ User wants a binder...
 │   └── Use proteus-fold instead
 │
 └── Need to score an existing antibody design?
-    └── Use proteus-scoring skill (ipSAE + p_bind)
+    └── Use proteus-scoring skill (ipSAE)
 ```
 
 ---

@@ -83,6 +83,21 @@ Post-design conversion:
 - Join with flexible linker: (G4S)3 = GGGGSGGGGSGGGGS
 - Output format: VH-linker-VL single chain
 
+## Boltz Platform API (Research Notes — 2026-03-23)
+##
+## Boltz.bio now offers a hosted platform at lab.boltz.bio with API docs at
+## docs.boltz.bio (User Guide + API reference). This is SEPARATE from Tamarind.
+## Key findings:
+##   - Boltz Lab (lab.boltz.bio): Official hosted platform for Boltz-1x and Boltz-2.
+##     Supports structure prediction AND small-molecule/protein design.
+##   - Python client: "boltz2-python-client" on PyPI provides sync/async interfaces
+##     and CLI for NVIDIA's hosted Boltz-2 service.
+##   - Third-party hosts: Tamarind Bio, Levitate Bio, and BioLM all offer Boltz-2 API
+##     endpoints. Levitate bundles it alongside RFAntibody.
+##   - For our pipeline: Tamarind remains the default (free tier, already integrated).
+##     Boltz Lab could be added as an alternative provider if users have Boltz API keys.
+##   - No action needed now — note for future compute provider expansion.
+
 RULES:
 - Respect campaign config compute.provider if set
 - Auto-detect provider if not specified (local → SSH → cloud)

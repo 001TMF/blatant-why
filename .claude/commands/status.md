@@ -8,7 +8,7 @@ For each campaign, display:
 - Run ID and tool used
 - Current pipeline stage
 - Design progress (completed/total)
-- Top scores so far (ipTM, ipSAE, p_bind)
+- Top scores so far (ipTM, ipSAE)
 - Any warnings or issues
 - Elapsed time
 

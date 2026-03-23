@@ -48,15 +48,10 @@
   ],
   "scoring": {
     "ipSAE": {
-      "description": "TM-align-inspired interface score from PAE matrices",
+      "description": "Open-source TM-align-inspired interface score from PAE matrices (DunbrackLab formula)",
       "range": [0.0, 1.0],
-      "thresholds": {"poor": 0.3, "good": 0.5, "excellent": 0.8}
-    },
-    "p_bind": {
-      "description": "ML binding probability from Protenix trunk features",
-      "range": [0.0, 1.0],
-      "thresholds": {"unlikely": 0.3, "likely": 0.5, "high_confidence": 0.8},
-      "status": "awaiting_training"
+      "thresholds": {"poor": 0.2, "good": 0.5, "excellent": 0.8},
+      "reference": "Dunbrack et al., Res ipSAE loquuntur (2025)"
     }
   },
   "modes": ["binder", "antibody", "structure"],

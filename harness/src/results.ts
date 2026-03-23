@@ -6,7 +6,7 @@ export interface DesignResult {
   designName: string;
   ipTM: number;
   ipSAE: number | null;
-  pBind: number | null;
+  pLDDT: number | null;
   rmsd: number | null;
   liabilities: { high: number; medium: number; low: number };
   status: "PASS" | "MARGINAL" | "FAIL";
@@ -86,26 +86,26 @@ export function renderResults(designs: DesignResult[]): string {
     design: 18,
     ipSAE: 10,
     ipTM: 10,
-    pBind: 10,
+    pLDDT: 10,
     rmsd: 10,
     liabilities: 16,
     status: 10,
   };
 
   const fullWidth =
-    W.design + W.ipSAE + W.ipTM + W.pBind + W.rmsd + W.liabilities + W.status;
+    W.design + W.ipSAE + W.ipTM + W.pLDDT + W.rmsd + W.liabilities + W.status;
 
-  // ── Section title ──────────────────────────────────────────────────────
+  // -- Section title --
   lines.push("");
   lines.push(I + chalk.white.bold("Design Results"));
   lines.push("");
 
-  // ── Full table header ──────────────────────────────────────────────────
+  // -- Full table header --
   const headerRow =
     pad("Design", W.design) +
     pad("ipSAE", W.ipSAE) +
     pad("ipTM", W.ipTM) +
-    pad("p_bind", W.pBind) +
+    pad("pLDDT", W.pLDDT) +
     pad("RMSD", W.rmsd) +
     pad("Liabilities", W.liabilities) +
     pad("Status", W.status);
@@ -113,13 +113,13 @@ export function renderResults(designs: DesignResult[]): string {
   lines.push(I + chalk.white.bold(headerRow));
   lines.push(I + "\u2500".repeat(fullWidth));
 
-  // ── Full table rows ────────────────────────────────────────────────────
+  // -- Full table rows --
   for (const d of designs) {
     const row =
       pad(d.designName, W.design) +
       pad(colorScore(d.ipSAE, { good: 0.5, excellent: 0.8 }), W.ipSAE) +
       pad(colorScore(d.ipTM, { good: 0.7, excellent: 0.85 }), W.ipTM) +
-      pad(colorScore(d.pBind, { good: 0.5, excellent: 0.8 }), W.pBind) +
+      pad(colorScore(d.pLDDT, { good: 70, excellent: 90 }), W.pLDDT) +
       pad(colorRMSD(d.rmsd), W.rmsd) +
       pad(formatLiabilities(d.liabilities), W.liabilities) +
       colorStatus(d.status);
@@ -127,7 +127,7 @@ export function renderResults(designs: DesignResult[]): string {
     lines.push(I + row);
   }
 
-  // ── Top 5 by ipSAE (primary metric) ──────────────────────────────────
+  // -- Top 5 by ipSAE (primary metric) --
   const topN = 5;
   const sorted = [...designs]
     .sort((a, b) => (b.ipSAE ?? 0) - (a.ipSAE ?? 0) || b.ipTM - a.ipTM)
@@ -149,17 +149,15 @@ export function renderResults(designs: DesignResult[]): string {
     design: 18,
     ipSAE: 10,
     ipTM: 10,
-    pBind: 10,
     status: 10,
   };
-  const topWidth = TW.rank + TW.design + TW.ipSAE + TW.ipTM + TW.pBind + TW.status;
+  const topWidth = TW.rank + TW.design + TW.ipSAE + TW.ipTM + TW.status;
 
   const topHeader =
     pad("Rank", TW.rank) +
     pad("Design", TW.design) +
     pad("ipSAE", TW.ipSAE) +
     pad("ipTM", TW.ipTM) +
-    pad("p_bind", TW.pBind) +
     pad("Status", TW.status);
 
   lines.push(I + chalk.white.bold(topHeader));
@@ -171,13 +169,12 @@ export function renderResults(designs: DesignResult[]): string {
       pad(d.designName, TW.design) +
       pad(colorScore(d.ipSAE, { good: 0.5, excellent: 0.8 }), TW.ipSAE) +
       pad(colorScore(d.ipTM, { good: 0.7, excellent: 0.85 }), TW.ipTM) +
-      pad(colorScore(d.pBind, { good: 0.5, excellent: 0.8 }), TW.pBind) +
       colorStatus(d.status);
 
     lines.push(I + row);
   });
 
-  // ── Warning note ───────────────────────────────────────────────────────
+  // -- Warning note --
   lines.push("");
   lines.push(
     I +
@@ -188,7 +185,7 @@ export function renderResults(designs: DesignResult[]): string {
       ),
   );
 
-  // ── Next steps ─────────────────────────────────────────────────────────
+  // -- Next steps --
   lines.push("");
   lines.push(I + chalk.white.bold("Next steps:"));
   lines.push("");

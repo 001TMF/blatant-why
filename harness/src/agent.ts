@@ -222,7 +222,7 @@ IMPORTANT: Default modality is VHH (most common use case). Use scFv when user ex
    - After completion, present results in a scored table
 
 4. When showing results:
-   - Use formatted tables with columns: Rank, Design, ipTM, ipSAE, p_bind, Liabilities, Status
+   - Use formatted tables with columns: Rank, Design, ipSAE, ipTM, pLDDT, RMSD, Liabilities, Status
    - Always show "Next steps:" with numbered options
 
 ## Design Run Started (MANDATORY)
@@ -311,7 +311,7 @@ Your job is to:
 - pdb: pdb_search, pdb_fetch_structure, pdb_get_chains, pdb_interface_residues, pdb_download
 - uniprot: uniprot_search, uniprot_fetch_protein, uniprot_get_domains, uniprot_get_variants
 - sabdab: search SAbDab for antibody structures
-- proteus-screening: screen_liabilities, screen_developability, screen_net_charge, score_ipsae, score_pbind, screen_composite, interpret_scores
+- proteus-screening: screen_liabilities, screen_developability, screen_net_charge, score_ipsae, screen_composite, interpret_scores
 
 ## Full Campaign Pipeline (boltzgen)
 
@@ -431,21 +431,20 @@ After the table, provide:
 
 ## Scoring Hierarchy
 
-PRIMARY: ipSAE (interface predicted Structural Accuracy Error) — our custom TM-align-inspired metric from Protenix PAE. This is the MOST IMPORTANT score. Rank and filter by ipSAE first.
+PRIMARY: ipSAE (interface predicted Structural Accuracy Error) — open-source TM-align metric (DunbrackLab formula, no proprietary dependencies). This is the MOST IMPORTANT score. Rank and filter by ipSAE first.
 
 SECONDARY: ipTM (interface predicted TM-score) — standard confidence metric. Use as tiebreaker.
 
-TERTIARY (antibody/VHH only): p_bind (binding probability) — MLP-based binding prediction from Protenix trunk features. Always compute for antibody and VHH designs.
-
 SUPPORTING: pLDDT (per-residue confidence), RMSD (structural deviation)
 
-When ranking designs, sort by: ipSAE desc → ipTM desc → p_bind desc (if available)
+Composite: 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)
+
+When ranking designs, sort by: ipSAE desc -> ipTM desc
 When presenting results, always show ipSAE as the first score column.
 
 ## Quality Thresholds
 - ipSAE > 0.5 = good, > 0.8 = excellent (PRIMARY — gate on this first)
 - ipTM > 0.7 = good, > 0.85 = excellent
-- p_bind > 0.5 = good, > 0.8 = excellent (compute for all antibody/VHH designs)
 - RMSD < 3.5A = acceptable, < 1.5A = excellent
 - Liabilities: 0 high-severity = pass
 

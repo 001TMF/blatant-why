@@ -34,11 +34,9 @@ screening:
     plddt_min: 70
     rmsd_max: 3.5
   ranking_weights:
-    iptm: 0.35
-    ipsae_min: 0.30
-    pbind: 0.15
-    liability_penalty: 0.10
-    developability: 0.10
+    ipsae_min: 0.50
+    iptm: 0.30
+    liability_penalty: 0.20
 
 lab:
   max_candidates: 20

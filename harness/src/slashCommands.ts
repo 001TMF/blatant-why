@@ -16,6 +16,7 @@ export const SLASH_COMMANDS = [
   { name: "/approve-lab", description: "Approve lab submission (requires CONFIRM)" },
   { name: "/costs", description: "Show campaign cost breakdown" },
   { name: "/team", description: "Show active agent team status" },
+  { name: "/resume", description: "Resume a previous campaign" },
 ] as const;
 
 export function getCompletions(input: string): typeof SLASH_COMMANDS[number][] {
@@ -43,6 +44,7 @@ export function handleSlashCommand(input: string): SlashCommandResult {
         "  /approve-lab  Approve lab submission (requires CONFIRM)",
         "  /costs        Show campaign cost breakdown",
         "  /team         Show active agent team status",
+        "  /resume       Resume a previous campaign",
         "",
         "Shift+Tab to cycle modes: Binder → Antibody → Structure",
         "",
@@ -70,6 +72,10 @@ export function handleSlashCommand(input: string): SlashCommandResult {
 
   if (trimmed === "/team") {
     return { handled: true, local: "show_team" };
+  }
+
+  if (trimmed === "/resume") {
+    return { handled: true, local: "resume_campaign" };
   }
 
   // /status, /results, /screen, /watch, /load, /campaign are handled by the agent

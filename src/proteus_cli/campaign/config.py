@@ -65,11 +65,9 @@ class ScreeningConfig:
         "rmsd_max": 3.5,
     })
     ranking_weights: dict[str, float] = field(default_factory=lambda: {
+        "ipsae_min": 0.50,
         "iptm": 0.30,
-        "ipsae_min": 0.25,
-        "pbind": 0.20,
-        "liability_penalty": 0.15,
-        "developability": 0.10,
+        "liability_penalty": 0.20,
     })
 
 

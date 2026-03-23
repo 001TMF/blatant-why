@@ -32,11 +32,6 @@ Each tool has a dedicated skill with full CLI documentation, input/output specs,
 - Directional: design→target, target→design, min(both)
 - >0.5 good, >0.8 excellent
 
-### p_bind (Binding Probability)
-- 3-layer MLP from Protenix trunk features (v2 full-chain mask, ROC 0.906)
-- >0.5 good, >0.8 excellent
-- Status: experimental, requires trained checkpoint
-
 ## Screening Battery (always run before presenting final candidates)
 - **Liabilities**: NG/NS deamidation, DG isomerization, Met oxidation, free Cys, NXS/T glycosylation
 - **Developability**: Net charge pH 7.4, CDR length, hydrophobic fraction, composition flags
@@ -45,11 +40,12 @@ Each tool has a dedicated skill with full CLI documentation, input/output specs,
 
 ## Scoring Hierarchy
 
-PRIMARY: ipSAE — our custom TM-align metric. Rank and filter by ipSAE first.
+PRIMARY: ipSAE — open-source TM-align metric (DunbrackLab). Rank and filter by ipSAE first.
 SECONDARY: ipTM — standard confidence. Tiebreaker after ipSAE.
-TERTIARY: p_bind — always compute for antibody/VHH designs.
 
-Sort order: ipSAE desc → ipTM desc → p_bind desc
+Composite: 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)
+
+Sort order: ipSAE desc -> ipTM desc
 
 ## Quality Thresholds
 
@@ -57,7 +53,6 @@ Sort order: ipSAE desc → ipTM desc → p_bind desc
 |--------|------|-----------|
 | ipSAE | >0.5 | >0.8 |
 | ipTM | >0.7 | >0.85 |
-| p_bind | >0.5 | >0.8 |
 | pLDDT | >70 | >90 |
 | RMSD | <3.5Å | <1.5Å |
 
@@ -200,7 +195,7 @@ CRITICAL: The agent must actually CALL the MCP tools (pdb_search, pdb_fetch_stru
 - pdb: pdb_search, pdb_fetch_structure, pdb_get_chains, pdb_interface_residues, pdb_download
 - uniprot: uniprot_search, uniprot_fetch_protein, uniprot_get_domains, uniprot_get_variants
 - sabdab: search SAbDab for antibody structures
-- proteus-screening: screen_liabilities, screen_developability, screen_net_charge, score_ipsae, score_pbind, screen_composite, interpret_scores
+- proteus-screening: screen_liabilities, screen_developability, screen_net_charge, score_ipsae, screen_composite, interpret_scores
 
 ## Cloud Compute MCP Tools (Tamarind — DEFAULT)
 - tamarind: tamarind_list_models, tamarind_submit_job, tamarind_get_job_status, tamarind_get_job_results, tamarind_wait_for_job

@@ -40,6 +40,27 @@ def classify_cross_validation(
         return "divergent", "medium"
 
 
+def _has_predictor_scores(
+    d: dict,
+    predictor_1_key: str,
+    predictor_2_key: str,
+) -> bool:
+    """Check whether a design has real scores from both predictors."""
+    # A score is "missing" if the predictor-specific key is absent and
+    # the value falls back to the 0 default.
+    has_p1 = (
+        f"{predictor_1_key}_iptm" in d
+        or f"{predictor_1_key}_ipsae" in d
+        or "iptm" in d
+        or "ipsae_min" in d
+    )
+    has_p2 = (
+        f"{predictor_2_key}_iptm" in d
+        or f"{predictor_2_key}_ipsae" in d
+    )
+    return has_p1 and has_p2
+
+
 def cross_validate_designs(
     designs: list[dict],
     predictor_1_key: str = "boltzgen",
@@ -53,7 +74,12 @@ def cross_validate_designs(
         ipsae_1 = d.get(f"{predictor_1_key}_ipsae", d.get("ipsae_min", 0))
         ipsae_2 = d.get(f"{predictor_2_key}_ipsae", 0)
 
-        status, confidence = classify_cross_validation(iptm_1, iptm_2, ipsae_1, ipsae_2)
+        # If either predictor's scores are entirely missing, classify as
+        # data_incomplete instead of potentially mis-rejecting.
+        if not _has_predictor_scores(d, predictor_1_key, predictor_2_key):
+            status, confidence = "data_incomplete", "none"
+        else:
+            status, confidence = classify_cross_validation(iptm_1, iptm_2, ipsae_1, ipsae_2)
 
         results.append(CrossValidationResult(
             design_name=d.get("design_name", d.get("name", "unknown")),

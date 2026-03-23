@@ -283,15 +283,15 @@ async def campaign_update_round(
         Updated run state as JSON.
     """
     updates: dict[str, Any] = {}
-    if status:
+    if status is not None:
         updates["status"] = status
-    if designs_generated:
+    if designs_generated is not None:
         updates["designs_generated"] = designs_generated
-    if designs_passed:
+    if designs_passed is not None:
         updates["designs_passed"] = designs_passed
-    if top_iptm:
+    if top_iptm is not None:
         updates["top_iptm"] = top_iptm
-    if top_ipsae:
+    if top_ipsae is not None:
         updates["top_ipsae"] = top_ipsae
 
     try:

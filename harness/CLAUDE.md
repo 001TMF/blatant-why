@@ -28,14 +28,14 @@ Each tool has a dedicated skill with full CLI documentation, input/output specs,
 
 ### ipSAE (Interface Predicted Structural Accuracy Error)
 - TM-align-inspired from Protenix PAE matrices
-- d0 formula: `1.24 × (clamp(n0, 19) - 15)^(1/3) - 1.8`, PAE cutoff 15.0Å
+- d0 formula: `1.24 × (clamp(n0, 19) - 15)^(1/3) - 1.8`, PAE cutoff 10.0Å (Protenix/AF3) or 15.0Å (AF2)
 - Directional: design→target, target→design, min(both)
 - >0.5 good, >0.8 excellent
 
 ## Screening Battery (always run before presenting final candidates)
 - **Liabilities**: NG/NS deamidation, DG isomerization, Met oxidation, free Cys, NXS/T glycosylation
 - **Developability**: Net charge pH 7.4, CDR length, hydrophobic fraction, composition flags
-- **Structure**: ipTM>0.7, pLDDT>70, RMSD<3.5Å
+- **Structure**: ipTM>0.5, pLDDT>70, RMSD<3.5Å
 - **Composite**: Weighted sum → ranked output
 
 ## Scoring Hierarchy

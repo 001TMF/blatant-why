@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import os
 import platform
-import shutil
 import subprocess
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -21,11 +20,11 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     "debating": ["designing", "failed"],
     "designing": ["screening", "failed"],
     "failed": ["draft", "closed"],
-    "screening": ["ranked"],
+    "screening": ["ranked", "failed"],
     "ranked": ["lab_pending", "designing", "closed"],
-    "lab_pending": ["lab_submitted"],
-    "lab_submitted": ["lab_complete"],
-    "lab_complete": ["iterated", "closed"],
+    "lab_pending": ["lab_submitted", "failed"],
+    "lab_submitted": ["lab_complete", "failed"],
+    "lab_complete": ["iterated", "closed", "failed"],
     "iterated": ["designing", "closed"],
 }
 

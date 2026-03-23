@@ -1,7 +1,9 @@
 """Decision logging for campaign audit trail."""
 from __future__ import annotations
 
+import fcntl
 import json
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -34,7 +36,11 @@ def log_decision(
         "confidence": confidence,
     }
     with open(log_path, "a") as f:
-        f.write(json.dumps(entry) + "\n")
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            f.write(json.dumps(entry) + "\n")
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def read_decisions(campaign_dir: str) -> list[dict]:
@@ -51,7 +57,13 @@ def read_decisions(campaign_dir: str) -> list[dict]:
     if not log_path.exists():
         return []
     decisions = []
-    for line in log_path.read_text().splitlines():
+    for line_num, line in enumerate(log_path.read_text().splitlines(), 1):
         if line.strip():
-            decisions.append(json.loads(line))
+            try:
+                decisions.append(json.loads(line))
+            except json.JSONDecodeError:
+                warnings.warn(
+                    f"Corrupted decision log entry at line {line_num} in "
+                    f"{log_path}, skipping."
+                )
     return decisions

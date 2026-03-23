@@ -271,11 +271,10 @@ async def screen_composite(
 
     Combines liability scanning, developability assessment, and
     interpretation of any supplied structure/binding scores. Returns a
-    composite pass/fail verdict based on the screening battery thresholds.
+    binary pass/fail verdict based on hard threshold screening (not a
+    weighted composite score).
 
-    Composite score: 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)
-
-    Thresholds:
+    Pass/fail thresholds:
         - ipTM > 0.5
         - pLDDT > 70
         - RMSD < 3.5 A

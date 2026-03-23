@@ -84,7 +84,7 @@ def _read_jsonl(path: Path) -> list[dict]:
 
 
 def _rewrite_jsonl(path: Path, entries: list[dict]):
-    """Rewrite an entire JSONL file atomically (file-locked)."""
+    """Rewrite an entire JSONL file (file-locked, but NOT atomic)."""
     with open(path, "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         for entry in entries:
@@ -142,38 +142,59 @@ async def knowledge_add_entity(
         return _error("properties_json must be a JSON object.")
 
     nodes_file = _nodes_path()
-    nodes = _read_jsonl(nodes_file)
 
-    # Check for existing entity to merge.
-    now = time.time()
-    existing_idx = None
-    for idx, node in enumerate(nodes):
-        if node.get("entity_id") == entity_id:
-            existing_idx = idx
-            break
+    # Hold an exclusive lock for the entire read-modify-write to prevent races.
+    _ensure_dir()
+    with open(nodes_file, "a+") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            f.seek(0)
+            content = f.read()
+            nodes = []
+            for line in content.splitlines():
+                if line.strip():
+                    try:
+                        nodes.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
 
-    if existing_idx is not None:
-        # Merge: update type if changed, merge properties.
-        existing = nodes[existing_idx]
-        existing["entity_type"] = entity_type
-        existing_props = existing.get("properties", {})
-        existing_props.update(properties)
-        existing["properties"] = existing_props
-        existing["updated_at"] = now
-        nodes[existing_idx] = existing
-        _rewrite_jsonl(nodes_file, nodes)
-        result = existing
-    else:
-        # New entity.
-        entry = {
-            "entity_type": entity_type,
-            "entity_id": entity_id,
-            "properties": properties,
-            "created_at": now,
-            "updated_at": now,
-        }
-        _append_jsonl(nodes_file, entry)
-        result = entry
+            # Check for existing entity to merge.
+            now = time.time()
+            existing_idx = None
+            for idx, node in enumerate(nodes):
+                if node.get("entity_id") == entity_id:
+                    existing_idx = idx
+                    break
+
+            if existing_idx is not None:
+                # Merge: update type if changed, merge properties.
+                existing = nodes[existing_idx]
+                existing["entity_type"] = entity_type
+                existing_props = existing.get("properties", {})
+                existing_props.update(properties)
+                existing["properties"] = existing_props
+                existing["updated_at"] = now
+                nodes[existing_idx] = existing
+                result = existing
+            else:
+                # New entity.
+                entry = {
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                    "properties": properties,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                nodes.append(entry)
+                result = entry
+
+            # Rewrite under the same lock.
+            f.seek(0)
+            f.truncate()
+            for node in nodes:
+                f.write(json.dumps(node) + "\n")
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
 
     return json.dumps(result, indent=2)
 

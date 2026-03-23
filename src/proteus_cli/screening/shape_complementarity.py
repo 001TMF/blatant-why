@@ -43,7 +43,18 @@ def compute_interface_metrics(
             target_atoms.extend(atoms)
 
     if not design_atoms or not target_atoms:
-        return {"error": "No atoms found for specified chains"}
+        available_chain_ids = sorted(chain.id for chain in model)
+        missing = []
+        if not design_atoms:
+            missing.append(f"design chains {design_chains}")
+        if not target_atoms:
+            missing.append(f"target chains {target_chains}")
+        return {
+            "error": (
+                f"No atoms found for {' or '.join(missing)}. "
+                f"Available chain IDs in structure: {available_chain_ids}"
+            )
+        }
 
     # Find interface contacts using NeighborSearch
     ns = NeighborSearch(target_atoms)

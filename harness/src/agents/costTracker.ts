@@ -1,5 +1,5 @@
-import { appendFileSync, readFileSync, existsSync } from "fs";
-import { resolve } from "path";
+import { appendFileSync, readFileSync, existsSync, mkdirSync } from "fs";
+import { resolve, dirname } from "path";
 
 export interface CostEvent {
   timestamp: string;
@@ -19,6 +19,7 @@ export class CostTracker {
 
   /** Append a cost event to the NDJSON log. */
   record(event: Omit<CostEvent, "timestamp">): void {
+    mkdirSync(dirname(this.logPath), { recursive: true });
     const entry: CostEvent = {
       ...event,
       timestamp: new Date().toISOString(),

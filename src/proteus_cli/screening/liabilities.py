@@ -50,6 +50,10 @@ def scan_liabilities(sequence: str) -> list[Liability]:
         for match in pattern.finditer(sequence):
             liabilities.append(Liability("isomerization", match.start(), match.group(), severity, desc))
 
+    for pattern, severity, desc in OXIDATION_PATTERNS:
+        for match in pattern.finditer(sequence):
+            liabilities.append(Liability("oxidation", match.start(), match.group(), severity, desc))
+
     # Free cysteines (odd count = unpaired)
     cys_count = sequence.count("C")
     if cys_count % 2 != 0:
@@ -64,6 +68,8 @@ def scan_liabilities(sequence: str) -> list[Liability]:
 
 def compute_net_charge(sequence: str, ph: float = 7.4) -> float:
     """Estimate net charge at given pH using Henderson-Hasselbalch."""
+    if not sequence:
+        return 0.0
     pka = {"D": 3.65, "E": 4.25, "H": 6.00, "C": 8.18, "Y": 10.07, "K": 10.53, "R": 12.48}
     charge = 0.0
     for aa in sequence:

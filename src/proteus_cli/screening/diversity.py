@@ -16,13 +16,12 @@ def sequence_identity(seq1: str, seq2: str) -> float:
     Returns:
         Fraction of identical residues (0.0 to 1.0).
     """
-    if len(seq1) != len(seq2):
-        min_len = min(len(seq1), len(seq2))
-        seq1, seq2 = seq1[:min_len], seq2[:min_len]
-    if not seq1:
+    max_len = max(len(seq1), len(seq2))
+    if max_len == 0:
         return 0.0
-    matches = sum(a == b for a, b in zip(seq1, seq2))
-    return matches / max(len(seq1), len(seq2))
+    min_len = min(len(seq1), len(seq2))
+    matches = sum(a == b for a, b in zip(seq1[:min_len], seq2[:min_len]))
+    return matches / max_len
 
 
 def cluster_sequences(

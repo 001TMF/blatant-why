@@ -1,4 +1,4 @@
-"""Proteus screening — PTM liabilities, net charge, developability, diversity, diagnosis, Pareto."""
+"""Proteus screening — PTM liabilities, net charge, developability, diversity, diagnosis, Pareto, shape complementarity."""
 
 from .diagnosis import (
     FailureDiagnosis,
@@ -12,22 +12,32 @@ from .diversity import (
     format_diversity,
     sequence_identity,
 )
+from .naturalness import (
+    interpret_naturalness,
+    score_naturalness,
+)
 from .pareto import (
     format_pareto,
     is_dominated,
     pareto_front,
+)
+from .shape_complementarity import (
+    compute_interface_metrics,
 )
 
 __all__ = [
     "FailureDiagnosis",
     "FeatureAnalysis",
     "cluster_sequences",
+    "compute_interface_metrics",
     "diagnose_failures",
     "diversity_report",
     "format_diagnosis",
     "format_diversity",
     "format_pareto",
+    "interpret_naturalness",
     "is_dominated",
     "pareto_front",
+    "score_naturalness",
     "sequence_identity",
 ]

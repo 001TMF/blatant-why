@@ -663,6 +663,148 @@ async def screen_pareto_front(
 
 
 # ---------------------------------------------------------------------------
+# Tool 11: screen_align_sequences
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def screen_align_sequences(
+    sequences_json: str,
+    mode: str = "pairwise",
+    key: str = "sequence",
+    cdr_key: str = "cdr3_sequence",
+) -> str:
+    """Align protein sequences for candidate comparison.
+
+    Supports three alignment modes:
+
+    - **pairwise**: Align exactly two sequences and report score, identity,
+      and aligned strings.
+    - **cdr**: Extract CDR3 from each design and compute a pairwise
+      identity matrix across the set.
+    - **multiple**: Star alignment from centroid — returns consensus
+      sequence and MSA.
+
+    Uses BioPython PairwiseAligner (global mode) under the hood.
+
+    Args:
+        sequences_json: JSON array of objects. Each object must have a
+            sequence field (configurable via *key*). For ``cdr`` mode,
+            each object needs a CDR3 field (configurable via *cdr_key*).
+            May also include "name" or "design_name" for labeling.
+        mode: Alignment mode — "pairwise" (exactly 2 sequences),
+            "cdr" (CDR3 identity matrix), or "multiple" (star MSA).
+            Default "pairwise".
+        key: Dict key for the full amino acid sequence (default "sequence").
+        cdr_key: Dict key for CDR3 sequence, used in "cdr" mode
+            (default "cdr3_sequence").
+
+    Returns:
+        JSON object with alignment results and a ``formatted`` text
+        representation.
+    """
+    try:
+        sequences = json.loads(sequences_json)
+    except json.JSONDecodeError as exc:
+        return _error(f"Invalid sequences JSON: {exc}")
+
+    if not isinstance(sequences, list):
+        return _error("sequences_json must be a JSON array.")
+
+    valid_modes = ("pairwise", "cdr", "multiple")
+    if mode not in valid_modes:
+        return _error(f"Invalid mode '{mode}'. Must be one of: {', '.join(valid_modes)}")
+
+    try:
+        from proteus_cli.screening.alignment import (
+            pairwise_align,
+            cdr_align,
+            multiple_align,
+            format_alignment,
+        )
+
+        if mode == "pairwise":
+            if len(sequences) != 2:
+                return _error(
+                    f"Pairwise mode requires exactly 2 sequences, got {len(sequences)}."
+                )
+            result = pairwise_align(
+                sequences[0].get(key, ""),
+                sequences[1].get(key, ""),
+            )
+        elif mode == "cdr":
+            result = cdr_align(sequences, cdr_key=cdr_key)
+        else:
+            result = multiple_align(sequences, key=key)
+
+        result["formatted"] = format_alignment(result)
+        return json.dumps(result, indent=2)
+    except Exception as exc:
+        return _error(f"Sequence alignment failed: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Tool 12: screen_shape_complementarity
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def screen_shape_complementarity(
+    structure_path: str,
+    design_chains: list[str] | None = None,
+    target_chains: list[str] | None = None,
+    contact_distance: float = 8.0,
+) -> str:
+    """Compute interface shape complementarity metrics from a PDB/CIF structure.
+
+    Uses BioPython NeighborSearch to detect atom-level contacts between
+    design and target chains, then reports interface contact count,
+    per-side interface residue counts, and contact density (contacts per
+    interface residue).
+
+    Useful for evaluating how well a designed binder packs against its
+    target — higher contact density indicates tighter shape complementarity.
+
+    Args:
+        structure_path: Path to a PDB or mmCIF structure file.
+        design_chains: Chain IDs for the designed binder (default ["A"]).
+        target_chains: Chain IDs for the target protein (default ["B"]).
+        contact_distance: Distance cutoff in Angstroms for contact
+            detection (default 8.0).
+
+    Returns:
+        JSON object with interface_contacts, interface_residues_design,
+        interface_residues_target, total_interface_residues,
+        contact_density, design_chains, and target_chains.
+    """
+    if design_chains is None:
+        design_chains = ["A"]
+    if target_chains is None:
+        target_chains = ["B"]
+
+    p = Path(structure_path)
+    if not p.exists():
+        return _error(f"Structure file not found: {structure_path}")
+
+    try:
+        from proteus_cli.screening.shape_complementarity import (
+            compute_interface_metrics,
+        )
+
+        result = compute_interface_metrics(
+            structure_path=str(p),
+            design_chains=design_chains,
+            target_chains=target_chains,
+            contact_distance=contact_distance,
+        )
+        if "error" in result:
+            return _error(result["error"])
+        return json.dumps(result, indent=2)
+    except Exception as exc:
+        return _error(f"Shape complementarity scoring failed: {exc}")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 

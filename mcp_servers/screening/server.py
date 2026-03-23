@@ -443,6 +443,153 @@ async def screen_diversity(
 
 
 # ---------------------------------------------------------------------------
+# Tool 8: screen_diagnose_failures
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def screen_diagnose_failures(
+    scores_json: str,
+    pass_key: str = "status",
+    pass_value: str = "PASS",
+) -> str:
+    """Diagnose why a design campaign has a low hit rate.
+
+    Performs Mann-Whitney U tests comparing passed vs failed designs
+    across continuous features (ipSAE, ipTM, pLDDT, RMSD, liabilities,
+    etc.) to identify which metrics most strongly discriminate between
+    successful and unsuccessful designs.
+
+    Trigger this tool when pass rate drops below ~20%.
+
+    Args:
+        scores_json: JSON array of design score dicts. Each dict should
+            include a status field (configurable via pass_key) and numeric
+            feature columns such as ipsae, iptm, plddt, rmsd, liabilities,
+            net_charge, hydrophobic_fraction, cdr3_length.
+        pass_key: Key in each dict indicating pass/fail status
+            (default "status").
+        pass_value: Value of pass_key that means the design passed
+            (default "PASS").
+
+    Returns:
+        JSON object with total_designs, passed, failed, pass_rate,
+        discriminating_features (sorted by p-value), summary, and
+        actionable recommendations.
+    """
+    try:
+        designs = json.loads(scores_json)
+    except json.JSONDecodeError as exc:
+        return _error(f"Invalid scores JSON: {exc}")
+
+    if not isinstance(designs, list):
+        return _error("scores_json must be a JSON array.")
+
+    try:
+        from proteus_cli.screening.diagnosis import (
+            diagnose_failures,
+            format_diagnosis,
+        )
+
+        diag = diagnose_failures(
+            designs, pass_key=pass_key, pass_value=pass_value
+        )
+        result = {
+            "total_designs": diag.total_designs,
+            "passed": diag.passed,
+            "failed": diag.failed,
+            "pass_rate": round(diag.pass_rate, 4),
+            "discriminating_features": [
+                {
+                    "feature_name": a.feature_name,
+                    "test_type": a.test_type,
+                    "statistic": a.statistic,
+                    "p_value": a.p_value,
+                    "effect_size": a.effect_size,
+                    "passed_mean": a.passed_mean,
+                    "failed_mean": a.failed_mean,
+                    "interpretation": a.interpretation,
+                }
+                for a in diag.discriminating_features
+            ],
+            "summary": diag.summary,
+            "recommendations": diag.recommendations,
+            "formatted": format_diagnosis(diag),
+        }
+        return json.dumps(result, indent=2)
+    except Exception as exc:
+        return _error(f"Failure diagnosis failed: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Tool 9: screen_pareto_front
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def screen_pareto_front(
+    designs_json: str,
+    objectives_json: str | None = None,
+) -> str:
+    """Extract Pareto-optimal designs from a candidate set.
+
+    Instead of a single composite ranking, identifies non-dominated
+    candidates that represent optimal trade-offs across multiple
+    objectives (e.g., maximize binding affinity while minimizing
+    liabilities).
+
+    Default objectives: maximize ipsae_min, maximize iptm, minimize
+    liabilities count.
+
+    Args:
+        designs_json: JSON array of design objects, each with metric
+            fields (e.g., ipsae_min, iptm, liabilities). Must also
+            include a "design_name" or "name" key for labeling.
+        objectives_json: Optional JSON array of [metric, direction]
+            pairs. Direction is "maximize" or "minimize". Example:
+            [["ipsae_min", "maximize"], ["iptm", "maximize"],
+             ["liabilities", "minimize"]].
+
+    Returns:
+        JSON object with pareto_front (list of non-dominated designs
+        annotated with pareto_rank and tradeoff), front_size, total,
+        and a formatted text table.
+    """
+    try:
+        designs = json.loads(designs_json)
+    except json.JSONDecodeError as exc:
+        return _error(f"Invalid designs JSON: {exc}")
+
+    if not isinstance(designs, list):
+        return _error("designs_json must be a JSON array.")
+
+    objectives = None
+    if objectives_json is not None:
+        try:
+            raw = json.loads(objectives_json)
+            objectives = [(o[0], o[1]) for o in raw]
+        except (json.JSONDecodeError, IndexError, TypeError) as exc:
+            return _error(f"Invalid objectives JSON: {exc}")
+
+    try:
+        from proteus_cli.screening.pareto import pareto_front, format_pareto
+
+        front = pareto_front(designs, objectives=objectives)
+        formatted = format_pareto(front, objectives=objectives)
+        return json.dumps(
+            {
+                "pareto_front": front,
+                "front_size": len(front),
+                "total": len(designs),
+                "formatted": formatted,
+            },
+            indent=2,
+        )
+    except Exception as exc:
+        return _error(f"Pareto front extraction failed: {exc}")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 

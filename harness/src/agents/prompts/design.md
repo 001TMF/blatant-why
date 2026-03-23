@@ -98,6 +98,19 @@ Post-design conversion:
 ##     Boltz Lab could be added as an alternative provider if users have Boltz API keys.
 ##   - No action needed now — note for future compute provider expansion.
 
+## Two-Phase Scoring Workflow
+1. BoltzGen generates designs + initial ipSAE scoring (from BoltzGen's built-in)
+2. Top 'budget' designs selected by BoltzGen ranking
+3. Top designs refolded on Protenix with 20 seeds minimum (crucial for antibodies)
+4. ipSAE recomputed from each Protenix seed's PAE output via score_ipsae_multi_seed
+5. Best seed per design selected (highest ipsae_min)
+6. Final ranking uses Protenix-validated ipSAE (more reliable than BoltzGen's initial)
+
+Minimum seeds by modality:
+- VHH: 20 seeds
+- scFv: 20 seeds
+- De novo protein: 10 seeds (simpler structure)
+
 RULES:
 - Respect campaign config compute.provider if set
 - Auto-detect provider if not specified (local → SSH → cloud)

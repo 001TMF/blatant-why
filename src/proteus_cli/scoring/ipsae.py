@@ -214,6 +214,126 @@ def _score_block(interchain_pae: np.ndarray, pae_cutoff: float) -> float:
     return float(scores[good_mask].mean())
 
 
+def score_multi_seed(
+    npz_paths: list[str],
+    design_chain_ids: list[int] | None = None,
+    target_chain_ids: list[int] | None = None,
+    design_chain: str = "A",
+    target_chain: str = "B",
+    pae_cutoff: float = 10.0,
+    aggregation: str = "best",
+) -> dict:
+    """Score ipSAE across multiple Protenix seed outputs.
+
+    For antibody design, minimum 20 seeds recommended.
+
+    Args:
+        npz_paths: List of paths to Protenix NPZ output files (one per seed).
+        design_chain_ids: Integer chain IDs for design (for NPZ format).
+        target_chain_ids: Integer chain IDs for target (for NPZ format).
+        design_chain: String chain ID for design (for JSON format).
+        target_chain: String chain ID for target (for JSON format).
+        pae_cutoff: PAE threshold (10.0 for Protenix/AF3).
+        aggregation: How to select best seed — "best" (max ipsae_min), "mean", "median".
+
+    Returns:
+        dict with best_seed_idx, best_ipsae_min, all_seed_scores, aggregation, num_seeds
+    """
+    all_scores: list[dict[str, Any]] = []
+    for i, path_str in enumerate(npz_paths):
+        p = Path(path_str)
+        try:
+            if p.suffix == ".json":
+                score = score_from_protenix_output(str(p), design_chain, target_chain)
+            else:
+                score = score_npz(
+                    str(p), design_chain_ids or [], target_chain_ids or [], pae_cutoff
+                )
+        except Exception as exc:
+            score = {"error": str(exc)}
+        score["seed_idx"] = i
+        score["source_file"] = str(p)
+        all_scores.append(score)
+
+    # Filter out errored seeds
+    valid_scores = [s for s in all_scores if "error" not in s]
+    if not valid_scores:
+        return {"error": "No valid seed outputs found", "num_seeds": 0, "all_seed_scores": all_scores}
+
+    # Extract ipsae_min from each seed.  score_npz uses "design_ipsae_min";
+    # score_from_protenix_output uses "ipsae_min".  Accept either key.
+    def _get_ipsae_min(s: dict) -> float:
+        return float(s.get("ipsae_min", s.get("design_ipsae_min", 0.0)))
+
+    ipsae_values = [_get_ipsae_min(s) for s in valid_scores]
+
+    if aggregation == "mean":
+        target_val = float(np.mean(ipsae_values))
+        best_valid_idx = int(np.argmin([abs(v - target_val) for v in ipsae_values]))
+    elif aggregation == "median":
+        target_val = float(np.median(ipsae_values))
+        best_valid_idx = int(np.argmin([abs(v - target_val) for v in ipsae_values]))
+    else:  # "best" (default)
+        best_valid_idx = int(np.argmax(ipsae_values))
+
+    best_seed = valid_scores[best_valid_idx]
+
+    return {
+        "best_seed_idx": best_seed["seed_idx"],
+        "best_ipsae_min": float(ipsae_values[best_valid_idx]),
+        "best_seed_scores": best_seed,
+        "aggregation": aggregation,
+        "num_seeds": len(all_scores),
+        "num_valid_seeds": len(valid_scores),
+        "all_ipsae_min": [round(v, 4) for v in ipsae_values],
+        "mean_ipsae_min": round(float(np.mean(ipsae_values)), 4),
+        "std_ipsae_min": round(float(np.std(ipsae_values)), 4),
+    }
+
+
+def score_multi_seed_dir(
+    npz_dir: str,
+    design_chain_ids: list[int] | None = None,
+    target_chain_ids: list[int] | None = None,
+    design_chain: str = "A",
+    target_chain: str = "B",
+    pae_cutoff: float = 10.0,
+    aggregation: str = "best",
+) -> dict:
+    """Score ipSAE across all NPZ/JSON files in a directory.
+
+    Convenience wrapper around :func:`score_multi_seed` that discovers
+    all ``*.npz`` and ``*confidence*.json`` files in *npz_dir*.
+
+    Args:
+        npz_dir: Directory containing Protenix seed output files.
+        design_chain_ids: Integer chain IDs for design (for NPZ format).
+        target_chain_ids: Integer chain IDs for target (for NPZ format).
+        design_chain: String chain ID for design (for JSON format).
+        target_chain: String chain ID for target (for JSON format).
+        pae_cutoff: PAE threshold (10.0 for Protenix/AF3).
+        aggregation: How to select best seed — "best", "mean", or "median".
+
+    Returns:
+        Same as :func:`score_multi_seed`.
+    """
+    d = Path(npz_dir)
+    if not d.is_dir():
+        return {"error": f"Directory not found: {npz_dir}"}
+    paths = sorted(list(d.glob("*.npz")) + list(d.glob("*confidence*.json")))
+    if not paths:
+        return {"error": f"No NPZ or confidence JSON files found in {npz_dir}"}
+    return score_multi_seed(
+        [str(p) for p in paths],
+        design_chain_ids,
+        target_chain_ids,
+        design_chain,
+        target_chain,
+        pae_cutoff,
+        aggregation,
+    )
+
+
 def interpret_ipsae(score: float) -> str:
     """Human-readable interpretation of ipSAE score."""
     if score >= 0.8:

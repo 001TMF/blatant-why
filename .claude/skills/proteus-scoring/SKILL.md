@@ -64,6 +64,7 @@ When you need to explain ipSAE computation or debug scoring issues, this is the 
 - **Standalone implementation**: `compute_ipsae()` and `_directional_ipsae()` in `src/proteus_cli/scoring/ipsae.py`
 - **NPZ scorer**: `score_npz()` in `src/proteus_cli/scoring/ipsae.py`
 - **JSON scorer**: `score_from_protenix_output()` in `src/proteus_cli/scoring/ipsae.py`
+- **Multi-seed scorer**: `score_multi_seed()` and `score_multi_seed_dir()` in `src/proteus_cli/scoring/ipsae.py`
 - **Interpretation**: `interpret_ipsae()` in `src/proteus_cli/scoring/ipsae.py`
 
 No external dependencies required beyond numpy. No BoltzGen dependency.
@@ -164,6 +165,66 @@ Follow this sequence for every batch of new designs:
    ```
 
 6. **Provide interpretation** for the top candidates, noting any disagreements between metrics and recommending next steps (e.g., visualize structure, run developability, approve for experiment).
+
+
+---
+
+## Multi-Seed Refolding
+
+### Rationale
+
+BoltzGen's built-in ipSAE (computed from its own diffusion model's confidence) is useful for initial ranking, but **Protenix refolding with multiple seeds** produces more reliable structure predictions. The two-phase workflow is:
+
+1. BoltzGen generates N designs with initial ipSAE ranking
+2. Top `budget` designs are selected
+3. Each top design is refolded on Protenix with 20+ seeds
+4. `score_ipsae_multi_seed` scores every seed and selects the best
+5. Final ranking uses Protenix-validated ipSAE
+
+### Minimum Seeds by Modality
+
+| Modality | Min Seeds | Rationale |
+|----------|-----------|-----------|
+| VHH (nanobody) | 20 | CDR loops are flexible; need statistical coverage |
+| scFv | 20 | Two variable domains + linker increase conformational space |
+| De novo protein | 10 | Simpler fold topology, fewer stochastic modes |
+
+### Implementation
+
+Two new functions in `src/proteus_cli/scoring/ipsae.py`:
+
+- **`score_multi_seed(npz_paths, ...)`**: Scores a list of NPZ/JSON files (one per seed), selects best seed by aggregation strategy ("best" / "mean" / "median"), returns best seed index, per-seed scores, and mean/std statistics.
+- **`score_multi_seed_dir(npz_dir, ...)`**: Convenience wrapper that discovers all `*.npz` and `*confidence*.json` files in a directory.
+
+### MCP Tool
+
+Use `score_ipsae_multi_seed` from the `proteus-screening` MCP server:
+```
+Tool: score_ipsae_multi_seed
+Args: { "npz_dir": "/path/to/protenix_seeds/", "design_chain_ids": [0], "target_chain_ids": [1] }
+```
+
+Or with explicit file list:
+```
+Tool: score_ipsae_multi_seed
+Args: { "npz_paths": ["seed_0.npz", "seed_1.npz", ...], "design_chain_ids": [0], "target_chain_ids": [1] }
+```
+
+Returns: `best_seed_idx`, `best_ipsae_min`, `mean_ipsae_min`, `std_ipsae_min`, per-seed breakdown, and interpretation.
+
+### Aggregation Strategies
+
+| Strategy | Selects | When to Use |
+|----------|---------|-------------|
+| `"best"` (default) | Seed with highest `ipsae_min` | Standard workflow -- pick the most confident prediction |
+| `"mean"` | Seed closest to mean `ipsae_min` | When you want a representative (not optimistic) score |
+| `"median"` | Seed closest to median `ipsae_min` | Robust to outlier seeds |
+
+### Interpreting Multi-Seed Results
+
+- **High std_ipsae_min (>0.15)**: Prediction is unstable across seeds. The design may have conformational flexibility at the interface. Consider with caution even if best seed looks good.
+- **Low std_ipsae_min (<0.05)**: Prediction is robust. The best seed score is reliable.
+- **best_ipsae_min >> mean_ipsae_min**: One seed found a much better conformation. Check if this is a genuine alternative binding mode or a lucky sample.
 
 ### Key Conventions
 

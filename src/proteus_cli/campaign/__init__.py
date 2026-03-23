@@ -27,6 +27,11 @@ from .funnel import (
     estimate_funnel,
     format_funnel,
 )
+from .export import (
+    export_campaign_summary,
+    export_csv,
+    export_fasta,
+)
 from .iteration import (
     IterationAnalysis,
     analyze_lab_results,
@@ -82,6 +87,10 @@ __all__ = [
     "transition",
     "add_round",
     "update_run",
+    # export
+    "export_campaign_summary",
+    "export_csv",
+    "export_fasta",
     # iteration
     "IterationAnalysis",
     "analyze_lab_results",

@@ -20,6 +20,11 @@ sys.path.insert(0, str(_PROJECT_ROOT / "src"))
 
 from proteus_cli.campaign.config import CampaignConfig, TargetConfig, DesignConfig
 from proteus_cli.campaign.cost import CostEstimate, estimate_cost
+from proteus_cli.campaign.export import (
+    export_campaign_summary,
+    export_csv as export_csv_fn,
+    export_fasta as export_fasta_fn,
+)
 from proteus_cli.campaign.state import (
     CampaignState,
     RoundState,
@@ -483,6 +488,71 @@ async def campaign_get_cost_estimate(campaign_dir: str) -> str:
         return json.dumps(asdict(estimate), indent=2)
     except Exception as exc:
         return _error(f"Failed to estimate cost: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Tool 9: campaign_export_fasta
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def campaign_export_fasta(
+    campaign_dir: str,
+    output_path: str = "",
+) -> str:
+    """Export campaign design sequences as FASTA.
+
+    Collects all design sequences from the campaign directory and writes
+    them in FASTA format with score annotations in the header lines.
+
+    Args:
+        campaign_dir: Path to the campaign directory.
+        output_path: Optional output file path. If empty, writes to campaign_dir/exports/.
+
+    Returns:
+        JSON with the path to the exported FASTA file.
+    """
+    log = _log_path(campaign_dir)
+    if not log.exists():
+        return _error(f"Campaign log not found at {log}")
+
+    try:
+        path = export_fasta_fn(campaign_dir, output_path)
+        return json.dumps({"exported": path, "format": "fasta"}, indent=2)
+    except Exception as exc:
+        return _error(f"Failed to export FASTA: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Tool 10: campaign_export_csv
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def campaign_export_csv(
+    campaign_dir: str,
+    output_path: str = "",
+) -> str:
+    """Export all scored campaign designs as CSV.
+
+    Columns: design_name, sequence, ipsae, iptm, plddt, rmsd, liabilities, status.
+
+    Args:
+        campaign_dir: Path to the campaign directory.
+        output_path: Optional output file path. If empty, writes to campaign_dir/exports/.
+
+    Returns:
+        JSON with the path to the exported CSV file.
+    """
+    log = _log_path(campaign_dir)
+    if not log.exists():
+        return _error(f"Campaign log not found at {log}")
+
+    try:
+        path = export_csv_fn(campaign_dir, output_path)
+        return json.dumps({"exported": path, "format": "csv"}, indent=2)
+    except Exception as exc:
+        return _error(f"Failed to export CSV: {exc}")
 
 
 # ---------------------------------------------------------------------------

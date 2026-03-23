@@ -22,6 +22,7 @@ import { renderResults, DesignResult } from "./results.js";
 import { StreamEvent, AgentConfig } from "./agent.js";
 import { PipelineWatch } from "./components/PipelineWatch.js";
 import { readManifest, hasProteusDir, RunManifest } from "./watchRun.js";
+import { ConversationLogger } from "./conversationLog.js";
 
 type Message =
   | { type: "user"; text: string }
@@ -221,6 +222,11 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
     }
   }, [sessionId, campaign.campaignDir, configRef.projectDir]);
 
+  // Conversation logger for audit trail
+  const loggerRef = useRef<ConversationLogger>(
+    new ConversationLogger(resolve(configRef.projectDir, ".proteus"))
+  );
+
   // Track the last displayed text to prevent duplicates
   const lastDisplayedRef = useRef<string>("");
   const abortRef = useRef<AbortController | null>(null);
@@ -373,6 +379,32 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
           setShowTeam(true);
           return;
         }
+        if (cmdResult.local === "export_markdown" || cmdResult.local === "export_csv") {
+          const logger = loggerRef.current;
+          const isCsv = cmdResult.local === "export_csv";
+          const ext = isCsv ? "csv" : "md";
+          const content = isCsv ? logger.exportCSV() : logger.exportMarkdown();
+          if (!content) {
+            setMessages((prev) => [
+              ...prev,
+              { type: "user", text: trimmed },
+              { type: "assistant", text: "No conversation log found to export." },
+            ]);
+            return;
+          }
+          const exportDir = resolve(configRef.projectDir, ".proteus");
+          mkdirSync(exportDir, { recursive: true });
+          const date = new Date().toISOString().slice(0, 10);
+          const time = new Date().toISOString().slice(11, 19).replace(/:/g, "");
+          const exportPath = resolve(exportDir, `conversation_export_${date}_${time}.${ext}`);
+          writeFileSync(exportPath, content);
+          setMessages((prev) => [
+            ...prev,
+            { type: "user", text: trimmed },
+            { type: "assistant", text: `Conversation log exported to:\n${exportPath}` },
+          ]);
+          return;
+        }
         if (cmdResult.local === "resume_campaign") {
           const campaigns = listCampaigns(configRef.projectDir);
           if (campaigns.length === 0) {
@@ -423,6 +455,7 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
 
       // Add user message
       setMessages((prev) => [...prev, { type: "user", text: trimmed }]);
+      loggerRef.current.logUser(trimmed);
       setLoading(true);
 
       let accumulatedText = "";
@@ -444,6 +477,7 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
                 if (text.trim() !== lastDisplayedRef.current.trim()) {
                   setMessages((prev) => [...prev, { type: "assistant", text }]);
                   lastDisplayedRef.current = text;
+                  loggerRef.current.logAssistant(text);
                 }
               }
               accumulatedText = "";
@@ -454,11 +488,13 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
                 if (text.trim() !== lastDisplayedRef.current.trim()) {
                   setMessages((prev) => [...prev, { type: "assistant", text }]);
                   lastDisplayedRef.current = text;
+                  loggerRef.current.logAssistant(text);
                 }
                 accumulatedText = "";
               }
               const displayName = humanizeToolName(event.name);
               setActiveTool(displayName);
+              loggerRef.current.logTool(event.name);
               if (displayName) {
                 setMessages((prev) => [
                   ...prev,

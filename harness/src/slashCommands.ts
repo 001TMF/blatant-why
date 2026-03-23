@@ -17,6 +17,7 @@ export const SLASH_COMMANDS = [
   { name: "/costs", description: "Show campaign cost breakdown" },
   { name: "/team", description: "Show active agent team status" },
   { name: "/resume", description: "Resume a previous campaign" },
+  { name: "/export", description: "Export conversation log (markdown or csv)" },
 ] as const;
 
 export function getCompletions(input: string): typeof SLASH_COMMANDS[number][] {
@@ -45,6 +46,7 @@ export function handleSlashCommand(input: string): SlashCommandResult {
         "  /costs        Show campaign cost breakdown",
         "  /team         Show active agent team status",
         "  /resume       Resume a previous campaign",
+        "  /export       Export conversation log (markdown or csv)",
         "",
         "Shift+Tab to cycle modes: Binder → Antibody → Structure",
         "",
@@ -76,6 +78,14 @@ export function handleSlashCommand(input: string): SlashCommandResult {
 
   if (trimmed === "/resume") {
     return { handled: true, local: "resume_campaign" };
+  }
+
+  if (trimmed === "/export" || trimmed.startsWith("/export ")) {
+    const arg = trimmed.slice("/export".length).trim().toLowerCase();
+    if (arg === "csv") {
+      return { handled: true, local: "export_csv" };
+    }
+    return { handled: true, local: "export_markdown" };
   }
 
   // /status, /results, /screen, /watch, /load, /campaign are handled by the agent

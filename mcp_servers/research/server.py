@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta
 from typing import Any
+import re
 from urllib.parse import quote, urlencode
 
 import httpx
@@ -37,6 +38,9 @@ RCSB_DATA_URL = "https://data.rcsb.org/rest/v1/core/entry"
 
 # SAbDab
 SABDAB_SUMMARY_URL = "http://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab/summary/all/"
+
+# RCSB FASTA (for fetching chain sequences by PDB ID)
+RCSB_FASTA_URL = "https://www.rcsb.org/fasta/entry"
 
 
 # ---------------------------------------------------------------------------
@@ -635,6 +639,255 @@ async def research_find_similar_targets(
     result: dict[str, Any] = {
         "query_accession": accession,
         "similar": similar,
+    }
+    if errors:
+        result["warnings"] = errors
+
+    return json.dumps(result, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Tool 5: research_check_novelty
+# ---------------------------------------------------------------------------
+
+
+def _sequence_identity(seq1: str, seq2: str) -> float:
+    """Compute pairwise sequence identity (alignment-free).
+
+    Mirrors ``proteus_cli.screening.diversity.sequence_identity`` so that
+    the MCP server stays self-contained and does not import from the CLI
+    package (which may not be installed in the server's venv).
+    """
+    max_len = max(len(seq1), len(seq2))
+    if max_len == 0:
+        return 0.0
+    min_len = min(len(seq1), len(seq2))
+    matches = sum(a == b for a, b in zip(seq1[:min_len], seq2[:min_len]))
+    return matches / max_len
+
+
+def _parse_fasta_sequences(fasta_text: str) -> dict[str, str]:
+    """Parse a FASTA string into {header: sequence} dict.
+
+    Returns a mapping from the *full* header line (minus '>') to the
+    concatenated sequence lines.
+    """
+    sequences: dict[str, str] = {}
+    current_header: str | None = None
+    current_seq: list[str] = []
+
+    for line in fasta_text.splitlines():
+        line = line.strip()
+        if line.startswith(">"):
+            if current_header is not None:
+                sequences[current_header] = "".join(current_seq)
+            current_header = line[1:]
+            current_seq = []
+        elif current_header is not None:
+            current_seq.append(line)
+
+    if current_header is not None:
+        sequences[current_header] = "".join(current_seq)
+
+    return sequences
+
+
+async def _fetch_chain_sequence(
+    client: httpx.AsyncClient,
+    pdb_id: str,
+    chain_id: str,
+) -> str | None:
+    """Fetch the amino-acid sequence for a specific chain from RCSB.
+
+    Downloads the FASTA for the PDB entry and returns the sequence
+    whose header matches the requested chain.  Returns *None* on any
+    failure (missing entry, missing chain, network error).
+    """
+    try:
+        url = f"{RCSB_FASTA_URL}/{pdb_id.upper()}"
+        resp = await client.get(url, timeout=TIMEOUT, follow_redirects=True)
+        resp.raise_for_status()
+
+        sequences = _parse_fasta_sequences(resp.text)
+
+        # RCSB FASTA headers look like:
+        #   >1ABC_1|Chain A|...
+        #   >1ABC_2|Chain B|...
+        # Match by chain letter (case-insensitive).
+        chain_upper = chain_id.strip().upper()
+        for header, seq in sequences.items():
+            # Match "|Chain X|" pattern
+            if re.search(rf'\|Chain\s+{re.escape(chain_upper)}\b', header, re.IGNORECASE):
+                return seq
+            # Also match "{PDB}_{N}|Chains {X},{Y}|" for multi-chain entries
+            if re.search(rf'\|Chains?\s+[^|]*\b{re.escape(chain_upper)}\b', header, re.IGNORECASE):
+                return seq
+
+        return None
+    except Exception:
+        return None
+
+
+@mcp.tool()
+async def research_check_novelty(
+    design_sequence: str,
+    target_name: str,
+    identity_threshold: float = 0.9,
+) -> str:
+    """Check a design sequence for novelty against known SAbDab antibodies.
+
+    Queries SAbDab for known antibodies against the target, fetches their
+    heavy-chain sequences from RCSB PDB, and computes pairwise sequence
+    identity against the design.
+
+    Use this to screen candidate designs for potential IP overlap with
+    existing antibodies before advancing to experimental validation.
+
+    Args:
+        design_sequence: Amino-acid sequence of the designed antibody /
+            nanobody (heavy chain).
+        target_name: Target protein name to filter SAbDab entries
+            (e.g. "TNF-alpha", "PD-L1").
+        identity_threshold: Maximum tolerated sequence identity (0.0-1.0).
+            Designs sharing identity above this value with any known binder
+            are flagged as non-novel.  Default 0.9 (90%).
+
+    Returns:
+        JSON with: novel (bool), closest_match_pdb, closest_identity,
+        matches_above_threshold (count), ip_warning (str), and details list.
+    """
+    design_seq = design_sequence.strip().upper()
+    if not design_seq:
+        return _error("design_sequence must not be empty.")
+    if not target_name.strip():
+        return _error("target_name must not be empty.")
+
+    identity_threshold = max(0.0, min(1.0, identity_threshold))
+
+    # ---- Step 1: Query SAbDab for known binders (reuse existing logic) ----
+    binders: list[dict[str, Any]] = []
+    errors: list[str] = []
+
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        try:
+            params = {"all": "true"}
+            resp = await client.get(
+                SABDAB_SUMMARY_URL,
+                params=params,
+                timeout=60.0,
+                headers={"Accept": "text/tab-separated-values"},
+            )
+            resp.raise_for_status()
+            tsv_text = resp.text
+
+            lines = tsv_text.strip().split("\n")
+            if len(lines) < 2:
+                return json.dumps({
+                    "novel": True,
+                    "closest_match_pdb": "",
+                    "closest_identity": 0.0,
+                    "matches_above_threshold": 0,
+                    "ip_warning": "",
+                    "details": [],
+                    "warnings": ["SAbDab returned no data rows."],
+                }, indent=2)
+
+            headers = lines[0].split("\t")
+
+            def _col(name: str) -> int:
+                name_lower = name.lower()
+                for i, h in enumerate(headers):
+                    if name_lower in h.lower():
+                        return i
+                return -1
+
+            col_pdb = _col("pdb")
+            col_hchain = _col("hchain")
+            col_antigen_name = _col("antigen_name")
+
+            target_lower = target_name.strip().lower()
+            seen_pdbs: set[str] = set()
+
+            for line in lines[1:]:
+                fields = line.split("\t")
+                if len(fields) <= max(col_pdb, col_antigen_name, col_hchain):
+                    continue
+
+                antigen_name = fields[col_antigen_name] if col_antigen_name >= 0 else ""
+                if target_lower not in antigen_name.lower():
+                    continue
+
+                pdb_id = fields[col_pdb] if col_pdb >= 0 else ""
+                heavy_chain = fields[col_hchain] if col_hchain >= 0 else ""
+                if not pdb_id or pdb_id in seen_pdbs:
+                    continue
+                seen_pdbs.add(pdb_id)
+
+                binders.append({
+                    "pdb_id": pdb_id.upper(),
+                    "heavy_chain": heavy_chain.strip(),
+                })
+
+                # Cap at 50 to avoid excessive RCSB requests
+                if len(binders) >= 50:
+                    break
+
+        except Exception as exc:
+            errors.append(f"SAbDab query failed: {exc}")
+
+        # ---- Step 2: Fetch sequences and compute identity ----
+        comparisons: list[dict[str, Any]] = []
+        closest_pdb = ""
+        closest_identity = 0.0
+        matches_above = 0
+
+        for binder in binders:
+            pdb_id = binder["pdb_id"]
+            chain_id = binder["heavy_chain"]
+
+            if not chain_id:
+                continue
+
+            seq = await _fetch_chain_sequence(client, pdb_id, chain_id)
+            if not seq:
+                comparisons.append({
+                    "pdb_id": pdb_id,
+                    "chain": chain_id,
+                    "identity": None,
+                    "note": "sequence unavailable",
+                })
+                continue
+
+            identity = _sequence_identity(design_seq, seq.upper())
+
+            comparisons.append({
+                "pdb_id": pdb_id,
+                "chain": chain_id,
+                "identity": round(identity, 4),
+            })
+
+            if identity > closest_identity:
+                closest_identity = identity
+                closest_pdb = pdb_id
+
+            if identity > identity_threshold:
+                matches_above += 1
+
+    novel = matches_above == 0
+    ip_warning = ""
+    if not novel:
+        ip_warning = (
+            f"Design shares >{identity_threshold:.0%} identity with {closest_pdb}"
+        )
+
+    result: dict[str, Any] = {
+        "novel": novel,
+        "closest_match_pdb": closest_pdb,
+        "closest_identity": round(closest_identity, 4),
+        "matches_above_threshold": matches_above,
+        "ip_warning": ip_warning,
+        "num_known_binders_checked": len(binders),
+        "details": comparisons,
     }
     if errors:
         result["warnings"] = errors

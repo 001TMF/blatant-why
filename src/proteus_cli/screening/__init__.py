@@ -1,5 +1,11 @@
-"""Proteus screening — PTM liabilities, net charge, developability, diversity, diagnosis, Pareto, shape complementarity."""
+"""Proteus screening — PTM liabilities, net charge, developability, diversity, diagnosis, Pareto, alignment, shape complementarity."""
 
+from .alignment import (
+    cdr_align,
+    format_alignment,
+    multiple_align,
+    pairwise_align,
+)
 from .diagnosis import (
     FailureDiagnosis,
     FeatureAnalysis,
@@ -28,15 +34,19 @@ from .shape_complementarity import (
 __all__ = [
     "FailureDiagnosis",
     "FeatureAnalysis",
+    "cdr_align",
     "cluster_sequences",
     "compute_interface_metrics",
     "diagnose_failures",
     "diversity_report",
+    "format_alignment",
     "format_diagnosis",
     "format_diversity",
     "format_pareto",
     "interpret_naturalness",
     "is_dominated",
+    "multiple_align",
+    "pairwise_align",
     "pareto_front",
     "score_naturalness",
     "sequence_identity",

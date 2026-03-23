@@ -805,6 +805,56 @@ async def screen_shape_complementarity(
 
 
 # ---------------------------------------------------------------------------
+# Tool 13: screen_naturalness
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def screen_naturalness(
+    sequence: str,
+    chain_type: str = "heavy",
+) -> str:
+    """Score antibody sequence naturalness using AbLang2.
+
+    Uses AbLang2 pseudo log-likelihood (PLL) scoring to assess how
+    "natural" an antibody sequence looks compared to the observed
+    human antibody repertoire. Higher (less negative) PLL scores
+    indicate more natural sequences.
+
+    Falls back gracefully if ablang2 is not installed, suggesting the
+    Tamarind Bio cloud alternative.
+
+    Typical PLL ranges:
+    - Natural antibodies: -1 to -3
+    - Random / unnatural sequences: -5 to -8
+
+    Args:
+        sequence: Amino acid sequence (VH, VHH, or VL, one-letter codes).
+        chain_type: "heavy" (default, for VH/VHH) or "light" (for VL).
+
+    Returns:
+        JSON object with naturalness_score, chain_type, interpretation,
+        source, and install_hint / tamarind_alternative if ablang2 is
+        not available.
+    """
+    if not sequence or not sequence.strip():
+        return _error("Sequence must not be empty.")
+
+    if chain_type not in ("heavy", "light"):
+        return _error(
+            f"Invalid chain_type '{chain_type}'. Must be 'heavy' or 'light'."
+        )
+
+    try:
+        from proteus_cli.screening.naturalness import score_naturalness
+
+        result = score_naturalness(sequence.strip().upper(), chain_type=chain_type)
+        return json.dumps(result, indent=2)
+    except Exception as exc:
+        return _error(f"Naturalness scoring failed: {exc}")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 

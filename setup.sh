@@ -26,7 +26,7 @@ echo "✓ Python $(python3 --version)"
 # Install Python deps
 echo ""
 echo "Installing Python dependencies..."
-pip install pyyaml httpx mcp 2>/dev/null || pip install --user pyyaml httpx mcp
+pip install pyyaml httpx mcp numpy biopython click pydantic rich 2>/dev/null || pip install --user pyyaml httpx mcp numpy biopython click pydantic rich
 echo "✓ Python dependencies installed"
 
 # Install Node deps

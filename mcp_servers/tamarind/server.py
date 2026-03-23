@@ -97,7 +97,7 @@ async def tamarind_list_models() -> str:
     if _model_cache and (now - _model_cache_ts) < _MODEL_CACHE_TTL:
         return json.dumps(_model_cache, indent=2)
 
-    url = f"{_base_url()}/models/available"
+    url = f"{_base_url()}/models"
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(

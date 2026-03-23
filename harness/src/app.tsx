@@ -627,10 +627,12 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
           estimatedCost={(campaign.state?.estimatedCost as number) ?? 0}
           onConfirm={() => {
             try {
-              const approvalDir = resolve(configRef.projectDir, ".proteus");
-              mkdirSync(approvalDir, { recursive: true });
+              // Write approval to campaign dir (matches adaptyv server check)
+              const campaignDir = campaign.campaignDir ?? resolve(configRef.projectDir, ".proteus");
+              const labDir = resolve(campaignDir, "lab");
+              mkdirSync(labDir, { recursive: true });
               writeFileSync(
-                resolve(approvalDir, "approval.json"),
+                resolve(labDir, "approval.json"),
                 JSON.stringify({
                   approved: true,
                   timestamp: new Date().toISOString(),

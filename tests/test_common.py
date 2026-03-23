@@ -14,13 +14,13 @@ class TestToolResult:
 
     def test_creation_minimal(self):
         """ToolResult can be created with only required fields."""
-        result = ToolResult(tool="proteus-fold", status="success")
-        assert result.tool == "proteus-fold"
+        result = ToolResult(tool="protenix", status="success")
+        assert result.tool == "protenix"
         assert result.status == "success"
 
     def test_defaults(self):
         """Optional fields default correctly."""
-        result = ToolResult(tool="proteus-ab", status="running")
+        result = ToolResult(tool="boltzgen", status="running")
         assert result.output_dir is None
         assert result.metrics == {}
         assert result.designs == []
@@ -29,14 +29,14 @@ class TestToolResult:
     def test_creation_full(self):
         """ToolResult can be created with all fields populated."""
         result = ToolResult(
-            tool="proteus-prot",
+            tool="pxdesign",
             status="success",
             output_dir=Path("/tmp/output"),
             metrics={"ipTM": 0.85, "pLDDT": 92.3},
             designs=[{"name": "design_1", "score": 0.9}],
             error=None,
         )
-        assert result.tool == "proteus-prot"
+        assert result.tool == "pxdesign"
         assert result.output_dir == Path("/tmp/output")
         assert result.metrics["ipTM"] == 0.85
         assert len(result.designs) == 1
@@ -44,14 +44,14 @@ class TestToolResult:
     def test_to_json_returns_valid_json(self):
         """to_json produces valid, parseable JSON."""
         result = ToolResult(
-            tool="proteus-fold",
+            tool="protenix",
             status="success",
             output_dir=Path("/tmp/out"),
             metrics={"score": 1.0},
         )
         raw = result.to_json()
         parsed = json.loads(raw)
-        assert parsed["tool"] == "proteus-fold"
+        assert parsed["tool"] == "protenix"
         assert parsed["status"] == "success"
         assert parsed["output_dir"] == "/tmp/out"
         assert parsed["metrics"] == {"score": 1.0}
@@ -60,22 +60,22 @@ class TestToolResult:
 
     def test_to_json_none_output_dir(self):
         """to_json handles None output_dir."""
-        result = ToolResult(tool="proteus-ab", status="error", error="failed")
+        result = ToolResult(tool="boltzgen", status="error", error="failed")
         parsed = json.loads(result.to_json())
         assert parsed["output_dir"] is None
         assert parsed["error"] == "failed"
 
     def test_metrics_dict_independence(self):
         """Each ToolResult gets its own metrics dict (no shared mutable default)."""
-        r1 = ToolResult(tool="proteus-fold", status="success")
-        r2 = ToolResult(tool="proteus-ab", status="success")
+        r1 = ToolResult(tool="protenix", status="success")
+        r2 = ToolResult(tool="boltzgen", status="success")
         r1.metrics["key"] = "value"
         assert "key" not in r2.metrics
 
     def test_designs_list_independence(self):
         """Each ToolResult gets its own designs list (no shared mutable default)."""
-        r1 = ToolResult(tool="proteus-fold", status="success")
-        r2 = ToolResult(tool="proteus-ab", status="success")
+        r1 = ToolResult(tool="protenix", status="success")
+        r2 = ToolResult(tool="boltzgen", status="success")
         r1.designs.append({"name": "d1"})
         assert len(r2.designs) == 0
 
@@ -111,17 +111,17 @@ class TestValidateToolPath:
 
     def test_unknown_tool_error_lists_available(self):
         """The ValueError message includes available tool names."""
-        with pytest.raises(ValueError, match="proteus-fold"):
+        with pytest.raises(ValueError, match="protenix"):
             validate_tool_path("bad-tool")
 
     def test_missing_directory_raises_file_not_found(self, tmp_path, monkeypatch):
         """If the tool directory doesn't exist, FileNotFoundError is raised."""
         import proteus_cli.common as common_mod
 
-        fake_paths = {"proteus-fold": tmp_path / "nonexistent"}
+        fake_paths = {"protenix": tmp_path / "nonexistent"}
         monkeypatch.setattr(common_mod, "TOOL_PATHS", fake_paths)
         with pytest.raises(FileNotFoundError, match="Tool directory not found"):
-            validate_tool_path("proteus-fold")
+            validate_tool_path("protenix")
 
     def test_valid_tool_returns_path(self, tmp_path, monkeypatch):
         """A valid, existing tool path is returned successfully."""
@@ -129,7 +129,7 @@ class TestValidateToolPath:
 
         existing = tmp_path / "Protenix"
         existing.mkdir()
-        fake_paths = {"proteus-fold": existing}
+        fake_paths = {"protenix": existing}
         monkeypatch.setattr(common_mod, "TOOL_PATHS", fake_paths)
-        result = validate_tool_path("proteus-fold")
+        result = validate_tool_path("protenix")
         assert result == existing

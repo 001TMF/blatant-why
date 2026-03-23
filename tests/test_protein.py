@@ -135,9 +135,9 @@ class TestRunProteinDesign:
 
         result = run_protein_design(config)
 
-        assert calls == ["proteus-prot"]
+        assert calls == ["pxdesign"]
         assert result.status == "success"
-        assert result.tool == "proteus-prot"
+        assert result.tool == "pxdesign"
 
 
 class TestParseDesignResults:

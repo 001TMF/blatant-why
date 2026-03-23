@@ -143,7 +143,7 @@ class TestRunFold:
             f.flush()
             run_fold(f.name)
 
-        assert called_with == ["proteus-fold"]
+        assert called_with == ["protenix"]
 
     def test_run_fold_unknown_model_returns_error(
         self, monkeypatch: pytest.MonkeyPatch

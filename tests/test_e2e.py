@@ -133,7 +133,7 @@ class TestE2EProteinDesignPipeline:
         from proteus_cli.protein import run_protein_design
         result = run_protein_design(config_path, output_dir=tmp_path)
         assert result.status == "success"
-        assert result.tool == "proteus-prot"
+        assert result.tool == "pxdesign"
 
         # --- Step 4: Create a mock summary.csv ---
         _write_pxdesign_summary_csv(tmp_path)
@@ -240,7 +240,7 @@ class TestE2EAntibodyDesignPipeline:
         from proteus_cli.antibody import run_antibody_design
         result = run_antibody_design(spec_path, output_dir=tmp_path)
         assert result.status == "success"
-        assert result.tool == "proteus-ab"
+        assert result.tool == "boltzgen"
 
         # --- Step 4: Create mock antibody metrics CSV ---
         _write_antibody_metrics_csv(tmp_path)
@@ -317,7 +317,7 @@ class TestE2EScreeningBattery:
 
         # Verify each liability has all required fields
         for l in liabilities:
-            assert l.type in ("deamidation", "isomerization", "free_cysteine", "glycosylation")
+            assert l.type in ("deamidation", "isomerization", "oxidation", "free_cysteine", "glycosylation")
             assert l.severity in ("high", "medium", "low")
             assert isinstance(l.position, int)
             assert len(l.motif) > 0
@@ -343,10 +343,10 @@ class TestE2EScreeningBattery:
         # --- Scoring interpretation ---
         # Test boundary cases of interpret functions across the battery
         for score_val, expected_fragment in [
-            (0.9, "Excellent"),
-            (0.6, "Good"),
-            (0.4, "Moderate"),
-            (0.1, "Poor"),
+            (0.9, "excellent"),
+            (0.6, "good"),
+            (0.4, "moderate"),
+            (0.1, "poor"),
         ]:
             assert expected_fragment in interpret_ipsae(score_val)
 
@@ -465,7 +465,7 @@ class TestE2ECLICheckCommand:
         return CliRunner()
 
     def test_e2e_cli_check_command_success(self, runner, tmp_path, monkeypatch):
-        """``proteus check proteus-fold`` succeeds when the tool directory exists."""
+        """``proteus check protenix`` succeeds when the tool directory exists."""
         import proteus_cli.common as common_mod
 
         # Create a fake tool directory
@@ -475,27 +475,27 @@ class TestE2ECLICheckCommand:
         monkeypatch.setattr(
             common_mod,
             "TOOL_PATHS",
-            {"proteus-fold": fake_tool_dir, "proteus-prot": tmp_path, "proteus-ab": tmp_path},
+            {"protenix": fake_tool_dir, "pxdesign": tmp_path, "boltzgen": tmp_path},
         )
 
-        result = runner.invoke(cli, ["check", "proteus-fold"])
+        result = runner.invoke(cli, ["check", "protenix"])
         assert result.exit_code == 0
         assert "OK" in result.output
-        assert "proteus-fold" in result.output
+        assert "protenix" in result.output
         assert str(fake_tool_dir) in result.output
 
     def test_e2e_cli_check_command_missing_dir(self, runner, tmp_path, monkeypatch):
-        """``proteus check proteus-fold`` fails when the tool directory is missing."""
+        """``proteus check protenix`` fails when the tool directory is missing."""
         import proteus_cli.common as common_mod
 
         nonexistent = tmp_path / "nonexistent_tool_dir"
         monkeypatch.setattr(
             common_mod,
             "TOOL_PATHS",
-            {"proteus-fold": nonexistent, "proteus-prot": tmp_path, "proteus-ab": tmp_path},
+            {"protenix": nonexistent, "pxdesign": tmp_path, "boltzgen": tmp_path},
         )
 
-        result = runner.invoke(cli, ["check", "proteus-fold"])
+        result = runner.invoke(cli, ["check", "protenix"])
         assert result.exit_code != 0
         assert "ERROR" in result.output or "not found" in result.output
 

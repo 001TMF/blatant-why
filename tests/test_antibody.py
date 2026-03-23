@@ -141,9 +141,9 @@ class TestRunAntibodyDesign:
 
         result = run_antibody_design(spec)
 
-        assert calls == ["proteus-ab"]
+        assert calls == ["boltzgen"]
         assert result.status == "success"
-        assert result.tool == "proteus-ab"
+        assert result.tool == "boltzgen"
 
 
 class TestParseAntibodyResults:

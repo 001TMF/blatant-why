@@ -371,10 +371,6 @@ proteus/
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/design-progress.png" alt="Design pipeline progress with stage indicators and ETA" width="700">
-</p>
-
-<p align="center">
   <img src="docs/screenshots/results-table.png" alt="Ranked results table with ipTM, ipSAE, p_bind scores" width="700">
 </p>
 

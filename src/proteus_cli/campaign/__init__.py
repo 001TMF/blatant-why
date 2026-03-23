@@ -37,6 +37,11 @@ from .iteration import (
     analyze_lab_results,
     recommend_next_round,
 )
+from .active_learning import (
+    OptimizationResult,
+    has_enough_data,
+    suggest_from_campaign,
+)
 from .decisions import log_decision, read_decisions
 from .visualization import generate_chimerax_script, generate_pymol_script
 from .state import (
@@ -97,6 +102,10 @@ __all__ = [
     "IterationAnalysis",
     "analyze_lab_results",
     "recommend_next_round",
+    # active learning
+    "OptimizationResult",
+    "has_enough_data",
+    "suggest_from_campaign",
     # decisions
     "log_decision",
     "read_decisions",

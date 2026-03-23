@@ -18,6 +18,10 @@ from mcp.server.fastmcp import FastMCP
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT / "src"))
 
+from proteus_cli.campaign.active_learning import (
+    has_enough_data,
+    suggest_from_campaign,
+)
 from proteus_cli.campaign.config import CampaignConfig, TargetConfig, DesignConfig
 from proteus_cli.campaign.cost import CostEstimate, estimate_cost
 from proteus_cli.campaign.export import (
@@ -719,6 +723,50 @@ async def campaign_generate_visualization(
     if out:
         result["output_path"] = out
     return json.dumps(result, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Tool 14: campaign_suggest_next_round
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def campaign_suggest_next_round(
+    campaign_dir: str,
+    min_designs: int = 10,
+) -> str:
+    """Suggest optimised parameters for the next design round using active learning.
+
+    Trains a lightweight random-forest regressor on all scored designs in the
+    campaign and returns data-driven recommendations (feature importances,
+    threshold refinements, diversity / alpha suggestions).  When fewer than
+    *min_designs* scored entries are available, or scikit-learn is missing, the
+    tool transparently falls back to a rule-based stub.
+
+    Inspired by EVOLVEpro (Science, 2024) — few-shot active learning with PLMs.
+
+    Args:
+        campaign_dir: Path to the campaign directory containing screening score files.
+        min_designs: Minimum scored designs required before ML kicks in (default 10).
+
+    Returns:
+        JSON with source ("active_learning" or "rule_based"), recommended_parameters,
+        feature_importances, confidence, and explanation.
+    """
+    try:
+        result = suggest_from_campaign(campaign_dir)
+        return json.dumps(
+            {
+                "source": result.source,
+                "recommended_parameters": result.recommended_parameters,
+                "feature_importances": result.feature_importances,
+                "confidence": result.confidence,
+                "explanation": result.explanation,
+            },
+            indent=2,
+        )
+    except Exception as exc:
+        return _error(f"Failed to suggest next round: {exc}")
 
 
 # ---------------------------------------------------------------------------

@@ -41,3 +41,4 @@ campaigns/*/
 
 # Playwright
 .playwright-mcp/
+.claude/worktrees/

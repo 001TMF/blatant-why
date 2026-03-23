@@ -1,6 +1,6 @@
 """Screening MCP Server — protein sequence screening and scoring tools for Proteus agent.
 
-Wraps the Phase 1 screening (liabilities, developability) and scoring (ipSAE, p_bind)
+Wraps the Phase 1 screening (liabilities, developability) and scoring (ipSAE)
 modules into MCP tools for the Proteus harness.
 """
 from __future__ import annotations
@@ -151,11 +151,12 @@ async def score_ipsae(
 ) -> str:
     """Compute ipSAE scores from a Protenix NPZ output file.
 
+    Uses the standalone DunbrackLab ipSAE formula (no BoltzGen dependency).
     Calculates directional interface predicted Structural Alignment Error
     (ipSAE) scores: design-to-target, target-to-design, and the minimum
     of both. Higher scores indicate better predicted binding interfaces.
 
-    Requires BoltzGen to be installed.
+    Reference: Dunbrack et al., "Res ipSAE loquuntur" (2025)
 
     Args:
         npz_path: Path to Protenix output NPZ file with 'pae' key.
@@ -176,93 +177,12 @@ async def score_ipsae(
         scores = score_npz(npz, design_chain_ids, target_chain_ids)
         scores["interpretation"] = interpret_ipsae(scores["design_ipsae_min"])
         return json.dumps(scores, indent=2)
-    except ImportError as exc:
-        return _error(
-            f"BoltzGen is required for ipSAE scoring but could not be imported: {exc}. "
-            "Install it from /data/proteus/proteus-design/deps/BoltzGen/"
-        )
     except Exception as exc:
         return _error(f"ipSAE scoring failed: {exc}")
 
 
 # ---------------------------------------------------------------------------
-# Tool 5: score_pbind
-# ---------------------------------------------------------------------------
-
-
-@mcp.tool()
-async def score_pbind(
-    checkpoint_path: str,
-    v_ab_path: str,
-    v_ag_path: str,
-    v_if_path: str,
-) -> str:
-    """Run p_bind inference to predict binding probability.
-
-    Loads pre-extracted Protenix trunk features (v_ab, v_ag, v_if) from
-    NPY files and runs them through a trained PBindHead model to predict
-    binding probability.
-
-    Args:
-        checkpoint_path: Path to a trained p_bind model checkpoint.
-        v_ab_path: Path to NPY file with antibody representation [1, 384].
-        v_ag_path: Path to NPY file with antigen representation [1, 384].
-        v_if_path: Path to NPY file with interface representation [1, 256].
-
-    Returns:
-        JSON object with binding_probability, interpretation, and
-        feature paths used.
-    """
-    ckpt = Path(checkpoint_path)
-    if not ckpt.exists():
-        return _error(
-            f"p_bind checkpoint not found at: {checkpoint_path}. "
-            "The model may not be trained yet. Run p_bind training first, "
-            "then provide the checkpoint path."
-        )
-
-    for label, fpath in [("v_ab", v_ab_path), ("v_ag", v_ag_path), ("v_if", v_if_path)]:
-        if not Path(fpath).exists():
-            return _error(f"Feature file not found for {label}: {fpath}")
-
-    try:
-        import numpy as np
-        import torch
-
-        from proteus_cli.scoring.pbind import load_pbind_model, predict_binding, interpret_pbind
-
-        model = load_pbind_model(ckpt)
-
-        v_ab = torch.from_numpy(np.load(v_ab_path)).float()
-        v_ag = torch.from_numpy(np.load(v_ag_path)).float()
-        v_if = torch.from_numpy(np.load(v_if_path)).float()
-
-        prob = predict_binding(model, v_ab, v_ag, v_if)
-
-        return json.dumps(
-            {
-                "binding_probability": round(prob, 6),
-                "interpretation": interpret_pbind(prob),
-                "checkpoint": checkpoint_path,
-                "features": {
-                    "v_ab": v_ab_path,
-                    "v_ag": v_ag_path,
-                    "v_if": v_if_path,
-                },
-            },
-            indent=2,
-        )
-    except ImportError as exc:
-        return _error(
-            f"Required dependency not available for p_bind inference: {exc}. "
-            "Ensure BoltzGen and PyTorch are installed."
-        )
-    except Exception as exc:
-        return _error(f"p_bind inference failed: {exc}")
-
-
-# ---------------------------------------------------------------------------
-# Tool 6: screen_composite
+# Tool 5: screen_composite
 # ---------------------------------------------------------------------------
 
 
@@ -271,7 +191,6 @@ async def screen_composite(
     sequence: str,
     iptm: float | None = None,
     ipsae: float | None = None,
-    pbind: float | None = None,
     plddt: float | None = None,
     rmsd: float | None = None,
 ) -> str:
@@ -281,19 +200,19 @@ async def screen_composite(
     interpretation of any supplied structure/binding scores. Returns a
     composite pass/fail verdict based on the screening battery thresholds.
 
+    Composite score: 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)
+
     Thresholds:
         - ipTM > 0.5
         - pLDDT > 70
         - RMSD < 3.5 A
         - ipsae: interpreted by ipSAE scale
-        - pbind: interpreted by p_bind scale
         - Developability: overall_risk != "high"
 
     Args:
         sequence: Amino acid sequence (one-letter codes, uppercase).
         iptm: Interface predicted TM-score (optional).
         ipsae: ipSAE min score (optional).
-        pbind: Binding probability from p_bind (optional).
         plddt: Predicted LDDT (optional).
         rmsd: RMSD in Angstroms (optional).
 
@@ -308,7 +227,6 @@ async def screen_composite(
         from proteus_cli.screening.liabilities import scan_liabilities as _scan
         from proteus_cli.screening.developability import assess_developability
         from proteus_cli.scoring.ipsae import interpret_ipsae
-        from proteus_cli.scoring.pbind import interpret_pbind
 
         seq = sequence.strip().upper()
 
@@ -368,10 +286,6 @@ async def screen_composite(
             scores["ipsae"] = ipsae
             interpretation["ipsae"] = interpret_ipsae(ipsae)
 
-        if pbind is not None:
-            scores["pbind"] = pbind
-            interpretation["pbind"] = interpret_pbind(pbind)
-
         # Composite pass/fail
         passes = True
         if iptm is not None and iptm <= 0.5:
@@ -400,7 +314,7 @@ async def screen_composite(
 
 
 # ---------------------------------------------------------------------------
-# Tool 7: interpret_scores
+# Tool 6: interpret_scores
 # ---------------------------------------------------------------------------
 
 
@@ -408,29 +322,26 @@ async def screen_composite(
 async def interpret_scores(
     iptm: float | None = None,
     ipsae: float | None = None,
-    pbind: float | None = None,
     plddt: float | None = None,
 ) -> str:
     """Provide human-readable interpretation of structure/binding scores.
 
-    Interprets any combination of ipTM, ipSAE, p_bind, and pLDDT scores
+    Interprets any combination of ipTM, ipSAE, and pLDDT scores
     using the Proteus scoring scales.
 
     Args:
         iptm: Interface predicted TM-score (optional).
         ipsae: ipSAE min score (optional).
-        pbind: Binding probability from p_bind (optional).
         plddt: Predicted LDDT (optional).
 
     Returns:
         JSON object with per-metric interpretation and a summary.
     """
-    if all(v is None for v in (iptm, ipsae, pbind, plddt)):
+    if all(v is None for v in (iptm, ipsae, plddt)):
         return _error("At least one score must be provided.")
 
     try:
         from proteus_cli.scoring.ipsae import interpret_ipsae
-        from proteus_cli.scoring.pbind import interpret_pbind
 
         result: dict = {}
 
@@ -451,12 +362,6 @@ async def interpret_scores(
                 "interpretation": interpret_ipsae(ipsae),
             }
 
-        if pbind is not None:
-            result["pbind"] = {
-                "value": pbind,
-                "interpretation": interpret_pbind(pbind),
-            }
-
         if plddt is not None:
             if plddt > 90:
                 label = "Very high confidence"
@@ -470,7 +375,7 @@ async def interpret_scores(
 
         # Build a one-line summary
         summaries = []
-        for key in ("iptm", "ipsae", "pbind", "plddt"):
+        for key in ("iptm", "ipsae", "plddt"):
             if key in result:
                 summaries.append(f"{key}={result[key]['value']:.3f}")
         result["summary"] = ", ".join(summaries)

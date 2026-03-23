@@ -1,5 +1,5 @@
 ---
-name: proteus-ab
+name: boltzgen
 description: >
   Antibody and nanobody binder design using Proteus-AB (BoltzGen diffusion +
   Protenix refolding). Covers entity YAML specification, CLI invocation,
@@ -24,7 +24,7 @@ Read tool to parse results.
 
 | Requirement | Details |
 |-------------|---------|
-| Tool path | `/data/proteus/proteus-design` |
+| Tool path | Set via `PROTEUS_AB_DIR` or `BOLTZGEN_DIR` env var |
 | CLI binary | `proteus-ab` (on PATH after env setup) |
 | GPU | Required — CUDA-capable, ≥24 GB VRAM recommended |
 | Env: `PROTEUS_MODELS_DIR` | `~/.cache/proteus-ab` (model weights) |
@@ -51,7 +51,7 @@ User wants a binder...
 │   └── Use proteus-fold instead
 │
 └── Need to score an existing antibody design?
-    └── Use proteus-scoring skill (ipSAE + p_bind)
+    └── Use proteus-scoring skill (ipSAE)
 ```
 
 ---
@@ -98,7 +98,7 @@ becomes `7..12,27..30`. These are `label_seq_id` values (1-indexed, sequential, 
 To include scaffold templates, add a second entity pointing to a scaffold YAML:
 ```yaml
 - file:
-    path: /data/proteus-design/deps/BoltzGen/example/fab_scaffolds/adalimumab.6cr1.yaml
+    path: $BOLTZGEN_DIR/example/  # from BoltzGen repofab_scaffolds/adalimumab.6cr1.yaml
 ```
 
 ### Step 2: Run the CLI via Bash
@@ -305,7 +305,7 @@ entities:
         id: B
         binding: 100..115,140..148
 - file:
-    path: /data/proteus-design/deps/BoltzGen/example/fab_scaffolds/adalimumab.6cr1.yaml
+    path: $BOLTZGEN_DIR/example/  # from BoltzGen repofab_scaffolds/adalimumab.6cr1.yaml
 ```
 
 ```bash
@@ -348,7 +348,7 @@ This targets residues on both chain A and chain B of a multi-chain complex.
 ## 13. Scaffold Templates
 
 Pre-built scaffold YAMLs for antibody framework selection. Located at:
-`/data/proteus-design/deps/BoltzGen/example/`
+`$BOLTZGEN_DIR/example/  # from BoltzGen repo`
 
 ### Available Fab Scaffolds (14)
 
@@ -400,5 +400,5 @@ entities:
         id: A
         binding: 45..52,78..85
 - file:
-    path: /data/proteus-design/deps/BoltzGen/example/fab_scaffolds/adalimumab.6cr1.yaml
+    path: $BOLTZGEN_DIR/example/  # from BoltzGen repofab_scaffolds/adalimumab.6cr1.yaml
 ```

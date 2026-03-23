@@ -50,7 +50,7 @@ campaigns/{target_name}/campaign_{YYYYMMDD}_{NNN}/
   config.yaml                # Campaign parameters
   run_001/                   # Individual run output
     designs/                 # Generated design structures
-    scores/                  # ipSAE, p_bind, screening results
+    scores/                  # ipSAE, screening results
     summary.csv              # Per-design metrics
   run_002/...
   aggregated_results.csv     # Cross-run merged ranking
@@ -71,7 +71,7 @@ pending --> running --> screening --> complete
 
 - **pending**: Config written, awaiting GPU resources.
 - **running**: Tool process active (backbone generation, sequence design, refolding).
-- **screening**: Designs generated; running ipSAE, p_bind, liability, developability checks.
+- **screening**: Designs generated; running ipSAE, liability, developability checks.
 - **complete**: All scores computed, results ranked, summary written.
 - **failed**: Tool process crashed or timed out. Check stderr logs.
 - **complete_with_warnings**: Finished but fewer designs passed than requested.
@@ -115,7 +115,7 @@ For proteus-ab, vary: protocol, budget, diversity_alpha, MSA mode, prefilter tog
 
 1. Merge all `summary.csv` files into `aggregated_results.csv`.
 2. De-duplicate by sequence identity (>95% identity = same design).
-3. Re-rank: ipTM (0.3) + ipSAE_min (0.3) + p_bind (0.2) + liability_penalty (0.2).
+3. Re-rank: ipSAE_min (0.50) + ipTM (0.30) + liability_penalty (0.20).
 4. Select top N diverse candidates via sequence clustering (Hamming distance).
 
 ---
@@ -137,7 +137,7 @@ For proteus-ab, vary: protocol, budget, diversity_alpha, MSA mode, prefilter tog
 
 ### 4.2 Screening Overhead
 
-Screening adds minimal time: ipSAE 5-15 sec/design (CPU), p_bind 1-5 sec/design
+Screening adds minimal time: ipSAE 5-15 sec/design (CPU)
 (GPU, requires checkpoint), liability+developability <1 sec/design (CPU). Full
 battery for 30 designs takes 3-8 min total.
 
@@ -160,7 +160,7 @@ Example -- standard proteus-prot, 30 designs: ~2 hr generation + ~5 min screenin
 |---------|---------|
 | `/status` | Campaign overview: all runs, states, pass rates, top scores |
 | `/watch <run_id>` | Live progress: current stage, designs completed, ETA |
-| `/results` | Ranked design table with ipTM, ipSAE, p_bind, liabilities |
+| `/results` | Ranked design table with ipSAE, ipTM, pLDDT, RMSD, liabilities |
 | `/screen <design_id>` | Full screening on one design: liabilities, developability, scores |
 
 ### 5.2 Pipeline Stage Display
@@ -171,7 +171,7 @@ When a run is active, show:
 Design Run: run_001
   ○ Generating backbones     PXDesign / BoltzGen
   ● Designing sequences      ProteinMPNN / AntiFold          <-- active
-  ○ Screening quality        ipSAE + p_bind + liabilities
+  ○ Screening quality        ipSAE + liabilities
   ○ Evaluating structures    Protenix refolding
   ○ Filtering & ranking      Composite score
   ○ Design complete          Ready for review
@@ -216,7 +216,6 @@ Do NOT abort if:
 |--------|------|------------|------------|
 | Best ipTM | > 0.8 | 0.6-0.8 | < 0.6 |
 | Best ipSAE_min | > 0.7 | 0.4-0.7 | < 0.4 |
-| Best p_bind | > 0.8 | 0.5-0.8 | < 0.5 |
 | Mean pLDDT (passing) | > 80 | 70-80 | < 70 |
 | Pass rate | > 30% | 15-30% | < 15% |
 | Diversity (clusters) | > 5 | 3-5 | < 3 |

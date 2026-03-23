@@ -39,23 +39,23 @@ User wants to...
 |   |
 |   +-- Antibody or nanobody binder?
 |   |   +-- Nanobody (VHH, single-domain)
-|   |   |   --> proteus-ab  protocol: nanobody-anything
+|   |   |   --> boltzgen  protocol: nanobody-anything
 |   |   |       BoltzGen diffusion + Protenix refolding
 |   |   +-- Full antibody (VH/VL Fab)
-|   |       --> proteus-ab  protocol: antibody-anything
+|   |       --> boltzgen  protocol: antibody-anything
 |   |           BoltzGen diffusion + Protenix refolding
 |   |
 |   +-- Protein binder (non-antibody, de novo)?
-|       +-- Quick exploration --> proteus-prot  preset: preview
-|       +-- Production run    --> proteus-prot  preset: extended
+|       +-- Quick exploration --> pxdesign  preset: preview
+|       +-- Production run    --> pxdesign  preset: extended
 |
 +-- VALIDATE or PREDICT a structure
-|   --> proteus-fold  (Protenix v1, AF3-class, 368M params)
+|   --> protenix  (Protenix v1, AF3-class, 368M params)
 |       Models: base_default | base_20250630 | mini
 |
 +-- SCORE an existing design
 |   +-- ipSAE from PAE matrix --> screening MCP: score_ipsae
-|   +-- Binding probability   --> screening MCP: score_pbind
+|   +-- Full battery          --> screening MCP: screen_composite
 |   +-- Full battery          --> screening MCP: screen_composite
 |
 +-- ANALYZE a target
@@ -67,9 +67,9 @@ User wants to...
 
 | Tool | Internal Engine | CLI Command | Primary Use |
 |------|----------------|-------------|-------------|
-| **proteus-fold** | Protenix v1 | `protenix pred -i input.json` | Structure prediction and validation |
-| **proteus-prot** | PXDesign | `pxdesign pipeline --preset extended` | De novo protein binder design |
-| **proteus-ab** | Proteus-AB | `proteus-ab run spec.yaml` | Antibody/nanobody design |
+| **protenix** | Protenix v1 | `protenix pred -i input.json` | Structure prediction and validation |
+| **pxdesign** | PXDesign | `pxdesign pipeline --preset extended` | De novo protein binder design |
+| **boltzgen** | Proteus-AB | `boltzgen run spec.yaml` | Antibody/nanobody design |
 
 If the user is unsure, ask: (1) Is your target a protein, peptide, or small molecule?
 (2) Do you need an antibody or is a de novo binder acceptable? (3) Do you have a
@@ -83,11 +83,11 @@ Every design project follows six stages in order. Do not skip stages.
 
 ```
 Target Prep --> Hotspot Analysis --> Design Generation --> Screening --> Ranking --> Review
-(PDB/UniProt)  (epitope skill)     (proteus-prot/ab)    (screening)   (composite)  (user)
+(PDB/UniProt)  (epitope skill)     (pxdesign/ab)    (screening)   (composite)  (user)
 ```
 
 **Stage 1 -- Target Preparation:**
-1. Fetch target from PDB via `pdb_search` / `pdb_fetch_structure`. If no structure exists, predict with `proteus-fold`.
+1. Fetch target from PDB via `pdb_search` / `pdb_fetch_structure`. If no structure exists, predict with `protenix`.
 2. Extract relevant chain(s), trim to binding region + 10A buffer.
 3. Remove waters, non-essential ligands, alternate conformations.
 4. Verify chain IDs and residue numbering (`label_seq_id`, 1-indexed).
@@ -97,23 +97,23 @@ Target Prep --> Hotspot Analysis --> Design Generation --> Screening --> Ranking
 **Stage 2 -- Hotspot / Epitope Analysis:**
 1. Use `pdb_interface_residues` if a known partner exists; otherwise surface accessibility analysis.
 2. Select 3-6 hotspot residues: prefer K, R, E, D (charged), W, Y, F (aromatic), spatially clustered within 10-15A, surface-exposed (SASA > 0.25).
-3. Record using `label_seq_id`. These become `hotspot_residues` (proteus-prot) or `epitope_residues` (proteus-ab).
+3. Record using `label_seq_id`. These become `hotspot_residues` (pxdesign) or `epitope_residues` (boltzgen).
 
 **Stage 3 -- Design Generation:**
-- *proteus-prot:* Follow the `proteus-prot` skill: Write YAML config → `Bash: pxdesign pipeline ...` → Read `summary.csv`.
-- *proteus-ab:* Follow the `proteus-ab` skill: Write entities YAML → `Bash: proteus-ab run ...` → Read `final_designs_metrics_*.csv`.
-- *proteus-fold (validation):* Follow the `proteus-fold` skill: Write input JSON → `Bash: protenix pred ...` → Read `*_summary_confidence_sample_*.json`.
+- *pxdesign:* Follow the `pxdesign` skill: Write YAML config → `Bash: pxdesign pipeline ...` → Read `summary.csv`.
+- *boltzgen:* Follow the `boltzgen` skill: Write entities YAML → `Bash: boltzgen run ...` → Read `final_designs_metrics_*.csv`.
+- *protenix (validation):* Follow the `protenix` skill: Write input JSON → `Bash: protenix pred ...` → Read `*_summary_confidence_sample_*.json`.
 
 **Stage 4 -- Screening Battery:**
-Run all screens via the screening MCP: structural confidence (ipTM, pTM, pLDDT), interface quality (ipSAE directional), binding prediction (p_bind if checkpoint available), refolding quality (CA-RMSD), PTM liabilities (deamidation NG/NS, isomerization DG, oxidation Met, free Cys, glycosylation NXS/T), developability (net charge, hydrophobic fraction, CDR length).
+Run all screens via the screening MCP: structural confidence (ipTM, pTM, pLDDT), interface quality (ipSAE directional, DunbrackLab formula), refolding quality (CA-RMSD), PTM liabilities (deamidation NG/NS, isomerization DG, oxidation Met, free Cys, glycosylation NXS/T), developability (net charge, hydrophobic fraction, CDR length).
 
 **Stage 5 -- Ranking and Filtering:**
 Hard filters first: ipTM > 0.5, pLDDT > 70, CA-RMSD < 3.5A, high-severity liabilities <= 2.
-Soft ranking: `composite = 0.25*ipTM + 0.25*ipSAE_min + 0.20*p_bind + 0.15*(1-RMSD/5.0) + 0.15*(pLDDT/100)`. If p_bind unavailable, redistribute its weight to ipTM and ipSAE_min.
+Soft ranking: `composite = 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)`.
 Diversity selection: cluster at 80% sequence identity, pick top from each cluster.
 
 **Stage 6 -- Review and Decision:**
-Present ranked table: `Rank | Design | ipTM | pLDDT | ipSAE | p_bind | CA-RMSD | Liabilities | Status`.
+Present ranked table: `Rank | Design | ipSAE | ipTM | pLDDT | CA-RMSD | Liabilities | Status`.
 Include: quality tier summary, campaign health, warnings, numbered next-step options.
 
 ---
@@ -125,7 +125,6 @@ Include: quality tier summary, campaign health, warnings, numbered next-step opt
 | ipTM | > 0.5 | > 0.7 | > 0.85 | < 0.4 |
 | pLDDT | > 70 | > 80 | > 90 | < 60 |
 | ipSAE (min) | > 0.3 | > 0.5 | > 0.8 | < 0.2 |
-| p_bind | > 0.3 | > 0.5 | > 0.8 | < 0.2 |
 | CA-RMSD | < 3.5 A | < 2.0 A | < 1.5 A | > 5.0 A |
 | Liability count (high sev) | <= 2 | 0-1 | 0 | > 3 |
 | Net charge (abs) | < 15 | < 10 | < 6 | > 20 |
@@ -135,7 +134,6 @@ Include: quality tier summary, campaign health, warnings, numbered next-step opt
 
 **ipSAE notes:** Directional metric. Always report `dt_ipsae`, `td_ipsae`, and `design_ipsae_min`. Asymmetry > 0.3 between dt and td suggests partial interface -- flag to user.
 
-**p_bind notes:** Requires trained checkpoint. v2 chain_design_mask (full VH/VL chains) is critical -- CDR-only (v1) gives ROC 0.60 vs 0.906. Most informative for proteus-ab designs.
 
 ---
 
@@ -152,11 +150,11 @@ Always start with a preview run before committing to production.
 
 ### Tool-Specific Sizing
 
-**proteus-prot:** preview preset = 5-10 designs. extended preset = 20-100 designs.
+**pxdesign:** preview preset = 5-10 designs. extended preset = 20-100 designs.
 
-**proteus-ab:** nanobody-anything = 10-50 (VHH is faster, 10 often sufficient). antibody-anything = 20-100 (VH/VL pairing needs more samples).
+**boltzgen:** nanobody-anything = 10-50 (VHH is faster, 10 often sufficient). antibody-anything = 20-100 (VH/VL pairing needs more samples).
 
-**proteus-fold:** Single prediction = 1 sample, seed [42]. Ensemble validation = 5 samples, seeds [42, 123, 456, 789, 1024].
+**protenix:** Single prediction = 1 sample, seed [42]. Ensemble validation = 5 samples, seeds [42, 123, 456, 789, 1024].
 
 ### Progressive Strategy
 
@@ -164,7 +162,7 @@ Always start with a preview run before committing to production.
 2. **Standard** (20-50): If 20-40% reach "good", proceed to production.
 3. **Production** (100+): Apply diversity selection. Aim for 5-20 excellent candidates.
 
-If preview yields zero passing designs, do NOT scale up. Re-examine hotspots, try a different epitope, switch tools, or verify target with proteus-fold.
+If preview yields zero passing designs, do NOT scale up. Re-examine hotspots, try a different epitope, switch tools, or verify target with protenix.
 
 ---
 
@@ -177,9 +175,9 @@ This differs from `auth_seq_id` (author PDB numbering with gaps/insertion codes)
 **Conversion:** Always convert `auth_seq_id` to `label_seq_id` before passing to any tool. When presenting to users, show both: "Residue K45 (label_seq_id=45, auth_seq_id=48)".
 
 **Tool formats:**
-- proteus-prot: `hotspot_residues: ["A45", "A50"]` -- chain letter + label_seq_id integer.
-- proteus-ab: `epitope_residues: [45, 50, 52]` -- label_seq_id integers only.
-- proteus-fold: Full sequences in JSON, no residue-level specification.
+- pxdesign: `hotspot_residues: ["A45", "A50"]` -- chain letter + label_seq_id integer.
+- boltzgen: `epitope_residues: [45, 50, 52]` -- label_seq_id integers only.
+- protenix: Full sequences in JSON, no residue-level specification.
 
 **Common pitfall:** Users provide residue numbers from publications or PyMOL (auth_seq_id). Wrong hotspot numbering wastes the entire campaign. Always verify.
 
@@ -187,23 +185,23 @@ This differs from `auth_seq_id` (author PDB numbering with gaps/insertion codes)
 
 ## 6. Tool-Specific Guidance
 
-### 6.1 proteus-fold (Protenix v1)
+### 6.1 protenix (Protenix v1)
 
 **Purpose:** AF3-class structure prediction (368M params). Validation, target prediction, confidence metrics.
 
 **Key params:** `model` (base_default recommended, base_20250630 latest, mini fast), `seeds` (multi-seed for validation), `sample_count` (diffusion samples per seed).
 
-**Input:** JSON file written via Write tool. See `proteus-fold` skill for format. Protein chains as `{"proteinChain": {"sequence": "...", "count": 1}}`. Multi-chain complexes: multiple entries in `sequences`. Ligands via `type` field.
+**Input:** JSON file written via Write tool. See `protenix` skill for format. Protein chains as `{"proteinChain": {"sequence": "...", "count": 1}}`. Multi-chain complexes: multiple entries in `sequences`. Ligands via `type` field.
 
 **Outputs:** ipTM, pTM, pLDDT, ranking_score in confidence JSON. NPZ files with PAE matrices for ipSAE. ipTM > 0.7 = confident interface. pLDDT > 80 = reliable structure.
 
 **Mistakes to avoid:** Omitting target chain in complex validation. Single seed for critical decisions. Using `mini` for production validation.
 
-### 6.2 proteus-prot (PXDesign)
+### 6.2 pxdesign (PXDesign)
 
 **Purpose:** End-to-end de novo protein binder design (60-150 residue miniproteins). PXDesign hit rates: 17-82% depending on target.
 
-**Key params:** `--preset` (preview/extended), target chains, `hotspot_residues` (chain + label_seq_id, e.g. "A45"), `--N_sample`, `--nproc` (multi-GPU). See `proteus-prot` skill for full YAML config format.
+**Key params:** `--preset` (preview/extended), target chains, `hotspot_residues` (chain + label_seq_id, e.g. "A45"), `--N_sample`, `--nproc` (multi-GPU). See `pxdesign` skill for full YAML config format.
 
 **Internal pipeline:** Backbone generation (diffusion) -> Sequence design (ProteinMPNN) -> Structure prediction/scoring (AF2-IG + Protenix) -> Filtering/ranking.
 
@@ -213,11 +211,11 @@ This differs from `auth_seq_id` (author PDB numbering with gaps/insertion codes)
 
 **Mistakes to avoid:** > 6 hotspots (over-constrains). Buried hotspot residues. Uncleaned PDB. Skipping preview.
 
-### 6.3 proteus-ab (Proteus-AB)
+### 6.3 boltzgen (Proteus-AB)
 
 **Purpose:** Antibody/nanobody design using BoltzGen all-atom diffusion + Protenix refolding.
 
-**Key params:** `--protocol` (nanobody-anything/antibody-anything), epitope residues in entities YAML, `--budget` (sampling depth), `--diversity_alpha` (0.0=max diversity, 1.0=max quality, default 0.5), `--prefilter` (true for production), `--msa_mode` (mmseqs2 default). See `proteus-ab` skill for full entities YAML format.
+**Key params:** `--protocol` (nanobody-anything/antibody-anything), epitope residues in entities YAML, `--budget` (sampling depth), `--diversity_alpha` (0.0=max diversity, 1.0=max quality, default 0.5), `--prefilter` (true for production), `--msa_mode` (mmseqs2 default). See `boltzgen` skill for full entities YAML format.
 
 **Nanobody vs antibody:** nanobody-anything = single VHH, simpler, faster. antibody-anything = paired VH/VL, more complex, needs more designs.
 
@@ -240,19 +238,19 @@ This differs from `auth_seq_id` (author PDB numbering with gaps/insertion codes)
 |-------------|--------|
 | All ipTM < 0.5 | Change hotspots or try different epitope region |
 | Good ipTM, poor ipSAE | Increase designs; try more diverse hotspots |
-| All sequences very similar | Lower diversity_alpha (proteus-ab) or increase num_designs |
+| All sequences very similar | Lower diversity_alpha (boltzgen) or increase num_designs |
 | CA-RMSD > 3.5A despite good ipTM | Try different binder length |
 | Many high-severity liabilities | Increase designs and filter harder |
-| pLDDT < 70 across most designs | Verify target quality with proteus-fold |
+| pLDDT < 70 across most designs | Verify target quality with protenix |
 
 ### Switch Tools When:
 
 | Situation | Switch To |
 |-----------|-----------|
-| De novo binder failing repeatedly | proteus-ab (nanobody) -- antibody scaffolds may engage better |
-| Nanobody designs lack diversity | proteus-prot -- de novo backbones explore more space |
-| Target structure uncertain | proteus-fold first -- validate before designing |
-| Antibody format not required | proteus-prot -- simpler, sometimes more robust |
+| De novo binder failing repeatedly | boltzgen (nanobody) -- antibody scaffolds may engage better |
+| Nanobody designs lack diversity | pxdesign -- de novo backbones explore more space |
+| Target structure uncertain | protenix first -- validate before designing |
+| Antibody format not required | pxdesign -- simpler, sometimes more robust |
 
 ### Escalation
 
@@ -268,10 +266,10 @@ Do not silently run more campaigns without reporting repeated failures.
 ## 8. Presenting Results
 
 Always include in result presentation:
-1. Ranked table with ipTM, pLDDT, ipSAE, p_bind, RMSD, liabilities.
+1. Ranked table with ipSAE, ipTM, pLDDT, RMSD, liabilities.
 2. Quality tier summary: "X excellent, Y good, Z minimum, W failed."
-3. Campaign health: pass rate vs typical (proteus-prot preview 10-30%, extended 20-50%; proteus-ab nanobody 15-40%, antibody 10-30%).
-4. Warnings: p_bind awaiting checkpoint, ipSAE asymmetry > 0.3, high liabilities, RMSD > 2.0A, charge > 10.
+3. Campaign health: pass rate vs typical (pxdesign preview 10-30%, extended 20-50%; boltzgen nanobody 15-40%, antibody 10-30%).
+4. Warnings: ipSAE asymmetry > 0.3, high liabilities, RMSD > 2.0A, charge > 10.
 5. Numbered next-step options for the user.
 
 **File conventions:** CIF preferred for structures. CSV for metrics. NPZ for PAE matrices. JSON for campaign state. FASTA for sequences with metrics in header: `>design_42 ipTM=0.82 pLDDT=87.3 ipSAE_min=0.71`.

@@ -109,7 +109,7 @@ def run_protein_design(
     ToolResult
         Standardized result with status ``"success"`` or ``"error"``.
     """
-    tool_path = validate_tool_path("proteus-prot")
+    tool_path = validate_tool_path("pxdesign")
     config_path = Path(config_path)
 
     cmd: list[str] = [
@@ -125,19 +125,19 @@ def run_protein_design(
         out.mkdir(parents=True, exist_ok=True)
         cmd.extend(["-o", str(out)])
 
-    env = get_tool_env("proteus-prot")
+    env = get_tool_env("pxdesign")
     proc = run_command(cmd, cwd=tool_path, env=env)
 
     if proc.returncode != 0:
         return ToolResult(
-            tool="proteus-prot",
+            tool="pxdesign",
             status="error",
             error=proc.stderr or proc.stdout,
         )
 
     resolved_output = Path(output_dir) if output_dir else config_path.parent
     return ToolResult(
-        tool="proteus-prot",
+        tool="pxdesign",
         status="success",
         output_dir=resolved_output,
     )

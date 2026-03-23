@@ -1,5 +1,5 @@
 ---
-name: proteus-fold
+name: protenix
 description: >
   Structure prediction using Protenix v1 (AF3-class, 368M params). Use this skill
   when: (1) Predicting protein or complex structure from sequence, (2) Validating
@@ -24,8 +24,8 @@ teaches you to run predictions via the CLI using the Write → Bash → Read pat
 
 | Requirement | Value |
 |-------------|-------|
-| Tool path | `/data/proteus/Protenix` |
-| Env var | `PROTENIX_ROOT_DIR=/data/proteus/Protenix` |
+| Tool path | `$PROTEUS_FOLD_DIR` |
+| Env var | `PROTENIX_ROOT_DIR=$PROTEUS_FOLD_DIR` |
 | GPU | Required (CUDA). bf16 precision by default |
 | CLI binary | `protenix` (on PATH when env var is set) |
 
@@ -79,7 +79,7 @@ Write this to a working directory, e.g. `/tmp/fold_run/input.json`.
 ### Step 2: Run CLI via Bash
 
 ```bash
-PROTENIX_ROOT_DIR=/data/proteus/Protenix protenix pred \
+PROTENIX_ROOT_DIR=$PROTEUS_FOLD_DIR protenix pred \
   -i /tmp/fold_run/input.json \
   -n protenix_base_default_v1.0.0 \
   --use_default_params true \
@@ -200,7 +200,7 @@ Plain strings in `sequences` are auto-wrapped as `proteinChain` entities.
 
 | Mistake | Consequence | Fix |
 |---------|-------------|-----|
-| Forgetting `PROTENIX_ROOT_DIR` env var | `protenix` command not found or model loading fails | Always set `PROTENIX_ROOT_DIR=/data/proteus/Protenix` |
+| Forgetting `PROTENIX_ROOT_DIR` env var | `protenix` command not found or model loading fails | Always set `PROTENIX_ROOT_DIR=$PROTEUS_FOLD_DIR` |
 | Using model key instead of full name | CLI error: unknown model | Use full name: `protenix_base_default_v1.0.0` |
 | Input JSON not wrapped in array | Parse error | Input must be `[{...}]`, not `{...}` |
 | Single seed for validation decisions | Overconfident conclusions | Use 3-5 seeds for validation: `[42, 123, 456, 789, 1024]` |
@@ -215,7 +215,7 @@ Plain strings in `sequences` are auto-wrapped as `proteinChain` entities.
 
 | Symptom | Likely Cause | Solution |
 |---------|-------------|----------|
-| `protenix: command not found` | Missing env var | Set `PROTENIX_ROOT_DIR=/data/proteus/Protenix` |
+| `protenix: command not found` | Missing env var | Set `PROTENIX_ROOT_DIR=$PROTEUS_FOLD_DIR` |
 | CUDA out of memory | Sequence too long or too many samples | Reduce `sampleCount`, use `mini` model, or split chains |
 | All confidence scores near zero | Malformed input JSON | Verify JSON structure matches spec exactly |
 | ipTM = 0 but pLDDT is reasonable | Single chain predicted (no interface) | Ensure multiple chains are in `sequences` |
@@ -242,7 +242,7 @@ Step 1 — Write /tmp/fold_run/input.json:
 ]
 
 Step 2 — Bash:
-PROTENIX_ROOT_DIR=/data/proteus/Protenix protenix pred \
+PROTENIX_ROOT_DIR=$PROTEUS_FOLD_DIR protenix pred \
   -i /tmp/fold_run/input.json \
   -n protenix_base_default_v1.0.0 \
   --use_default_params true \
@@ -271,7 +271,7 @@ Step 1 — Write /tmp/fold_complex/input.json:
 ]
 
 Step 2 — Bash:
-PROTENIX_ROOT_DIR=/data/proteus/Protenix protenix pred \
+PROTENIX_ROOT_DIR=$PROTEUS_FOLD_DIR protenix pred \
   -i /tmp/fold_complex/input.json \
   -n protenix_base_default_v1.0.0 \
   --use_default_params true \

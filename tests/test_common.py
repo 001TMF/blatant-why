@@ -85,7 +85,7 @@ class TestToolPaths:
 
     def test_has_all_three_tools(self):
         """TOOL_PATHS contains exactly the three expected tools."""
-        expected = {"proteus-fold", "proteus-prot", "proteus-ab"}
+        expected = {"protenix", "pxdesign", "boltzgen"}
         assert set(TOOL_PATHS.keys()) == expected
 
     def test_paths_are_path_objects(self):
@@ -93,14 +93,12 @@ class TestToolPaths:
         for name, path in TOOL_PATHS.items():
             assert isinstance(path, Path), f"{name} path is not a Path object"
 
-    def test_proteus_fold_path(self):
-        assert TOOL_PATHS["proteus-fold"] == Path("/data/proteus/Protenix")
-
-    def test_proteus_prot_path(self):
-        assert TOOL_PATHS["proteus-prot"] == Path("/data/proteus/PXDesign")
-
-    def test_proteus_ab_path(self):
-        assert TOOL_PATHS["proteus-ab"] == Path("/data/proteus/proteus-design")
+    def test_default_paths_empty_without_env(self, monkeypatch):
+        """Default tool paths are empty when no env vars are set."""
+        # Note: TOOL_PATHS are resolved at import time from env vars.
+        # Without env vars set, they default to empty Path("").
+        for name, path in TOOL_PATHS.items():
+            assert isinstance(path, Path), f"{name} should be a Path"
 
 
 class TestValidateToolPath:

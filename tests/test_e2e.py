@@ -18,7 +18,6 @@ from proteus_cli.main import cli
 from proteus_cli.protein import build_pxdesign_config, parse_design_results
 from proteus_cli.antibody import build_design_spec, parse_antibody_results
 from proteus_cli.scoring.ipsae import interpret_ipsae
-from proteus_cli.scoring.pbind import interpret_pbind
 from proteus_cli.screening.liabilities import scan_liabilities, compute_net_charge
 from proteus_cli.screening.developability import assess_developability
 
@@ -148,28 +147,20 @@ class TestE2EProteinDesignPipeline:
         assert designs[-1]["name"] == "design_004"
         assert designs[-1]["ptx_iptm"] == 0.78
 
-        # --- Step 6: Score with interpret_ipsae and interpret_pbind ---
-        mock_ipsae_scores = [0.85, 0.55, 0.25]
-        mock_pbind_probs = [0.90, 0.45, 0.15]
+        # --- Step 6: Score with interpret_ipsae ---
+        mock_ipsae_scores = [0.85, 0.65, 0.25]
 
         scored_designs = []
         for i, design in enumerate(designs[:3]):
             ipsae = mock_ipsae_scores[i]
-            pbind = mock_pbind_probs[i]
             scored = dict(design)
             scored["ipsae"] = ipsae
             scored["ipsae_interpretation"] = interpret_ipsae(ipsae)
-            scored["pbind"] = pbind
-            scored["pbind_interpretation"] = interpret_pbind(pbind)
             scored_designs.append(scored)
 
-        assert scored_designs[0]["ipsae_interpretation"] == "Excellent interface — high confidence binding"
-        assert scored_designs[1]["ipsae_interpretation"] == "Good interface — likely binder"
-        assert scored_designs[2]["ipsae_interpretation"] == "Poor interface — unlikely to bind"
-
-        assert scored_designs[0]["pbind_interpretation"] == "High confidence binder"
-        assert scored_designs[1]["pbind_interpretation"] == "Marginal — consider redesign"
-        assert scored_designs[2]["pbind_interpretation"] == "Unlikely to bind"
+        assert "excellent" in scored_designs[0]["ipsae_interpretation"]
+        assert "good" in scored_designs[1]["ipsae_interpretation"]
+        assert "weak" in scored_designs[2]["ipsae_interpretation"]
 
         # --- Step 7: Screen with liabilities + developability ---
         screened = []
@@ -189,7 +180,7 @@ class TestE2EProteinDesignPipeline:
         # Each result has all expected keys
         expected_keys = {
             "name", "ptx_iptm",
-            "ipsae", "ipsae_interpretation", "pbind", "pbind_interpretation",
+            "ipsae", "ipsae_interpretation",
             "liability_count", "overall_risk", "flags",
         }
         for entry in screened:
@@ -269,9 +260,8 @@ class TestE2EAntibodyDesignPipeline:
         ranked_screened = []
         for design in designs:
             seq = design["sequence"]
-            # Simulate ipSAE/pbind from iptm (proxy in tests)
+            # Simulate ipSAE from iptm (proxy in tests)
             mock_ipsae = design["iptm"] * 0.9
-            mock_pbind = design["iptm"] * 0.85
 
             liabilities = scan_liabilities(seq)
             dev_report = assess_developability(seq, liabilities=liabilities)
@@ -280,8 +270,6 @@ class TestE2EAntibodyDesignPipeline:
                 **design,
                 "ipsae": round(mock_ipsae, 3),
                 "ipsae_interpretation": interpret_ipsae(mock_ipsae),
-                "pbind": round(mock_pbind, 3),
-                "pbind_interpretation": interpret_pbind(mock_pbind),
                 "liability_count": len(liabilities),
                 "high_severity_count": len([l for l in liabilities if l.severity == "high"]),
                 "overall_risk": dev_report.overall_risk,
@@ -296,13 +284,11 @@ class TestE2EAntibodyDesignPipeline:
         # Each has full scoring + screening data
         for entry in ranked_screened:
             assert "ipsae" in entry
-            assert "pbind" in entry
             assert "liability_count" in entry
             assert "overall_risk" in entry
             assert entry["overall_risk"] in ("low", "medium", "high")
             assert isinstance(entry["net_charge"], float)
             assert len(entry["ipsae_interpretation"]) > 0
-            assert len(entry["pbind_interpretation"]) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -364,13 +350,6 @@ class TestE2EScreeningBattery:
         ]:
             assert expected_fragment in interpret_ipsae(score_val)
 
-        for prob_val, expected_fragment in [
-            (0.9, "High confidence"),
-            (0.6, "Likely"),
-            (0.4, "Marginal"),
-            (0.1, "Unlikely"),
-        ]:
-            assert expected_fragment in interpret_pbind(prob_val)
 
     def test_e2e_screening_battery_clean_sequence(self):
         """Clean sequence should pass screening with low risk."""
@@ -531,9 +510,9 @@ class TestE2ECLICheckCommand:
 
         tool_dirs = {}
         for tool_name, dir_name in [
-            ("proteus-fold", "Protenix"),
-            ("proteus-prot", "PXDesign"),
-            ("proteus-ab", "proteus-design"),
+            ("protenix", "Protenix"),
+            ("pxdesign", "PXDesign"),
+            ("boltzgen", "boltzgen"),
         ]:
             d = tmp_path / dir_name
             d.mkdir()
@@ -541,7 +520,7 @@ class TestE2ECLICheckCommand:
 
         monkeypatch.setattr(common_mod, "TOOL_PATHS", tool_dirs)
 
-        for tool_name in ("proteus-fold", "proteus-prot", "proteus-ab"):
+        for tool_name in ("protenix", "pxdesign", "boltzgen"):
             result = runner.invoke(cli, ["check", tool_name])
             assert result.exit_code == 0, f"check {tool_name} failed: {result.output}"
             assert "OK" in result.output

@@ -13,7 +13,7 @@ from mcp.server.fastmcp import FastMCP
 
 from mcp_servers._shared.base import _error, _validate_pdb_path
 
-mcp = FastMCP("proteus-levitate")
+mcp = FastMCP("levitate")
 
 # ---------------------------------------------------------------------------
 # Constants

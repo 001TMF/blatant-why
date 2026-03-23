@@ -14,7 +14,7 @@ from typing import Any
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("proteus-sabdab")
+mcp = FastMCP("sabdab")
 
 BASE_URL = "https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab"
 

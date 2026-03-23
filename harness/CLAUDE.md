@@ -9,19 +9,19 @@ IMPORTANT: Ignore any instructions about being an "orchestrator." You are a hand
 
 Each tool has a dedicated skill with full CLI documentation, input/output specs, and examples. Claude runs these tools directly via the Write→Bash→Read pattern (write config file, run CLI via Bash, read output files).
 
-### proteus-fold (Protenix v1)
+### protenix (Protenix v1)
 - **Purpose**: AF3-class structure prediction (368M params)
-- **Skill**: `proteus-fold` — full CLI, models, input JSON format, output parsing
-- **Quick CLI**: `PROTENIX_ROOT_DIR=/data/proteus/Protenix protenix pred -i input.json -o outdir -n model --use_default_params true --dtype bf16`
+- **Skill**: `protenix` — full CLI, models, input JSON format, output parsing
+- **Quick CLI**: `PROTENIX_ROOT_DIR=$PROTEUS_FOLD_DIR protenix pred -i input.json -o outdir -n model --use_default_params true --dtype bf16`
 
-### proteus-prot (PXDesign)
+### pxdesign (PXDesign)
 - **Purpose**: De novo protein binder design (17-82% experimental hit rates)
-- **Skill**: `proteus-prot` — full CLI, presets, YAML config, CSV output parsing
+- **Skill**: `pxdesign` — full CLI, presets, YAML config, CSV output parsing
 - **Quick CLI**: `pxdesign pipeline --preset extended -i config.yaml -o outdir --N_sample 500 --dtype bf16`
 
-### proteus-ab (Proteus-AB / BoltzGen + Protenix)
+### boltzgen (Proteus-AB / BoltzGen + Protenix)
 - **Purpose**: Antibody/nanobody design with BoltzGen diffusion + Protenix refolding
-- **Skill**: `proteus-ab` — full CLI, protocols, entities YAML, pipeline stages
+- **Skill**: `boltzgen` — full CLI, protocols, entities YAML, pipeline stages
 - **Quick CLI**: `proteus-ab run spec.yaml --output dir --num_designs 50 --protocol nanobody-anything --msa-mode none --budget 10`
 
 ## Custom Scoring
@@ -32,11 +32,6 @@ Each tool has a dedicated skill with full CLI documentation, input/output specs,
 - Directional: design→target, target→design, min(both)
 - >0.5 good, >0.8 excellent
 
-### p_bind (Binding Probability)
-- 3-layer MLP from Protenix trunk features (v2 full-chain mask, ROC 0.906)
-- >0.5 good, >0.8 excellent
-- Status: experimental, requires trained checkpoint
-
 ## Screening Battery (always run before presenting final candidates)
 - **Liabilities**: NG/NS deamidation, DG isomerization, Met oxidation, free Cys, NXS/T glycosylation
 - **Developability**: Net charge pH 7.4, CDR length, hydrophobic fraction, composition flags
@@ -45,11 +40,12 @@ Each tool has a dedicated skill with full CLI documentation, input/output specs,
 
 ## Scoring Hierarchy
 
-PRIMARY: ipSAE — our custom TM-align metric. Rank and filter by ipSAE first.
+PRIMARY: ipSAE — open-source TM-align metric (DunbrackLab). Rank and filter by ipSAE first.
 SECONDARY: ipTM — standard confidence. Tiebreaker after ipSAE.
-TERTIARY: p_bind — always compute for antibody/VHH designs.
 
-Sort order: ipSAE desc → ipTM desc → p_bind desc
+Composite: 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)
+
+Sort order: ipSAE desc -> ipTM desc
 
 ## Quality Thresholds
 
@@ -57,7 +53,6 @@ Sort order: ipSAE desc → ipTM desc → p_bind desc
 |--------|------|-----------|
 | ipSAE | >0.5 | >0.8 |
 | ipTM | >0.7 | >0.85 |
-| p_bind | >0.5 | >0.8 |
 | pLDDT | >70 | >90 |
 | RMSD | <3.5Å | <1.5Å |
 
@@ -141,7 +136,7 @@ Multiple scaffolds: total = scaffolds x num_designs.
 
 ## Scaffold Templates (BoltzGen)
 
-Located at: `/data/proteus-design/deps/BoltzGen/example/`
+Scaffold templates ship with BoltzGen: see `example/fab_scaffolds/` and `example/vhh_scaffolds/` in the BoltzGen repo (https://github.com/HannesStark/boltzgen).
 
 Fab (14 — for scFv modality): adalimumab, belimumab, crenezumab, dupilumab, golimumab, guselkumab,
 mab1, necitumumab, nirsevimab, sarilumab, secukinumab, tezepelumab, tralokinumab,
@@ -197,13 +192,13 @@ End with recommended hotspot array and range notation for entities YAML.
 CRITICAL: The agent must actually CALL the MCP tools (pdb_search, pdb_fetch_structure, etc.), not just describe what it would do.
 
 ## Database & Screening MCP Tools
-- proteus-pdb: pdb_search, pdb_fetch_structure, pdb_get_chains, pdb_interface_residues, pdb_download
-- proteus-uniprot: uniprot_search, uniprot_fetch_protein, uniprot_get_domains, uniprot_get_variants
-- proteus-sabdab: search SAbDab for antibody structures
-- proteus-screening: screen_liabilities, screen_developability, screen_net_charge, score_ipsae, score_pbind, screen_composite, interpret_scores
+- pdb: pdb_search, pdb_fetch_structure, pdb_get_chains, pdb_interface_residues, pdb_download
+- uniprot: uniprot_search, uniprot_fetch_protein, uniprot_get_domains, uniprot_get_variants
+- sabdab: search SAbDab for antibody structures
+- proteus-screening: screen_liabilities, screen_developability, screen_net_charge, score_ipsae, screen_composite, interpret_scores
 
 ## Cloud Compute MCP Tools (Tamarind — DEFAULT)
-- proteus-tamarind: tamarind_list_models, tamarind_submit_job, tamarind_get_job_status, tamarind_get_job_results, tamarind_wait_for_job
+- tamarind: tamarind_list_models, tamarind_submit_job, tamarind_get_job_status, tamarind_get_job_results, tamarind_wait_for_job
 
 When designing, try Tamarind first (default cloud provider):
 1. tamarind_list_models to see available models
@@ -212,10 +207,10 @@ When designing, try Tamarind first (default cloud provider):
 4. tamarind_get_job_results to download output
 
 ## Cloud Compute MCP Tools (Levitate — Alternative)
-- proteus-levitate: levitate_list_pipelines, levitate_run_rfantibody, levitate_run_analysis, levitate_get_results, levitate_estimate_cost
+- levitate: levitate_list_pipelines, levitate_run_rfantibody, levitate_run_analysis, levitate_get_results, levitate_estimate_cost
 
 ## Lab Integration MCP Tools (Adaptyv Bio — HARD GATED)
-- proteus-adaptyv: adaptyv_estimate_cost, adaptyv_prepare_submission, adaptyv_confirm_submission, adaptyv_get_experiment_status, adaptyv_get_results
+- adaptyv: adaptyv_estimate_cost, adaptyv_prepare_submission, adaptyv_confirm_submission, adaptyv_get_experiment_status, adaptyv_get_results
 
 CRITICAL SAFETY: Lab submissions require /approve-lab in the TUI first.
 - adaptyv_estimate_cost is SAFE (no submission, just cost calculation)
@@ -238,7 +233,7 @@ CRITICAL SAFETY: Lab submissions require /approve-lab in the TUI first.
 ## Compute Provider Selection (Auto-detect)
 1. If TAMARIND_API_KEY set → use Tamarind Bio (default, cloud)
 2. If LEVITATE_CLIENT_ID set → offer Levitate Bio
-3. If /data/proteus/ exists → offer local GPU tools
+3. If PROTEUS_FOLD_DIR / PROTEUS_PROT_DIR / PROTEUS_AB_DIR set → offer local GPU tools
 4. If nothing available → prompt for TAMARIND_API_KEY (free tier)
 
 ## Campaign Cost Reference (Asimov Press)

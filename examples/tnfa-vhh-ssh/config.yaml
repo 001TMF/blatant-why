@@ -1,5 +1,4 @@
-# TNF-alpha VHH nanobody campaign — standard tier, well-studied target
-name: "tnfa_vhh_standard"
+name: "tnfa_vhh_ssh"
 tier: "standard"
 target_difficulty: "well-studied"
 
@@ -10,8 +9,8 @@ target:
   uniprot_id: "P01375"
 
 epitope:
-  hotspot_residues: [75, 76, 77, 79, 81, 87, 88, 89, 90, 91, 92, 95, 96, 97, 133, 135, 136, 137]
-  region_notation: "75..97,133..137"
+  hotspot_residues: [75, 76, 77, 79, 81, 87, 88, 89, 90, 91, 92, 95, 96, 97]
+  region_notation: "75..97"
 
 design:
   tool: "boltzgen"
@@ -48,5 +47,10 @@ lab:
   provider: "adaptyv_bio"
 
 compute:
-  provider: "tamarind"
+  provider: "ssh"
   gpu_type: "A100"
+  ssh_host: "gpu-server.example.com"
+  ssh_user: "researcher"
+  ssh_port: 22
+  ssh_key_path: "~/.ssh/id_rsa"
+  ssh_tools_path: "/opt/proteus"

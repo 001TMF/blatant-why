@@ -54,29 +54,18 @@ These are Proteus-specific scoring metrics. See the proteus-scoring skill for al
 
 ### ipSAE (Interfacial Predicted Structural Accuracy Error)
 
-TM-align-inspired interface quality from Protenix PAE. Directional: dt_ipsae and td_ipsae. Always report design_ipsae_min = min(dt, td) as the most stringent assessment.
+TM-align-inspired interface quality from Protenix PAE. Uses the open-source DunbrackLab formula (no proprietary dependencies). Directional: dt_ipsae and td_ipsae. Always report ipsae_min = min(dt, td) as the most stringent assessment.
+
+Reference: Dunbrack et al., "Res ipSAE loquuntur" (2025)
 
 | ipSAE (min) | Interpretation | Action |
 |-------------|---------------|--------|
-| > 0.8 | Excellent interface | Top-tier candidate. Prioritize for validation. |
-| 0.5 - 0.8 | Good, likely binder | Strong candidate. Proceed through remaining filters. |
-| 0.3 - 0.5 | Moderate, possible binder | Include only if other metrics are strong. Consider redesign. |
-| < 0.3 | Poor, unlikely to bind | Reject unless retaining for diversity. |
+| >= 0.8 | Excellent interface | Top-tier candidate. Prioritize for validation. |
+| 0.6 - 0.8 | Good, likely binder | Strong candidate. Proceed through remaining filters. |
+| 0.4 - 0.6 | Moderate, possible binder | Include only if other metrics are strong. Consider redesign. |
+| < 0.4 | Weak/poor, unlikely to bind | Reject unless retaining for diversity. |
 
 Use `score_ipsae` MCP tool or `proteus_cli.scoring.ipsae.score_npz()` with Protenix NPZ. Requires design_chain_ids and target_chain_ids (asym_id integers). When dt and td diverge (ratio > 2:1), the interface is asymmetric -- inspect manually but do not automatically disqualify.
-
-### p_bind (Binding Probability)
-
-Learned binding probability from a 3-layer MLP on Protenix trunk features. Requires a trained checkpoint.
-
-| p_bind | Interpretation | Action |
-|--------|---------------|--------|
-| > 0.8 | High confidence binder | Weight heavily in ranking. |
-| 0.5 - 0.8 | Likely binder | Combine with structural metrics for ranking. |
-| 0.3 - 0.5 | Marginal | Only advance if ipTM and ipSAE are strong. |
-| < 0.3 | Unlikely to bind | Deprioritize. Retain only for diversity. |
-
-If no checkpoint is available, skip this metric and note "p_bind: not available (awaiting trained model)" in the report. Never fabricate scores. Use `score_pbind` MCP tool or `proteus_cli.scoring.pbind.predict_binding()`. Critical: chain_design_mask must cover FULL VH/VL chains (not CDR-only). CDR-only mask (v1) ROC 0.60; full-chain mask (v2) ROC 0.906.
 
 ---
 
@@ -210,26 +199,18 @@ Binary pass/fail. Any failure eliminates the design. Apply all simultaneously an
 
 ### Stage 2: Soft Ranking
 
-Designs that pass all hard filters are ranked by a composite score. Each metric contributes to a weighted sum.
+Designs that pass all hard filters are ranked by a composite score.
 
 **Ranking formula:**
 
 ```
-composite = (0.30 * norm_iptm) + (0.25 * norm_ipsae) + (0.20 * norm_pbind) + (0.15 * norm_liability) + (0.10 * norm_developability)
+composite = 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)
 ```
 
 Where:
-- `norm_iptm` = ipTM value (already 0-1)
-- `norm_ipsae` = design_ipsae_min (already 0-1)
-- `norm_pbind` = p_bind probability (already 0-1; use 0.5 if unavailable)
-- `norm_liability` = 1.0 - (weighted_liability_count / max_liability_count_in_batch), clamped to [0, 1]
-- `norm_developability` = 1.0 if risk=="low", 0.5 if risk=="medium", 0.0 if risk=="high"
-
-If p_bind is not available (no trained checkpoint), redistribute its weight equally to ipTM and ipSAE:
-
-```
-composite_no_pbind = (0.40 * norm_iptm) + (0.35 * norm_ipsae) + (0.15 * norm_liability) + (0.10 * norm_developability)
-```
+- `ipSAE_min` = ipsae_min value (already 0-1)
+- `ipTM` = ipTM value (already 0-1)
+- `normalized_liability_count` = weighted_liability_count / max_liability_count_in_batch, clamped to [0, 1]
 
 Present the top designs sorted by composite score descending.
 
@@ -311,17 +292,17 @@ Output: `DevelopabilityReport` with total_cdr_length, net_charge, liability_coun
 
 ### screen_composite
 
-Run the full three-stage screening pipeline on a batch of designs.
+Run the full three-stage screening pipeline on a design.
 
-Input: `{ "designs": [{"id": "design-1", "sequence": "...", "iptm": 0.85, "plddt": 82.3, "rmsd": 1.5, "ipsae_min": 0.72, "pbind": 0.88, "cdr_regions": [...]}] }`
-Output: Ordered list of passing designs with composite scores, rejection reasons for filtered designs, cluster assignments for diversity, and attrition summary per stage.
+Input: `{ "sequence": "EVQLV...", "iptm": 0.85, "ipsae": 0.72, "plddt": 82.3, "rmsd": 1.5 }`
+Output: Composite pass/fail verdict with liabilities, developability, scores, interpretation, and flags.
 
 ### interpret_scores
 
-Generate human-readable interpretation of all scoring metrics for a single design.
+Generate human-readable interpretation of scoring metrics for a single design.
 
-Input: `{ "iptm": 0.85, "plddt": 82.3, "rmsd": 1.5, "ipsae_min": 0.72, "pbind": 0.88, "liability_count": 2, "high_severity_count": 0, "developability_risk": "low" }`
-Output: Markdown-formatted interpretation with verdict for each metric and overall recommendation.
+Input: `{ "iptm": 0.85, "ipsae": 0.72, "plddt": 82.3 }`
+Output: JSON with per-metric interpretation and summary.
 
 ---
 
@@ -332,11 +313,8 @@ HARD FILTERS (any fail = reject):
   ipTM >= 0.5    pLDDT >= 70    CA-RMSD <= 5.0 A
   Even Cys count    No NG/DG in CDRs    |charge| <= 10    hydro_frac <= 0.55
 
-RANKING WEIGHTS (when p_bind available):
-  ipTM: 0.30    ipSAE: 0.25    p_bind: 0.20    liabilities: 0.15    developability: 0.10
-
-RANKING WEIGHTS (without p_bind):
-  ipTM: 0.40    ipSAE: 0.35    liabilities: 0.15    developability: 0.10
+RANKING WEIGHTS:
+  ipSAE_min: 0.50    ipTM: 0.30    liability_penalty: 0.20
 
 LIABILITY TRIAGE:
   CDR + high severity    = REJECT

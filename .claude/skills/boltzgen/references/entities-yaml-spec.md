@@ -162,14 +162,14 @@ design. If omitted, the tool uses its built-in default scaffolds.
 
 Scaffold YAML files are in the BoltzGen examples directory:
 ```
-/data/proteus-design/deps/BoltzGen/example/fab_scaffolds/
+$BOLTZGEN_DIR/example/  # from BoltzGen repo: fab_scaffolds/
 ```
 
 ### Adding a Scaffold
 
 ```yaml
 - file:
-    path: /data/proteus-design/deps/BoltzGen/example/fab_scaffolds/adalimumab.6cr1.yaml
+    path: $BOLTZGEN_DIR/example/  # from BoltzGen repo: fab_scaffolds/adalimumab.6cr1.yaml
 ```
 
 Scaffold entities have no `include` or `binding_types` — just the `path`.
@@ -216,7 +216,7 @@ entities:
         id: B
         binding: 100..115,140..148
 - file:
-    path: /data/proteus-design/deps/BoltzGen/example/fab_scaffolds/adalimumab.6cr1.yaml
+    path: $BOLTZGEN_DIR/example/  # from BoltzGen repo: fab_scaffolds/adalimumab.6cr1.yaml
 ```
 
 ### Multi-Chain Target, Multi-Region Epitope

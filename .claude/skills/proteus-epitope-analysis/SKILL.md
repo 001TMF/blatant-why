@@ -213,8 +213,8 @@ binder_length: 80
 EOF
 
 # Run PXDesign
-PROTENIX_DATA_ROOT_DIR=/data/proteus/PXDesign/release_data/ccd_cache \
-TOOL_WEIGHTS_ROOT=/data/proteus/PXDesign/tool_weights \
+PROTENIX_DATA_ROOT_DIR=$PROTEUS_PROT_DIR/release_data/ccd_cache \
+TOOL_WEIGHTS_ROOT=$PROTEUS_PROT_DIR/tool_weights \
 pxdesign pipeline --preset extended -i /tmp/pdl1_config.yaml -o /tmp/pdl1_design --N_sample 30 --dtype bf16
 ```
 

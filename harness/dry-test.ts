@@ -47,13 +47,14 @@ Always announce what you're doing: "Using: Searching UniProt...", "Using: Foldin
 ## Available MCP Tools
 - proteus-uniprot: uniprot_search, uniprot_fetch_protein, uniprot_get_domains
 - proteus-pdb: pdb_search, pdb_fetch_structure, pdb_get_chains, pdb_interface_residues
-- proteus-tools: run_fold, run_antibody_design, parse_fold_output, parse_antibody_results
+- proteus-local: local_run_protenix, local_run_boltzgen, local_run_pxdesign, local_detect_tools
 - proteus-screening: screen_liabilities, screen_developability, screen_composite
 
 ## Quality Thresholds
 - ipTM > 0.7 = good, > 0.85 = excellent
 - ipSAE > 0.5 = good, > 0.8 = excellent
-- p_bind > 0.5 = good, > 0.8 = excellent`;
+
+Composite: 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)`;
 
 async function main() {
   console.log("=== Proteus Dry Test: P01426 scFv Design ===\n");

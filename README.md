@@ -137,7 +137,7 @@ graph TD
 
     DA --> TAM[Tamarind Bio<br/>BoltzGen · 200+ models]
     DA --> LEV[Levitate Bio<br/>RFAntibody]
-    DA --> LOCAL[Local GPU<br/>/data/proteus/]
+    DA --> LOCAL[Local GPU<br/>env vars]
 
     SA --> SCR[Screening MCP<br/>ipTM · ipSAE · Liabilities]
 
@@ -163,7 +163,7 @@ graph TD
 |-------|------|-------------|---------|
 | **Research** | Target intelligence | pdb, uniprot, sabdab, research | Gather target structure, known binders, epitope data, and prior art |
 | **Design** | Binder generation | tamarind, levitate | Submit and monitor BoltzGen / PXDesign compute jobs |
-| **Screening** | Computational triage | screening | Score, filter, and rank designs by ipTM, ipSAE, p_bind, liabilities |
+| **Screening** | Computational triage | screening | Score, filter, and rank designs by ipSAE, ipTM, liabilities |
 | **Lab Integration** | Wet-lab bridge | adaptyv | Prepare and submit candidates to Adaptyv Bio (triple-gated) |
 | **Monitor** | Job tracking | tamarind, levitate, campaign | Poll compute jobs, update campaign state, report progress |
 | **Campaign Director** | Orchestration | campaign | Manage campaign lifecycle, cost tracking, iteration decisions |
@@ -177,7 +177,7 @@ Proteus exposes 9 MCP servers, each wrapping a focused set of tools:
 | `proteus-pdb` | `pdb_search`, `pdb_fetch_structure`, `pdb_get_chains`, `pdb_interface_residues`, `pdb_download` | RCSB PDB structure search and analysis |
 | `proteus-uniprot` | `uniprot_search`, `uniprot_fetch_protein`, `uniprot_get_domains`, `uniprot_get_variants` | UniProt protein metadata and annotations |
 | `proteus-sabdab` | `sabdab_search` | SAbDab antibody structure database |
-| `proteus-screening` | `screen_liabilities`, `screen_developability`, `score_ipsae`, `score_pbind`, `screen_composite` | Computational screening and custom scoring |
+| `proteus-screening` | `screen_liabilities`, `screen_developability`, `score_ipsae`, `screen_composite` | Computational screening and custom scoring |
 | `proteus-tamarind` | `tamarind_list_models`, `tamarind_submit_job`, `tamarind_get_job_status`, `tamarind_get_job_results` | Tamarind Bio cloud compute (200+ models) |
 | `proteus-levitate` | `levitate_list_pipelines`, `levitate_run_rfantibody`, `levitate_run_analysis`, `levitate_get_results` | Levitate Bio alternative compute |
 | `proteus-adaptyv` | `adaptyv_estimate_cost`, `adaptyv_prepare_submission`, `adaptyv_confirm_submission`, `adaptyv_get_results` | Adaptyv Bio lab integration (triple-gated) |
@@ -224,8 +224,8 @@ Every design passes through a multi-stage computational funnel before reaching l
        │
       ▼
   ┌──────────────────┐
-  │ Composite Score  │  Weighted: ipTM(0.30) + ipSAE(0.25) + p_bind(0.20)
-  │    & Ranking     │  + liability_penalty(0.15) + developability(0.10)
+  │ Composite Score  │  Weighted: ipSAE_min(0.50) + ipTM(0.30)
+  │    & Ranking     │  + liability_penalty(0.20)
   └────┬─────────────┘
        │
       ▼
@@ -293,11 +293,9 @@ screening:
     plddt_min: 70
     rmsd_max: 5.0
   ranking_weights:
+    ipsae_min: 0.50
     iptm: 0.30
-    ipsae_min: 0.25
-    pbind: 0.20
-    liability_penalty: 0.15
-    developability: 0.10
+    liability_penalty: 0.20
 
 lab:
   max_candidates: 20
@@ -371,11 +369,7 @@ proteus/
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/design-progress.png" alt="Design pipeline progress with stage indicators and ETA" width="700">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/results-table.png" alt="Ranked results table with ipTM, ipSAE, p_bind scores" width="700">
+  <img src="docs/screenshots/results-table.png" alt="Ranked results table with ipSAE, ipTM, pLDDT, RMSD scores" width="700">
 </p>
 
 <p align="center">

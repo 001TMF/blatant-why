@@ -33,9 +33,12 @@ export class CampaignOrchestrator extends EventEmitter {
     // Scope MCP servers to only what this agent needs
     const scopedServers: Record<string, any> = {};
     for (const serverName of def.mcpServers) {
-      const fullName = `proteus-${serverName}`;
-      if (this.allMcpServers[fullName]) {
-        scopedServers[fullName] = this.allMcpServers[fullName];
+      const directName = serverName;
+      const prefixedName = `proteus-${serverName}`;
+      const matchName = this.allMcpServers[directName] ? directName :
+                        this.allMcpServers[prefixedName] ? prefixedName : null;
+      if (matchName) {
+        scopedServers[matchName] = this.allMcpServers[matchName];
       }
     }
 

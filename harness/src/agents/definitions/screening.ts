@@ -4,7 +4,7 @@ export const screeningAgent: AgentDefinition = {
   name: "screening",
   role: "Score, filter, and rank designs using screening battery",
   systemPromptPath: "screening.md",
-  mcpServers: ["screening", "campaign"],
+  mcpServers: ["proteus-screening", "proteus-campaign"],
   disallowedTools: ["Write", "Edit"],
   maxTurns: 20,
 };

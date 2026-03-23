@@ -96,7 +96,7 @@ async def campaign_create(
 
     Args:
         target_name: Name of the target protein (e.g. "TNF-alpha").
-        tool: Design tool to use ("proteus-ab", "proteus-prot", "proteus-fold").
+        tool: Design tool to use ("boltzgen", "pxdesign", "protenix").
         tier: Campaign tier — "quick", "standard", or "deep" (default "standard").
         protocol: Design protocol (e.g. "nanobody-anything"). Auto-selected if empty.
         base_dir: Parent directory for campaigns (default "campaigns").

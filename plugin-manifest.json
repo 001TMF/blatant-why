@@ -4,32 +4,36 @@
   "description": "Proteus protein design agent — conversational protein and antibody design with custom scoring",
   "author": "Proteus",
   "tools": {
-    "proteus-fold": {
+    "protenix": {
       "description": "AF3-class structure prediction with Protenix v1",
       "engine": "Protenix",
-      "path": "/data/proteus/Protenix"
+      "env_var": "PROTEUS_FOLD_DIR",
+      "install": "https://github.com/bytedance/Protenix"
     },
-    "proteus-prot": {
+    "pxdesign": {
       "description": "De novo protein binder design with PXDesign",
       "engine": "PXDesign",
-      "path": "/data/proteus/PXDesign"
+      "env_var": "PROTEUS_PROT_DIR",
+      "install": "https://github.com/bytedance/PXDesign"
     },
-    "proteus-ab": {
+    "boltzgen": {
       "description": "Antibody/nanobody design with BoltzGen + Protenix",
-      "engine": "Proteus-AB",
-      "path": "/data/proteus/proteus-design"
+      "engine": "BoltzGen",
+      "env_var": "PROTEUS_AB_DIR",
+      "install": "https://github.com/HannesStark/boltzgen"
     }
   },
   "mcpServers": [
-    "proteus-pdb",
-    "proteus-uniprot",
-    "proteus-sabdab",
+    "pdb",
+    "uniprot",
+    "sabdab",
     "proteus-screening",
-    "proteus-tamarind",
-    "proteus-levitate",
-    "proteus-adaptyv",
+    "tamarind",
+    "levitate",
+    "adaptyv",
     "proteus-campaign",
-    "proteus-research"
+    "proteus-research",
+    "proteus-local"
   ],
   "skills": [
     "proteus-design-workflow",
@@ -38,21 +42,16 @@
     "proteus-screening",
     "proteus-campaign-manager",
     "proteus-database",
-    "proteus-fold",
-    "proteus-prot",
-    "proteus-ab"
+    "protenix",
+    "pxdesign",
+    "boltzgen"
   ],
   "scoring": {
     "ipSAE": {
-      "description": "TM-align-inspired interface score from PAE matrices",
+      "description": "Open-source TM-align-inspired interface score from PAE matrices (DunbrackLab formula)",
       "range": [0.0, 1.0],
-      "thresholds": {"poor": 0.3, "good": 0.5, "excellent": 0.8}
-    },
-    "p_bind": {
-      "description": "ML binding probability from Protenix trunk features",
-      "range": [0.0, 1.0],
-      "thresholds": {"unlikely": 0.3, "likely": 0.5, "high_confidence": 0.8},
-      "status": "awaiting_training"
+      "thresholds": {"poor": 0.2, "good": 0.5, "excellent": 0.8},
+      "reference": "Dunbrack et al., Res ipSAE loquuntur (2025)"
     }
   },
   "modes": ["binder", "antibody", "structure"],

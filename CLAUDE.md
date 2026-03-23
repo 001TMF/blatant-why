@@ -98,7 +98,7 @@ When running antibody design campaigns, deploy these agent teams:
 ### Compute Providers (in order of preference)
 1. **Tamarind Bio** (DEFAULT) — free tier, 200+ models, no GPU required
 2. **Levitate Bio** — RFAntibody pipeline, academic discount
-3. **Local GPU** — /data/proteus/ tools (power users)
+3. **Local GPU** — set PROTEUS_FOLD_DIR / PROTEUS_PROT_DIR / PROTEUS_AB_DIR (power users)
 
 ### Lab Safety Gate
 Adaptyv Bio submissions require TRIPLE approval:

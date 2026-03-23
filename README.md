@@ -1,15 +1,15 @@
-<p align="center">
+<div align="center">
 
 ```
-██████╗ ██████╗  ██████╗ ████████╗███████╗██╗   ██╗███████╗
-██╔══██╗██╔══██╗██╔═══██╗╚══██╔══╝██╔════╝██║   ██║██╔════╝
-██████╔╝██████╔╝██║   ██║   ██║   █████╗  ██║   ██║███████╗
-██╔═══╝ ██╔══██╗██║   ██║   ██║   ██╔══╝  ██║   ██║╚════██║
-██║     ██║  ██║╚██████╔╝   ██║   ███████╗╚██████╔╝███████║
-╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝   ╚══════╝ ╚═════╝ ╚══════╝
+ ██████╗ ██████╗  ██████╗ ████████╗███████╗██╗   ██╗███████╗
+ ██╔══██╗██╔══██╗██╔═══██╗╚══██╔══╝██╔════╝██║   ██║██╔════╝
+ ██████╔╝██████╔╝██║   ██║   ██║   █████╗  ██║   ██║███████╗
+ ██╔═══╝ ██╔══██╗██║   ██║   ██║   ██╔══╝  ██║   ██║╚════██║
+ ██║     ██║  ██║╚██████╔╝   ██║   ███████╗╚██████╔╝███████║
+ ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝   ╚══════╝ ╚═════╝ ╚══════╝
 ```
 
-</p>
+</div>
 
 <p align="center">
   <em>AI-Powered Antibody Design Campaign Agent</em>
@@ -20,16 +20,13 @@
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-%3E%3D18-339933.svg?logo=node.js&logoColor=white" alt="Node.js >= 18"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-%3E%3D3.10-3776AB.svg?logo=python&logoColor=white" alt="Python >= 3.10"></a>
   <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-SDK-cc785c.svg" alt="Claude Code SDK"></a>
-  <a href="https://github.com/001TMF/proteus/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
+  <a href="https://github.com/001TMF/proteus-agent/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
 </p>
 
 <p align="center">
   <img src="docs/screenshots/hero.png" alt="Proteus TUI running a nanobody design campaign" width="700">
 </p>
 
-<p align="center">
-  <sub>Screenshots are placeholders -- real screenshots coming soon</sub>
-</p>
 
 ---
 
@@ -122,28 +119,42 @@ Costs are compute only (Tamarind + Protenix refolding). Lab testing via Adaptyv 
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Proteus TUI (Ink/React)                      │
-│                 TypeScript · Claude Code SDK                    │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-┌───────────────────────────┴─────────────────────────────────────┐
-│                    Campaign Orchestrator                        │
-│              Plans · Delegates · Reviews · Gates                │
-└──┬──────────┬──────────┬──────────┬──────────┬──────────┬──────┘
-   │          │          │          │          │          │
-Research   Design   Screening    Lab      Monitor   Campaign
- Agent      Agent     Agent     Agent      Agent    Director
-   │          │          │          │          │          │
-   ▼          ▼          ▼          ▼          ▼          ▼
-┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
-│PDB     │ │Tamarind│ │Screen  │ │Adaptyv │ │All MCP │ │Campaign│
-│UniProt │ │Levitate│ │Server  │ │Bio     │ │Servers │ │Server  │
-│SAbDab  │ │Local   │ │        │ │        │ │        │ │        │
-│PubMed  │ │GPU     │ │        │ │        │ │        │ │        │
-│bioRxiv │ │        │ │        │ │        │ │        │ │        │
-└────────┘ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘
+```mermaid
+graph TD
+    User([User]) --> TUI[Proteus TUI<br/>Ink/React · Claude Code SDK]
+    TUI --> Orch[Campaign Orchestrator]
+
+    Orch --> RA[Research Agent]
+    Orch --> DA[Design Agent]
+    Orch --> SA[Screening Agent]
+    Orch --> LA[Lab Agent]
+    Orch --> MA[Monitor]
+
+    RA --> PDB[(PDB)]
+    RA --> UP[(UniProt)]
+    RA --> SAB[(SAbDab)]
+    RA --> RES[(PubMed<br/>bioRxiv)]
+
+    DA --> TAM[Tamarind Bio<br/>BoltzGen · 200+ models]
+    DA --> LEV[Levitate Bio<br/>RFAntibody]
+    DA --> LOCAL[Local GPU<br/>/data/proteus/]
+
+    SA --> SCR[Screening MCP<br/>ipTM · ipSAE · Liabilities]
+
+    LA --> ADT[Adaptyv Bio<br/>Lab Testing]
+
+    MA --> CS[(Campaign State)]
+
+    style TUI fill:#4CAF50,stroke:#333,color:#fff
+    style Orch fill:#2E7D32,stroke:#333,color:#fff
+    style RA fill:#1A1A2E,stroke:#4CAF50,color:#66BB6A
+    style DA fill:#1A1A2E,stroke:#4CAF50,color:#66BB6A
+    style SA fill:#1A1A2E,stroke:#4CAF50,color:#66BB6A
+    style LA fill:#1A1A2E,stroke:#E53935,color:#EF9A9A
+    style MA fill:#1A1A2E,stroke:#4CAF50,color:#66BB6A
+    style TAM fill:#263238,stroke:#66BB6A,color:#A5D6A7
+    style LEV fill:#263238,stroke:#66BB6A,color:#A5D6A7
+    style ADT fill:#263238,stroke:#E53935,color:#EF9A9A
 ```
 
 ## Agent Team
@@ -371,9 +382,6 @@ proteus/
   <img src="docs/screenshots/cost-breakdown.png" alt="Campaign cost breakdown by compute and lab testing" width="700">
 </p>
 
-<p align="center">
-  <sub>Screenshots are placeholders -- real screenshots coming soon</sub>
-</p>
 
 ## Contributing
 

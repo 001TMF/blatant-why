@@ -181,15 +181,75 @@ inline citations (e.g., "[src_001]").
 
 ### Phase 6: CRITIQUE
 
-Challenge the synthesis with adversarial questions:
+Challenge the synthesis using three distinct review personas. Each persona applies a
+different lens to the research. The critique output must label every concern with the
+persona that raised it (e.g., `[Skeptical Practitioner]`, `[Adversarial Reviewer]`,
+`[Implementation Engineer]`).
 
-- What evidence is missing? (e.g., no crystal structure of the exact epitope region)
-- What assumptions are unvalidated? (e.g., assuming human TNF-alpha binds like mouse)
-- Are there contradicting studies we glossed over?
-- What could go wrong with the recommended design approach?
-- Is the recommended modality actually the best choice given the evidence?
+#### Persona 1: Skeptical Practitioner
+Challenges evidence quality and reproducibility:
+- Would this replicate? Are the key binding studies based on single experiments or independent replication?
+- Is the crystal structure resolution good enough? (>3.0 A structures may have unreliable interface contacts)
+- Are we extrapolating from too few data points? (e.g., one mutagenesis study defining the entire epitope)
+- Has this epitope actually been validated experimentally, or is it only computationally predicted?
+- Are the reported affinity values (Kd, IC50) from comparable assay formats?
 
-If the critique identifies critical gaps, return to Phase 3 for targeted retrieval.
+#### Persona 2: Adversarial Reviewer
+Attacks logical coherence and reasoning gaps:
+- Do the SAbDab results contradict the literature claims? (e.g., known antibodies binding different epitopes than claimed consensus)
+- Is the recommended scaffold justified by evidence or just popular? (e.g., defaulting to caplacizumab without target-specific rationale)
+- Are there alternative interpretations of the structural data? (e.g., crystal packing artifacts vs true biological interfaces)
+- What is the weakest link in the reasoning chain from evidence to design recommendation?
+- Have we cherry-picked supportive studies while ignoring contradictory ones?
+
+#### Persona 3: Implementation Engineer
+Questions practical feasibility within the Proteus toolchain:
+- Can BoltzGen actually handle this epitope topology? (e.g., concave pockets, disordered loops, glycosylated surfaces)
+- Is the compute budget sufficient for the target difficulty? (novel targets may need Exploratory tier, not Standard)
+- Are the recommended scaffolds available in the BoltzGen template library? (check against known VHH/Fab scaffold sets)
+- What is the fallback if this approach fails? (alternative modality, different scaffolds, or relaxed hotspot constraints)
+- Are there known failure modes for similar targets in the literature?
+
+#### Critique Output
+
+Write `research/critique.json`:
+```json
+{
+  "concerns": [
+    {
+      "persona": "Skeptical Practitioner",
+      "concern": "Primary epitope mapping based on single mutagenesis study (src_004)",
+      "severity": "HIGH",
+      "affected_findings": ["finding_003"],
+      "resolution": "Search for independent validation of residues Y56, R113"
+    },
+    {
+      "persona": "Adversarial Reviewer",
+      "concern": "SAbDab antibodies bind loop region, contradicting our beta-sheet epitope recommendation",
+      "severity": "CRITICAL",
+      "affected_findings": ["finding_001", "finding_005"],
+      "resolution": "Re-examine epitope consensus, consider both regions"
+    },
+    {
+      "persona": "Implementation Engineer",
+      "concern": "Target has N-linked glycosylation at N78 adjacent to proposed hotspots",
+      "severity": "MEDIUM",
+      "affected_findings": ["finding_002"],
+      "resolution": "Check if BoltzGen models glycans; if not, shift hotspots away from N78"
+    }
+  ],
+  "critical_gaps": [],
+  "summary": "3 concerns raised: 0 CRITICAL, 1 HIGH, 1 MEDIUM, 1 LOW"
+}
+```
+
+Severity levels:
+- **CRITICAL**: Fundamental flaw that could invalidate the design strategy. Requires return to Phase 3.
+- **HIGH**: Significant gap that weakens confidence. Should be addressed in Phase 7.
+- **MEDIUM**: Notable concern worth documenting. Address if feasible in Phase 7.
+- **LOW**: Minor issue for awareness. Document in the final report's Uncertainties section.
+
+If the critique identifies any CRITICAL concerns, return to Phase 3 for targeted retrieval.
 "Critical gap" = a finding rated HIGH confidence that lacks structural validation,
 or a design recommendation based only on LOW confidence findings.
 
@@ -250,7 +310,7 @@ phases or skip checkpoints. The checkpoint file is the source of truth for progr
 |------|-------------|-----------------|
 | After Phase 3 (RETRIEVE) | Source count >= depth minimum (5/10/15/20) | Re-run with broader queries |
 | After Phase 4 (TRIANGULATE) | >= 1 HIGH confidence finding | Flag to user, proceed with caveats |
-| After Phase 6 (CRITIQUE) | No critical gaps identified | Return to Phase 3 for targeted retrieval |
+| After Phase 6 (CRITIQUE) | No CRITICAL concerns from any persona | Return to Phase 3 for targeted retrieval |
 | After Phase 8 (PACKAGE) | All major claims have >= 1 citation | Add missing citations before finalizing |
 
 For detailed credibility scoring and confidence criteria, read
@@ -376,6 +436,7 @@ All files go under `campaigns/{target}/campaign_{date}_{id}/research/`:
 | `research_plan.json` | Search strategy | 2 |
 | `sources.json` | All sources with credibility scores | 3, 7 |
 | `validated_findings.json` | Cross-validated findings with confidence | 4, 7 |
+| `critique.json` | Multi-persona red team concerns | 6 |
 | `research_progress.json` | Phase tracking for resume | Every phase |
 | `research.md` | Final formatted report | 8 |
 | `recommended_hotspots.json` | Residue list for design agent | 8 |

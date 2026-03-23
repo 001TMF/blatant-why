@@ -74,12 +74,43 @@ Structure findings into a coherent narrative:
 - Update checkpoint
 
 ### Phase 6: CRITIQUE
-Adversarial self-review:
-- What evidence is missing?
-- What assumptions are unvalidated?
-- Are there contradicting studies?
-- What could go wrong with the recommended approach?
-- If critical gaps found: note them for Phase 7
+Multi-persona red team review. Apply three distinct review personas to the synthesis.
+Label every concern with the persona that raised it.
+
+#### Persona 1: Skeptical Practitioner
+Challenges evidence quality and reproducibility:
+- Would this replicate? Are the key binding studies based on single experiments or independent replication?
+- Is the crystal structure resolution good enough? (>3.0 A structures may have unreliable interface contacts)
+- Are we extrapolating from too few data points? (e.g., one mutagenesis study defining the entire epitope)
+- Has this epitope actually been validated experimentally, or is it only computationally predicted?
+- Are the reported affinity values (Kd, IC50) from comparable assay formats?
+
+#### Persona 2: Adversarial Reviewer
+Attacks logical coherence and reasoning gaps:
+- Do the SAbDab results contradict the literature claims? (e.g., known antibodies binding different epitopes than claimed consensus)
+- Is the recommended scaffold justified by evidence or just popular? (e.g., defaulting to caplacizumab without target-specific rationale)
+- Are there alternative interpretations of the structural data? (e.g., crystal packing artifacts vs true biological interfaces)
+- What is the weakest link in the reasoning chain from evidence to design recommendation?
+- Have we cherry-picked supportive studies while ignoring contradictory ones?
+
+#### Persona 3: Implementation Engineer
+Questions practical feasibility within the Proteus toolchain:
+- Can BoltzGen actually handle this epitope topology? (e.g., concave pockets, disordered loops, glycosylated surfaces)
+- Is the compute budget sufficient for the target difficulty? (novel targets may need Exploratory tier, not Standard)
+- Are the recommended scaffolds available in the BoltzGen template library? (check against known VHH/Fab scaffold sets)
+- What is the fallback if this approach fails? (alternative modality, different scaffolds, or relaxed hotspot constraints)
+- Are there known failure modes for similar targets in the literature?
+
+#### Critique Output
+Write `research/critique.json` with each concern labeled by persona, severity (CRITICAL / HIGH / MEDIUM / LOW), affected findings, and proposed resolution.
+
+Severity levels:
+- **CRITICAL**: Fundamental flaw that could invalidate the design strategy. Requires return to Phase 3.
+- **HIGH**: Significant gap that weakens confidence. Should be addressed in Phase 7.
+- **MEDIUM**: Notable concern worth documenting. Address if feasible in Phase 7.
+- **LOW**: Minor issue for awareness. Document in the final report's Uncertainties section.
+
+If any CRITICAL concerns are raised, note them for Phase 7 (or return to Phase 3 if needed).
 - Update checkpoint
 
 ### Phase 7: REFINE
@@ -162,7 +193,7 @@ UltraDeep adds the following on top of Deep:
 |-------------|-------------|-----------|
 | 3 (RETRIEVE) | Sources >= depth minimum | Broaden queries, retry once |
 | 4 (TRIANGULATE) | >= 1 HIGH confidence finding | Warn user, proceed with caveats |
-| 6 (CRITIQUE) | No critical gaps | Return to Phase 3 (max 2 iterations) |
+| 6 (CRITIQUE) | No CRITICAL concerns from any persona | Return to Phase 3 (max 2 iterations) |
 | 8 (PACKAGE) | All claims cited | Remove uncited claims |
 
 ## Source Credibility Scores

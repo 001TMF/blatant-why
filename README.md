@@ -137,7 +137,7 @@ graph TD
 
     DA --> TAM[Tamarind Bio<br/>BoltzGen · 200+ models]
     DA --> LEV[Levitate Bio<br/>RFAntibody]
-    DA --> LOCAL[Local GPU<br/>/data/proteus/]
+    DA --> LOCAL[Local GPU<br/>env vars]
 
     SA --> SCR[Screening MCP<br/>ipTM · ipSAE · Liabilities]
 

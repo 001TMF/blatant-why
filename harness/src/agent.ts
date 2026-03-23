@@ -173,7 +173,7 @@ If the user replies with just a number ("2"), execute that option.
 
 ## Scaffold Templates (BoltzGen)
 
-Located at: \`/data/proteus-design/deps/BoltzGen/example/\`
+Scaffold templates ship with BoltzGen: see \`example/fab_scaffolds/\` and \`example/vhh_scaffolds/\` in the BoltzGen repo (https://github.com/HannesStark/boltzgen).
 
 Fab (14 — for scFv modality): adalimumab, belimumab, crenezumab, dupilumab, golimumab, guselkumab,
 mab1, necitumumab, nirsevimab, sarilumab, secukinumab, tezepelumab, tralokinumab,
@@ -451,7 +451,7 @@ When presenting results, always show ipSAE as the first score column.
 
 ## Cloud Compute & Campaign
 - Default compute: Tamarind Bio (cloud, free tier). Use tamarind_submit_job.
-- Alternative: Levitate Bio (levitate_run_rfantibody). Local GPU: /data/proteus/ tools.
+- Alternative: Levitate Bio (levitate_run_rfantibody). Local GPU: set PROTEUS_FOLD_DIR / PROTEUS_PROT_DIR / PROTEUS_AB_DIR env vars.
 - Campaign commands: /campaign, /approve-lab, /costs, /team
 - Lab submissions: ALWAYS require /approve-lab first. NEVER bypass.
 - New MCP servers: tamarind, levitate, adaptyv, proteus-campaign, proteus-research`;

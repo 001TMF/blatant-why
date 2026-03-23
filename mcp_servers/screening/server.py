@@ -179,7 +179,7 @@ async def score_ipsae(
     except ImportError as exc:
         return _error(
             f"BoltzGen is required for ipSAE scoring but could not be imported: {exc}. "
-            "Install it from /data/proteus/proteus-design/deps/BoltzGen/"
+            "Install from https://github.com/HannesStark/boltzgen"
         )
     except Exception as exc:
         return _error(f"ipSAE scoring failed: {exc}")

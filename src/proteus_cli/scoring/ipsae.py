@@ -31,7 +31,7 @@ def score_npz(npz_path: Path, design_chain_ids: list[int], target_chain_ids: lis
         Dict with best-sample ipSAE metrics.
     """
     if compute_ipsae_score is None:
-        raise ImportError("BoltzGen is required for ipSAE scoring. Install it from /data/proteus/proteus-design/deps/BoltzGen/")
+        raise ImportError("BoltzGen is required for ipSAE scoring. Install from https://github.com/HannesStark/boltzgen")
 
     import torch
 

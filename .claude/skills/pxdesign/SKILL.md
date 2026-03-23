@@ -26,13 +26,13 @@ for de novo binder design.
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `PROTENIX_DATA_ROOT_DIR` | `/data/proteus/PXDesign/release_data/ccd_cache` | CCD chemical component dictionary cache |
-| `TOOL_WEIGHTS_ROOT` | `/data/proteus/PXDesign/tool_weights` | PXDesign model weights |
+| `PROTENIX_DATA_ROOT_DIR` | `$PROTEUS_PROT_DIR/release_data/ccd_cache` | CCD chemical component dictionary cache |
+| `TOOL_WEIGHTS_ROOT` | `$PROTEUS_PROT_DIR/tool_weights` | PXDesign model weights |
 | `CUTLASS_PATH` | `$HOME/cutlass` | NVIDIA CUTLASS kernel library |
 
 ### Tool Path
 
-`/data/proteus/PXDesign` -- all PXDesign files, weights, and release data live here.
+`$PROTEUS_PROT_DIR` -- all PXDesign files, weights, and release data live here.
 
 ### Hardware
 
@@ -112,8 +112,8 @@ Write tool -> /path/to/workdir/config.yaml
 ### Step 2: Run PXDesign CLI via Bash
 
 ```bash
-PROTENIX_DATA_ROOT_DIR=/data/proteus/PXDesign/release_data/ccd_cache \
-TOOL_WEIGHTS_ROOT=/data/proteus/PXDesign/tool_weights \
+PROTENIX_DATA_ROOT_DIR=$PROTEUS_PROT_DIR/release_data/ccd_cache \
+TOOL_WEIGHTS_ROOT=$PROTEUS_PROT_DIR/tool_weights \
 CUTLASS_PATH=$HOME/cutlass \
 pxdesign pipeline \
   --preset preview \
@@ -285,8 +285,8 @@ Write to `/data/runs/il6r_binder/config.yaml`.
 
 **Step 2 -- Run CLI:**
 ```bash
-PROTENIX_DATA_ROOT_DIR=/data/proteus/PXDesign/release_data/ccd_cache \
-TOOL_WEIGHTS_ROOT=/data/proteus/PXDesign/tool_weights \
+PROTENIX_DATA_ROOT_DIR=$PROTEUS_PROT_DIR/release_data/ccd_cache \
+TOOL_WEIGHTS_ROOT=$PROTEUS_PROT_DIR/tool_weights \
 CUTLASS_PATH=$HOME/cutlass \
 pxdesign pipeline \
   --preset preview \
@@ -321,8 +321,8 @@ Write to `/data/runs/receptor_hotspot/config.yaml`.
 
 **Step 2 -- Run CLI:**
 ```bash
-PROTENIX_DATA_ROOT_DIR=/data/proteus/PXDesign/release_data/ccd_cache \
-TOOL_WEIGHTS_ROOT=/data/proteus/PXDesign/tool_weights \
+PROTENIX_DATA_ROOT_DIR=$PROTEUS_PROT_DIR/release_data/ccd_cache \
+TOOL_WEIGHTS_ROOT=$PROTEUS_PROT_DIR/tool_weights \
 CUTLASS_PATH=$HOME/cutlass \
 pxdesign pipeline \
   --preset extended \
@@ -357,8 +357,8 @@ Write to `/data/runs/large_target_crop/config.yaml`.
 
 **Step 2 -- Run CLI:**
 ```bash
-PROTENIX_DATA_ROOT_DIR=/data/proteus/PXDesign/release_data/ccd_cache \
-TOOL_WEIGHTS_ROOT=/data/proteus/PXDesign/tool_weights \
+PROTENIX_DATA_ROOT_DIR=$PROTEUS_PROT_DIR/release_data/ccd_cache \
+TOOL_WEIGHTS_ROOT=$PROTEUS_PROT_DIR/tool_weights \
 CUTLASS_PATH=$HOME/cutlass \
 pxdesign pipeline \
   --preset extended \

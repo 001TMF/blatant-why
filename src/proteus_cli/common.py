@@ -35,9 +35,9 @@ class ToolResult:
 
 # Default tool paths — override via environment variables
 TOOL_PATHS = {
-    "protenix": Path(os.getenv("PROTEUS_FOLD_DIR", os.getenv("PROTENIX_DIR", "/data/proteus/Protenix"))),
-    "pxdesign": Path(os.getenv("PROTEUS_PROT_DIR", os.getenv("PXDESIGN_DIR", "/data/proteus/PXDesign"))),
-    "boltzgen": Path(os.getenv("PROTEUS_AB_DIR", os.getenv("BOLTZGEN_DIR", "/data/proteus/proteus-design"))),
+    "protenix": Path(os.getenv("PROTEUS_FOLD_DIR", os.getenv("PROTENIX_DIR", ""))),
+    "pxdesign": Path(os.getenv("PROTEUS_PROT_DIR", os.getenv("PXDESIGN_DIR", ""))),
+    "boltzgen": Path(os.getenv("PROTEUS_AB_DIR", os.getenv("BOLTZGEN_DIR", ""))),
 }
 
 

@@ -12,7 +12,7 @@ Each tool has a dedicated skill with full CLI documentation, input/output specs,
 ### protenix (Protenix v1)
 - **Purpose**: AF3-class structure prediction (368M params)
 - **Skill**: `protenix` — full CLI, models, input JSON format, output parsing
-- **Quick CLI**: `PROTENIX_ROOT_DIR=/data/proteus/Protenix protenix pred -i input.json -o outdir -n model --use_default_params true --dtype bf16`
+- **Quick CLI**: `PROTENIX_ROOT_DIR=$PROTEUS_FOLD_DIR protenix pred -i input.json -o outdir -n model --use_default_params true --dtype bf16`
 
 ### pxdesign (PXDesign)
 - **Purpose**: De novo protein binder design (17-82% experimental hit rates)
@@ -141,7 +141,7 @@ Multiple scaffolds: total = scaffolds x num_designs.
 
 ## Scaffold Templates (BoltzGen)
 
-Located at: `/data/proteus-design/deps/BoltzGen/example/`
+Scaffold templates ship with BoltzGen: see `example/fab_scaffolds/` and `example/vhh_scaffolds/` in the BoltzGen repo (https://github.com/HannesStark/boltzgen).
 
 Fab (14 — for scFv modality): adalimumab, belimumab, crenezumab, dupilumab, golimumab, guselkumab,
 mab1, necitumumab, nirsevimab, sarilumab, secukinumab, tezepelumab, tralokinumab,
@@ -238,7 +238,7 @@ CRITICAL SAFETY: Lab submissions require /approve-lab in the TUI first.
 ## Compute Provider Selection (Auto-detect)
 1. If TAMARIND_API_KEY set → use Tamarind Bio (default, cloud)
 2. If LEVITATE_CLIENT_ID set → offer Levitate Bio
-3. If /data/proteus/ exists → offer local GPU tools
+3. If PROTEUS_FOLD_DIR / PROTEUS_PROT_DIR / PROTEUS_AB_DIR set → offer local GPU tools
 4. If nothing available → prompt for TAMARIND_API_KEY (free tier)
 
 ## Campaign Cost Reference (Asimov Press)

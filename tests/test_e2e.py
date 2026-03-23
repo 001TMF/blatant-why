@@ -531,9 +531,9 @@ class TestE2ECLICheckCommand:
 
         tool_dirs = {}
         for tool_name, dir_name in [
-            ("proteus-fold", "Protenix"),
-            ("proteus-prot", "PXDesign"),
-            ("proteus-ab", "proteus-design"),
+            ("protenix", "Protenix"),
+            ("pxdesign", "PXDesign"),
+            ("boltzgen", "boltzgen"),
         ]:
             d = tmp_path / dir_name
             d.mkdir()
@@ -541,7 +541,7 @@ class TestE2ECLICheckCommand:
 
         monkeypatch.setattr(common_mod, "TOOL_PATHS", tool_dirs)
 
-        for tool_name in ("proteus-fold", "proteus-prot", "proteus-ab"):
+        for tool_name in ("protenix", "pxdesign", "boltzgen"):
             result = runner.invoke(cli, ["check", tool_name])
             assert result.exit_code == 0, f"check {tool_name} failed: {result.output}"
             assert "OK" in result.output

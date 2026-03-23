@@ -7,17 +7,20 @@
     "protenix": {
       "description": "AF3-class structure prediction with Protenix v1",
       "engine": "Protenix",
-      "path": "/data/proteus/Protenix"
+      "env_var": "PROTEUS_FOLD_DIR",
+      "install": "https://github.com/bytedance/Protenix"
     },
     "pxdesign": {
       "description": "De novo protein binder design with PXDesign",
       "engine": "PXDesign",
-      "path": "/data/proteus/PXDesign"
+      "env_var": "PROTEUS_PROT_DIR",
+      "install": "https://github.com/bytedance/PXDesign"
     },
     "boltzgen": {
       "description": "Antibody/nanobody design with BoltzGen + Protenix",
-      "engine": "Proteus-AB",
-      "path": "/data/proteus/proteus-design"
+      "engine": "BoltzGen",
+      "env_var": "PROTEUS_AB_DIR",
+      "install": "https://github.com/HannesStark/boltzgen"
     }
   },
   "mcpServers": [

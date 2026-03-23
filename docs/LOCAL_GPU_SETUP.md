@@ -42,10 +42,10 @@ export PROTEUS_FOLD_DIR=/path/to/Protenix
 ```
 
 ### Option B: Default Paths
-Install all tools under `/data/proteus/`:
+The default paths are configurable via environment variables. Example layout:
 ```
-/data/proteus/
-  proteus-design/   # BoltzGen
+/opt/proteus/   # or any directory you choose
+  boltzgen/      # BoltzGen (git clone https://github.com/HannesStark/boltzgen)
   PXDesign/         # PXDesign
   Protenix/         # Protenix
 ```

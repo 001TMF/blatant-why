@@ -107,7 +107,7 @@ def ssh_check_tools(config: SSHConfig) -> dict[str, bool]:
     for name, subdir in [
         ("protenix", "Protenix"),
         ("pxdesign", "PXDesign"),
-        ("boltzgen", "proteus-design"),
+        ("boltzgen", "boltzgen"),
     ]:
         result = ssh_run_command(
             config,
@@ -180,7 +180,7 @@ def ssh_run_design_job(
             f"{extra_args}"
         ),
         "boltzgen": (
-            f"cd {config.tools_path}/proteus-design && "
+            f"cd {config.tools_path}/boltzgen && "
             f"proteus-ab run {remote_config} --output {remote_output} "
             f"{extra_args}"
         ),

@@ -47,7 +47,7 @@ Always announce what you're doing: "Using: Searching UniProt...", "Using: Foldin
 ## Available MCP Tools
 - proteus-uniprot: uniprot_search, uniprot_fetch_protein, uniprot_get_domains
 - proteus-pdb: pdb_search, pdb_fetch_structure, pdb_get_chains, pdb_interface_residues
-- proteus-tools: run_fold, run_antibody_design, parse_fold_output, parse_antibody_results
+- proteus-local: local_run_protenix, local_run_boltzgen, local_run_pxdesign, local_detect_tools
 - proteus-screening: screen_liabilities, screen_developability, screen_composite
 
 ## Quality Thresholds

@@ -58,8 +58,8 @@ When you need to explain ipSAE computation or debug scoring issues, this is the 
 
 ### Implementation Files
 
-- **Core function**: `compute_ipsae_score()` in BoltzGen at `deps/BoltzGen/src/boltzgen/model/layers/confidence_utils.py`
-- **Protenix wrapper**: `compute_ipsae_from_protenix()` in `/data/proteus/proteus-design/src/proteus_ab/pipeline/scoring.py`
+- **Core function**: `compute_ipsae_score()` in BoltzGen at `src/boltzgen/model/layers/confidence_utils.py`
+- **Protenix wrapper**: `compute_ipsae_from_protenix()` in `BoltzGen src/proteus_ab/pipeline/scoring.py`
 - **CLI wrapper**: `score_npz()` in `src/proteus_cli/scoring/ipsae.py`
 - **Interpretation**: `interpret_ipsae()` in `src/proteus_cli/scoring/ipsae.py`
 
@@ -145,7 +145,7 @@ This is the single most important implementation detail for p_bind accuracy:
 - **v1 (CDR-only mask)**: `chain_design_mask` covered only CDR loop residues. Result: **ROC AUC = 0.60** (barely above random).
 - **v2 (full chain mask)**: `chain_design_mask` covers the ENTIRE VH and VL chains, including framework residues. Result: **ROC AUC = 0.906**.
 
-The fix is in `build_chain_design_mask()` at `/data/proteus/proteus-design/src/proteus_ab/pbind/trunk.py`. The logic is simple: all chains except the last one (antigen) are marked as design (antibody). This ensures framework residues contribute to v_ab and v_if representations.
+The fix is in `build_chain_design_mask()` at `BoltzGen src/proteus_ab/pbind/trunk.py`. The logic is simple: all chains except the last one (antigen) are marked as design (antibody). This ensures framework residues contribute to v_ab and v_if representations.
 
 **If you see anyone using CDR-only masks for p_bind feature extraction, flag it immediately.** The performance difference is catastrophic.
 
@@ -170,13 +170,13 @@ This is a **trunk-only** pass -- no diffusion, no coordinate generation, no conf
 
 ### Implementation Files
 
-- **MLP model**: `PBindHead` in BoltzGen at `deps/BoltzGen/src/boltzgen/pbind/model.py`
-- **Feature extraction**: `extract_pbind_features()` in `deps/BoltzGen/src/boltzgen/model/layers/binding_utils.py`
-- **Chain mask construction**: `build_chain_design_mask()` in `/data/proteus/proteus-design/src/proteus_ab/pbind/trunk.py`
-- **Trunk forward pass**: `get_trunk_output()` in `/data/proteus/proteus-design/src/proteus_ab/pbind/trunk.py`
+- **MLP model**: `PBindHead` in BoltzGen at `src/boltzgen/pbind/model.py`
+- **Feature extraction**: `extract_pbind_features()` in BoltzGen `src/boltzgen/model/layers/binding_utils.py`
+- **Chain mask construction**: `build_chain_design_mask()` in `BoltzGen src/proteus_ab/pbind/trunk.py`
+- **Trunk forward pass**: `get_trunk_output()` in `BoltzGen src/proteus_ab/pbind/trunk.py`
 - **CLI wrapper**: `predict_binding()` and `load_pbind_model()` in `src/proteus_cli/scoring/pbind.py`
-- **Training configs**: `/data/proteus/proteus-design/src/proteus_ab/pbind/train_config.py`
-- **Featurization**: `/data/proteus/proteus-design/src/proteus_ab/pbind/featurize.py`
+- **Training configs**: `BoltzGen src/proteus_ab/pbind/train_config.py`
+- **Featurization**: `BoltzGen src/proteus_ab/pbind/featurize.py`
 
 ### How to Score via MCP
 

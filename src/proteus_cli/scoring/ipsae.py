@@ -2,6 +2,17 @@
 
 Provides both the raw scoring function and a high-level API that works
 with Protenix NPZ output files directly.
+
+Compatibility note (2026-03-23):
+  BoltzGen (github.com/HannesStark/boltzgen) has merged PRs adding ipSAE
+  ranking into its pipeline (see closed PRs mentioning "ipSAE ranking").
+  If using BoltzGen >= v0.3 with --rank-by ipsae, the pipeline computes
+  ipSAE natively during the filter stage and writes scores to the output CSV.
+  This standalone module remains useful for:
+    - Scoring Protenix/AF3 predictions outside the BoltzGen pipeline
+    - Re-scoring with different PAE cutoffs (AF2=15.0 vs AF3/Protenix=10.0)
+    - Batch scoring NPZ files from arbitrary sources
+    - Verifying BoltzGen's built-in scores against our reference implementation
 """
 from __future__ import annotations
 

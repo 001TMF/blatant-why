@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { execSync } from "child_process";
-import { writeFileSync, mkdirSync } from "fs";
-import { resolve } from "path";
+import { writeFileSync, mkdirSync, readFileSync, existsSync, readdirSync, statSync } from "fs";
+import { resolve, basename } from "path";
 import { renderBanner } from "./banner.js";
 import { ProteusMode, cycleMode, getModeConfig } from "./modes.js";
 import { theme } from "./theme.js";
@@ -66,7 +66,7 @@ function humanizeToolName(name: string): string | null {
     "screen_developability": "Screening developability",
     "screen_composite": "Running composite screen",
     "score_ipsae": "Computing ipSAE scores",
-    "score_pbind": "Computing binding probability",
+    
     "interpret_scores": "Interpreting scores",
   };
 
@@ -92,6 +92,95 @@ function killChildProcesses() {
   }
 }
 
+interface LastSession {
+  sessionId: string;
+  campaignDir?: string;
+  timestamp: string;
+}
+
+interface CampaignEntry {
+  name: string;
+  status: string;
+  lastUpdated: string;
+  dir: string;
+}
+
+function getLastSessionPath(projectDir: string): string {
+  return resolve(projectDir, ".proteus", "last-session.json");
+}
+
+function loadLastSession(projectDir: string): LastSession | null {
+  const sessionPath = getLastSessionPath(projectDir);
+  if (!existsSync(sessionPath)) return null;
+  try {
+    const data = JSON.parse(readFileSync(sessionPath, "utf-8")) as LastSession;
+    // Only resume if less than 24 hours old
+    const age = Date.now() - new Date(data.timestamp).getTime();
+    if (age > 24 * 60 * 60 * 1000) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastSession(projectDir: string, sessionId: string, campaignDir?: string): void {
+  try {
+    const proteusDir = resolve(projectDir, ".proteus");
+    mkdirSync(proteusDir, { recursive: true });
+    const data: LastSession = {
+      sessionId,
+      ...(campaignDir ? { campaignDir } : {}),
+      timestamp: new Date().toISOString(),
+    };
+    writeFileSync(getLastSessionPath(projectDir), JSON.stringify(data, null, 2));
+  } catch {
+    // Silent — best effort
+  }
+}
+
+function listCampaigns(projectDir: string): CampaignEntry[] {
+  const campaignsDir = resolve(projectDir, "campaigns");
+  if (!existsSync(campaignsDir)) return [];
+
+  const entries: CampaignEntry[] = [];
+  try {
+    const targets = readdirSync(campaignsDir);
+    for (const target of targets) {
+      const targetDir = resolve(campaignsDir, target);
+      if (!statSync(targetDir).isDirectory()) continue;
+      const runs = readdirSync(targetDir);
+      for (const run of runs) {
+        const runDir = resolve(targetDir, run);
+        if (!statSync(runDir).isDirectory()) continue;
+        const logPath = resolve(runDir, "campaign_log.json");
+        if (existsSync(logPath)) {
+          try {
+            const log = JSON.parse(readFileSync(logPath, "utf-8"));
+            entries.push({
+              name: log.name ?? `${target}/${run}`,
+              status: log.status ?? "unknown",
+              lastUpdated: log.updated ?? statSync(logPath).mtime.toISOString(),
+              dir: runDir,
+            });
+          } catch {
+            entries.push({
+              name: `${target}/${run}`,
+              status: "unknown",
+              lastUpdated: statSync(runDir).mtime.toISOString(),
+              dir: runDir,
+            });
+          }
+        }
+      }
+    }
+  } catch {
+    // Silent
+  }
+  // Sort by most recently updated first
+  entries.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime());
+  return entries;
+}
+
 export function App({ queryFn, initialMode, configRef }: AppProps) {
   const [mode, setMode] = useState<ProteusMode>(initialMode);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -109,6 +198,28 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
   const { width: termWidth, height: termHeight } = useTerminalSize();
   const campaign = useCampaignState(configRef.projectDir);
   const contentHeight = Math.max(termHeight - 12, 5);
+
+  // Check for previous session on startup
+  useEffect(() => {
+    const lastSession = loadLastSession(configRef.projectDir);
+    if (lastSession) {
+      setSessionId(lastSession.sessionId);
+      setMessages((prev) => [
+        ...prev,
+        {
+          type: "assistant",
+          text: `Resumed previous session from ${new Date(lastSession.timestamp).toLocaleString()}.${lastSession.campaignDir ? ` Campaign: ${basename(lastSession.campaignDir)}` : ""}\nType /resume to switch campaigns or start fresh.`,
+        },
+      ]);
+    }
+  }, [configRef.projectDir]);
+
+  // Persist session whenever sessionId changes
+  useEffect(() => {
+    if (sessionId) {
+      saveLastSession(configRef.projectDir, sessionId, campaign.campaignDir ?? undefined);
+    }
+  }, [sessionId, campaign.campaignDir, configRef.projectDir]);
 
   // Track the last displayed text to prevent duplicates
   const lastDisplayedRef = useRef<string>("");
@@ -260,6 +371,31 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
         if (cmdResult.local === "show_team") {
           setMessages((prev) => [...prev, { type: "user", text: trimmed }]);
           setShowTeam(true);
+          return;
+        }
+        if (cmdResult.local === "resume_campaign") {
+          const campaigns = listCampaigns(configRef.projectDir);
+          if (campaigns.length === 0) {
+            setMessages((prev) => [
+              ...prev,
+              { type: "user", text: trimmed },
+              { type: "assistant", text: "No previous campaigns found in campaigns/ directory.\nStart a new campaign with /campaign or describe your target." },
+            ]);
+          } else {
+            const lines = [
+              "Previous campaigns:\n",
+              ...campaigns.map((c, i) => {
+                const date = new Date(c.lastUpdated).toLocaleString();
+                return `  ${i + 1}. ${c.name}  [${c.status}]  (${date})`;
+              }),
+              "\nReply with the number to resume, or start a new campaign with /campaign.",
+            ];
+            setMessages((prev) => [
+              ...prev,
+              { type: "user", text: trimmed },
+              { type: "assistant", text: lines.join("\n") },
+            ]);
+          }
           return;
         }
         setMessages((prev) => [

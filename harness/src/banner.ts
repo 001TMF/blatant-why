@@ -1,3 +1,4 @@
+import { userInfo } from "os";
 import { theme } from "./theme.js";
 
 const PROTEIN_ART = [
@@ -50,7 +51,9 @@ export function renderBanner(mode: string): string {
   }
 
   const art = combined.join("\n");
-  const greeting = theme.dim("  Welcome back, ") + theme.accent("Tristan") + theme.dim(". Ready to engineer proteins.");
+  const username = userInfo().username;
+  const displayName = username.charAt(0).toUpperCase() + username.slice(1);
+  const greeting = theme.dim("  Welcome back, ") + theme.accent(displayName) + theme.dim(". Ready to engineer proteins.");
   const modeLine = theme.dim("  Mode: ") + theme.accent(mode) + theme.dim("  (Shift+Tab to switch)");
   const helpLine = theme.dim("  Type ") + theme.accent("/help") + theme.dim(" for commands, or describe what you want to design.");
 

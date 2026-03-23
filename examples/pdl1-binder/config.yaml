@@ -1,0 +1,50 @@
+# PD-L1 de novo miniprotein binder campaign — standard tier, well-studied target
+name: "pdl1_denovo_standard"
+tier: "standard"
+target_difficulty: "well-studied"
+
+target:
+  name: "PD-L1"
+  pdb_id: "4ZQK"
+  chain_id: "A"
+  uniprot_id: "Q9NZQ7"
+
+epitope:
+  hotspot_residues: [54, 56, 61, 63, 66, 68, 113, 115, 116, 117, 121, 122, 123, 124]
+  region_notation: "54..68,113..124"
+
+design:
+  tool: "boltzgen"
+  modality: "de_novo_protein"
+  protocol: "protein-anything"
+  scaffolds: []
+  designs_per_scaffold: 10000
+
+boltzgen:
+  num_designs: 10000
+  budget: 100
+  alpha: 0.001
+  step_scale: 1.8
+  tier: "standard"
+
+screening:
+  hard_filters:
+    iptm_min: 0.5
+    ipsae_min: 0.3
+    plddt_min: 70
+    rmsd_max: 3.5
+  ranking_weights:
+    iptm: 0.35
+    ipsae_min: 0.30
+    pbind: 0.15
+    liability_penalty: 0.10
+    developability: 0.10
+
+lab:
+  max_candidates: 20
+  cost_per_variant_usd: 175
+  provider: "adaptyv_bio"
+
+compute:
+  provider: "tamarind"
+  gpu_type: "A100"

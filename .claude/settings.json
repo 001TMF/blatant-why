@@ -2,23 +2,57 @@
   "mcpServers": {
     "proteus-pdb": {
       "command": "python",
-      "args": ["mcp_servers/pdb/server.py"]
+      "args": [
+        "mcp_servers/pdb/server.py"
+      ]
     },
     "proteus-uniprot": {
       "command": "python",
-      "args": ["mcp_servers/uniprot/server.py"]
+      "args": [
+        "mcp_servers/uniprot/server.py"
+      ]
     },
     "proteus-sabdab": {
       "command": "python",
-      "args": ["mcp_servers/sabdab/server.py"]
-    },
-    "proteus-tools": {
-      "command": "python",
-      "args": ["mcp_servers/proteus_tools/server.py"]
+      "args": [
+        "mcp_servers/sabdab/server.py"
+      ]
     },
     "proteus-screening": {
       "command": "python",
-      "args": ["mcp_servers/screening/server.py"]
+      "args": [
+        "mcp_servers/screening/server.py"
+      ]
+    },
+    "proteus-tamarind": {
+      "command": "python",
+      "args": [
+        "mcp_servers/tamarind/server.py"
+      ]
+    },
+    "proteus-levitate": {
+      "command": "python",
+      "args": [
+        "mcp_servers/levitate/server.py"
+      ]
+    },
+    "proteus-adaptyv": {
+      "command": "python",
+      "args": [
+        "mcp_servers/adaptyv/server.py"
+      ]
+    },
+    "proteus-campaign": {
+      "command": "python",
+      "args": [
+        "mcp_servers/campaign/server.py"
+      ]
+    },
+    "proteus-research": {
+      "command": "python",
+      "args": [
+        "mcp_servers/research/server.py"
+      ]
     }
   }
 }

@@ -1,9 +1,8 @@
-import chalk from "chalk";
 import { theme } from "./theme.js";
 
 export interface PipelineStage {
   name: string;
-  engine: string;
+  toolName?: string;
   status: "pending" | "active" | "complete" | "error";
 }
 
@@ -24,7 +23,7 @@ const STATUS_ICONS = {
 
 function stageColor(status: PipelineStage["status"]): (s: string) => string {
   switch (status) {
-    case "active": return theme.primary;
+    case "active": return theme.warning;
     case "complete": return theme.success;
     case "error": return theme.error;
     default: return theme.dim;
@@ -33,39 +32,46 @@ function stageColor(status: PipelineStage["status"]): (s: string) => string {
 
 export function renderProgress(run: RunProgress): string {
   const lines: string[] = [];
-  lines.push(theme.heading(`Design Run: ${run.runId}`));
+  lines.push(theme.body(`Design Run: ${run.runId}`));
   lines.push("");
 
   for (const stage of run.stages) {
     const icon = STATUS_ICONS[stage.status];
     const color = stageColor(stage.status);
-    const arrow = stage.status === "active" ? theme.accent(" ← active") : "";
-    lines.push(`  ${color(icon)} ${color(stage.name.padEnd(24))} ${theme.dim(stage.engine)}${arrow}`);
+    const toolLabel = stage.toolName ? theme.dim(stage.toolName) : "";
+    lines.push(`  ${color(icon)} ${color(stage.name.padEnd(28))} ${toolLabel}`);
   }
 
   lines.push("");
-  const pct = run.designsTotal > 0 ? Math.round((run.designsComplete / run.designsTotal) * 100) : 0;
-  lines.push(`${theme.body("Progress:")} ${theme.primaryBold(`${run.designsComplete}/${run.designsTotal}`)} ${theme.dim(`(${pct}%)`)}`);
-  lines.push(`${theme.body("Status:")} ${run.status === "running" ? theme.running(run.status) : theme.body(run.status)}`);
+  lines.push(`${theme.primary("Progress:")} ${run.designsComplete}/${run.designsTotal} designs`);
+  lines.push(`${theme.body("Status:")} ${run.status === "running" ? theme.primary(run.status) : theme.body(run.status)}`);
 
   return lines.join("\n");
 }
 
 export function createDefaultStages(tool: string): PipelineStage[] {
-  if (tool === "proteus-prot" || tool === "proteus-ab") {
+  if (tool === "proteus-ab") {
     return [
-      { name: "Generating backbones", engine: tool === "proteus-prot" ? "PXDesign-d" : "BoltzGen", status: "pending" },
-      { name: "Designing sequences", engine: tool === "proteus-prot" ? "ProteinMPNN" : "AntiFold", status: "pending" },
-      { name: "Screening quality", engine: "ipSAE + p_bind + liabilities", status: "pending" },
-      { name: "Evaluating structures", engine: "Protenix refolding", status: "pending" },
-      { name: "Filtering & ranking", engine: "Composite score", status: "pending" },
-      { name: "Design complete", engine: "Ready for review", status: "pending" },
+      { name: "Design", toolName: "BoltzGen", status: "pending" },
+      { name: "Inverse Fold", toolName: "AntiFold", status: "pending" },
+      { name: "Refold", toolName: "Protenix-v1", status: "pending" },
+      { name: "Analysis", toolName: "ipSAE + Metrics", status: "pending" },
+      { name: "Filter & Rank", toolName: "Quality Filter", status: "pending" },
+    ];
+  }
+  if (tool === "proteus-prot") {
+    return [
+      { name: "Design", toolName: "PXDesign", status: "pending" },
+      { name: "AF2 Screening", toolName: "AlphaFold2", status: "pending" },
+      { name: "Protenix Validation", toolName: "Protenix-v1", status: "pending" },
+      { name: "Ranking", toolName: "Composite Score", status: "pending" },
+      { name: "Complete", toolName: "Ready for review", status: "pending" },
     ];
   }
   return [
-    { name: "Preparing input", engine: "Protenix v1", status: "pending" },
-    { name: "Running prediction", engine: "Diffusion sampling", status: "pending" },
-    { name: "Computing confidence", engine: "ipTM + pLDDT + PAE", status: "pending" },
-    { name: "Prediction complete", engine: "Ready for review", status: "pending" },
+    { name: "Preparing input", toolName: "Config", status: "pending" },
+    { name: "Running prediction", toolName: "Protenix-v1", status: "pending" },
+    { name: "Computing confidence", toolName: "pLDDT + pTM", status: "pending" },
+    { name: "Complete", toolName: "Ready for review", status: "pending" },
   ];
 }

@@ -1,39 +1,43 @@
-export type ProteusMode = "binder" | "antibody" | "structure";
+export type ProteusMode = "vhh" | "scfv" | "denovo";
 
 export interface ModeConfig {
   name: string;
   displayName: string;
   description: string;
   defaultTool: string;
+  protocol: string;
   skills: string[];
 }
 
 export const MODES: Record<ProteusMode, ModeConfig> = {
-  binder: {
-    name: "binder",
-    displayName: "Binder Designer",
-    description: "De novo protein binder design with PXDesign",
-    defaultTool: "proteus-prot",
-    skills: ["proteus-design-workflow", "proteus-scoring", "proteus-epitope-analysis", "proteus-screening"],
-  },
-  antibody: {
-    name: "antibody",
-    displayName: "Antibody Designer",
-    description: "Antibody/nanobody design with BoltzGen + Protenix",
-    defaultTool: "proteus-ab",
+  vhh: {
+    name: "vhh",
+    displayName: "VHH Nanobody Designer",
+    description: "Design single-domain nanobodies using BoltzGen",
+    defaultTool: "boltzgen",
+    protocol: "nanobody-anything",
     skills: ["proteus-design-workflow", "proteus-scoring", "proteus-epitope-analysis", "proteus-screening", "proteus-database"],
   },
-  structure: {
-    name: "structure",
-    displayName: "Structure Predictor",
-    description: "AF3-class structure prediction with Protenix v1",
-    defaultTool: "proteus-fold",
-    skills: ["proteus-design-workflow", "proteus-scoring"],
+  scfv: {
+    name: "scfv",
+    displayName: "scFv Antibody Designer",
+    description: "Design scFv antibodies from Fab templates via BoltzGen",
+    defaultTool: "boltzgen",
+    protocol: "antibody-anything",
+    skills: ["proteus-design-workflow", "proteus-scoring", "proteus-epitope-analysis", "proteus-screening", "proteus-database"],
+  },
+  denovo: {
+    name: "denovo",
+    displayName: "De Novo Protein Designer",
+    description: "Design novel miniprotein binders using BoltzGen",
+    defaultTool: "boltzgen",
+    protocol: "protein-anything",
+    skills: ["proteus-design-workflow", "proteus-scoring", "proteus-epitope-analysis", "proteus-screening"],
   },
 };
 
 export function cycleMode(current: ProteusMode): ProteusMode {
-  const order: ProteusMode[] = ["binder", "antibody", "structure"];
+  const order: ProteusMode[] = ["vhh", "scfv", "denovo"];
   const idx = order.indexOf(current);
   return order[(idx + 1) % order.length];
 }

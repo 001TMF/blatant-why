@@ -199,20 +199,44 @@ residues for coverage: Asp61, Asn63, Val68. Verify contiguity and balance:
 Final: `["A54", "A56", "A58", "A61", "A63", "A68"]`
 
 **Step 6 -- Feed to design tool:**
+
+For de novo binder (see `proteus-prot` skill for full YAML spec):
+```bash
+# Write YAML config
+cat > /tmp/pdl1_config.yaml << 'EOF'
+target:
+  file: /tmp/5JXE.cif
+  chains:
+    A:
+      hotspots: [54, 56, 58, 61, 63, 68]
+binder_length: 80
+EOF
+
+# Run PXDesign
+PROTENIX_DATA_ROOT_DIR=/data/proteus/PXDesign/release_data/ccd_cache \
+TOOL_WEIGHTS_ROOT=/data/proteus/PXDesign/tool_weights \
+pxdesign pipeline --preset extended -i /tmp/pdl1_config.yaml -o /tmp/pdl1_design --N_sample 30 --dtype bf16
 ```
-proteus_prot_design(
-    target_pdb="/tmp/5JXE.cif", target_chain="A",
-    hotspot_residues=["A54", "A56", "A58", "A61", "A63", "A68"],
-    preset="extended", num_designs=30
-)
-```
-Or for antibody design:
-```
-proteus_ab_design(
-    target_pdb="/tmp/5JXE.cif", target_chain="A",
-    epitope_residues=["A54", "A56", "A58", "A61", "A63", "A68"],
-    protocol="nanobody-anything", budget=50
-)
+
+For antibody design (see `proteus-ab` skill for full entities spec):
+```bash
+# Write entities YAML
+cat > /tmp/pdl1_spec.yaml << 'EOF'
+entities:
+- file:
+    path: /tmp/5JXE.cif
+    include:
+    - chain:
+        id: A
+    binding_types:
+    - chain:
+        id: A
+        binding: 54..58,61..63,68
+EOF
+
+# Run Proteus-AB
+PROTEUS_MODELS_DIR=~/.cache/proteus-ab LAYERNORM_TYPE=openfold \
+proteus-ab run /tmp/pdl1_spec.yaml --protocol nanobody-anything --num_designs 50 --budget 10 --output /tmp/pdl1_ab
 ```
 
 ---

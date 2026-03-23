@@ -23,11 +23,11 @@ plan at least two rounds with parameter variation.
 
 ### 1.2 Choose the Right Tool
 
-| Goal | Tool | Command | Notes |
-|------|------|---------|-------|
-| De novo protein binder | **proteus-prot** | `proteus protein` | PXDesign; 17-82% hit rates; preview or extended preset |
-| Antibody / nanobody | **proteus-ab** | `proteus ab` | BoltzGen + Protenix refolding; nanobody-anything or antibody-anything |
-| Structure validation | **proteus-fold** | `proteus fold` | Protenix v1; validate designs post-campaign |
+| Goal | Tool | CLI | Notes |
+|------|------|-----|-------|
+| De novo protein binder | **proteus-prot** | `pxdesign pipeline --preset extended -i config.yaml` | See `proteus-prot` skill |
+| Antibody / nanobody | **proteus-ab** | `proteus-ab run spec.yaml --protocol <proto>` | See `proteus-ab` skill |
+| Structure validation | **proteus-fold** | `protenix pred -i input.json` | See `proteus-fold` skill |
 
 If the user wants an antibody or nanobody scaffold, always use proteus-ab. For
 general protein binders (non-immunoglobulin), use proteus-prot. Use proteus-fold

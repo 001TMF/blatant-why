@@ -44,7 +44,7 @@ def ab(spec, gpu):
     """Run antibody/nanobody design with Proteus-AB."""
     from proteus_cli.antibody import run_antibody_design
 
-    result = run_antibody_design(spec, gpu_ids=gpu)
+    result = run_antibody_design(spec)
     click.echo(result.to_json())
 
 
@@ -118,3 +118,127 @@ def score(npz_path, design_chains, target_chains):
     scores["interpretation"] = interpret_ipsae(scores["design_ipsae_min"])
 
     click.echo(json.dumps(scores, indent=2))
+
+
+# ---------------------------------------------------------------------------
+# Campaign management commands
+# ---------------------------------------------------------------------------
+
+@cli.group()
+def campaign():
+    """Manage design campaigns — plan, estimate, track, and iterate."""
+    pass
+
+
+@campaign.command("init")
+@click.argument("config_yaml", type=click.Path(exists=True))
+@click.option("--base-dir", default="campaigns", help="Base directory for campaign data")
+def campaign_init(config_yaml, base_dir):
+    """Create a new campaign from a YAML config file."""
+    from proteus_cli.campaign.config import load_config
+    from proteus_cli.campaign.cost import estimate_cost, format_cost_table
+    from proteus_cli.campaign.funnel import estimate_funnel
+    from proteus_cli.campaign.state import create_campaign
+
+    config = load_config(config_yaml)
+    state = create_campaign(config, base_dir=base_dir)
+
+    cost = estimate_cost(config)
+    funnel = estimate_funnel(config)
+
+    click.echo(f"Campaign created: {state.campaign_id}")
+    click.echo(f"  Target:   {config.target.name} ({config.target.pdb_id})")
+    click.echo(f"  Tool:     {config.design.tool} / {config.design.protocol}")
+    click.echo(f"  Status:   {state.status}")
+    click.echo(f"  Est. cost: ${cost.total_cost_usd:,.2f}")
+    click.echo(f"  Est. lab candidates: {funnel.lab_candidates}")
+    click.echo(f"  Log: {base_dir}/{state.campaign_id}/campaign_log.json")
+
+
+@campaign.command("estimate")
+@click.argument("config_yaml", type=click.Path(exists=True))
+def campaign_estimate(config_yaml):
+    """Show cost and compute estimates for a campaign config."""
+    from proteus_cli.campaign.config import load_config
+    from proteus_cli.campaign.cost import estimate_cost, format_cost_table
+
+    config = load_config(config_yaml)
+    est = estimate_cost(config)
+
+    click.echo(f"Campaign: {config.name}")
+    click.echo(f"Tool: {config.design.tool} / {config.design.protocol}")
+    click.echo(f"Difficulty: {config.target_difficulty}")
+    click.echo()
+    click.echo(format_cost_table(est))
+
+
+@campaign.command("status")
+@click.argument("campaign_dir", default=".", type=click.Path(exists=True))
+def campaign_status(campaign_dir):
+    """Show the current state of a campaign."""
+    import json as _json
+    from pathlib import Path
+
+    from proteus_cli.campaign.state import load_campaign
+
+    log_path = Path(campaign_dir)
+    if log_path.is_dir():
+        log_path = log_path / "campaign_log.json"
+
+    if not log_path.exists():
+        click.echo(f"No campaign_log.json found at {log_path}", err=True)
+        raise SystemExit(1)
+
+    state = load_campaign(str(log_path))
+
+    click.echo(f"Campaign:   {state.campaign_id}")
+    click.echo(f"Target:     {state.target.get('name', '—')}")
+    click.echo(f"Tool:       {state.tool} / {state.protocol}")
+    click.echo(f"Status:     {state.status}")
+    click.echo(f"Iteration:  {state.iteration}")
+    click.echo(f"Rounds:     {len(state.rounds)}")
+    click.echo(f"Lab approved: {state.lab_approved}")
+    click.echo(f"Created:    {state.created_at}")
+    click.echo(f"Updated:    {state.updated_at}")
+
+    if state.rounds:
+        click.echo()
+        click.echo("Rounds:")
+        for r in state.rounds:
+            total_gen = sum(run.designs_generated for run in r.runs)
+            total_pass = sum(run.designs_passed for run in r.runs)
+            click.echo(
+                f"  Round {r.round_id}: {r.state}  "
+                f"({len(r.runs)} runs, {total_gen} generated, {total_pass} passed)"
+            )
+
+    if state.history:
+        click.echo()
+        click.echo("Recent history:")
+        for entry in state.history[-5:]:
+            click.echo(
+                f"  {entry.get('timestamp', '—')}  "
+                f"{entry.get('from_status', '—')} -> {entry.get('to_status', '—')}  "
+                f"({entry.get('reason', '')})"
+            )
+
+
+@campaign.command("funnel")
+@click.argument("config_yaml", type=click.Path(exists=True))
+def campaign_funnel(config_yaml):
+    """Show the expected screening funnel for a campaign config."""
+    from proteus_cli.campaign.config import load_config
+    from proteus_cli.campaign.funnel import estimate_funnel, format_funnel
+
+    config = load_config(config_yaml)
+    est = estimate_funnel(config)
+
+    num_scaffolds = max(len(config.design.scaffolds), 1)
+    total_designs = num_scaffolds * config.design.designs_per_scaffold
+
+    click.echo(f"Campaign: {config.name}")
+    click.echo(f"Tool: {config.design.tool} / {config.design.protocol}")
+    click.echo(f"Difficulty: {config.target_difficulty}")
+    click.echo(f"Total designs: {total_designs}")
+    click.echo()
+    click.echo(format_funnel(est))

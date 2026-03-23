@@ -100,9 +100,9 @@ Target Prep --> Hotspot Analysis --> Design Generation --> Screening --> Ranking
 3. Record using `label_seq_id`. These become `hotspot_residues` (proteus-prot) or `epitope_residues` (proteus-ab).
 
 **Stage 3 -- Design Generation:**
-- *proteus-prot:* `build_pxdesign_config()` then `run_protein_design()`. Parse `summary.csv` via `parse_design_results()`.
-- *proteus-ab:* `build_design_spec()` then `run_antibody_design()`. Parse `final_designs_metrics_*.csv` via `parse_antibody_results()`.
-- *proteus-fold (validation):* `build_protenix_json()` then `run_fold()`. Parse via `parse_fold_output()`.
+- *proteus-prot:* Follow the `proteus-prot` skill: Write YAML config → `Bash: pxdesign pipeline ...` → Read `summary.csv`.
+- *proteus-ab:* Follow the `proteus-ab` skill: Write entities YAML → `Bash: proteus-ab run ...` → Read `final_designs_metrics_*.csv`.
+- *proteus-fold (validation):* Follow the `proteus-fold` skill: Write input JSON → `Bash: protenix pred ...` → Read `*_summary_confidence_sample_*.json`.
 
 **Stage 4 -- Screening Battery:**
 Run all screens via the screening MCP: structural confidence (ipTM, pTM, pLDDT), interface quality (ipSAE directional), binding prediction (p_bind if checkpoint available), refolding quality (CA-RMSD), PTM liabilities (deamidation NG/NS, isomerization DG, oxidation Met, free Cys, glycosylation NXS/T), developability (net charge, hydrophobic fraction, CDR length).
@@ -193,7 +193,7 @@ This differs from `auth_seq_id` (author PDB numbering with gaps/insertion codes)
 
 **Key params:** `model` (base_default recommended, base_20250630 latest, mini fast), `seeds` (multi-seed for validation), `sample_count` (diffusion samples per seed).
 
-**Input:** JSON via `build_protenix_json()`. Protein chains as `{"proteinChain": {"sequence": "...", "count": 1}}`. Multi-chain complexes: multiple entries in `sequences`. Ligands via `type` field.
+**Input:** JSON file written via Write tool. See `proteus-fold` skill for format. Protein chains as `{"proteinChain": {"sequence": "...", "count": 1}}`. Multi-chain complexes: multiple entries in `sequences`. Ligands via `type` field.
 
 **Outputs:** ipTM, pTM, pLDDT, ranking_score in confidence JSON. NPZ files with PAE matrices for ipSAE. ipTM > 0.7 = confident interface. pLDDT > 80 = reliable structure.
 
@@ -203,7 +203,7 @@ This differs from `auth_seq_id` (author PDB numbering with gaps/insertion codes)
 
 **Purpose:** End-to-end de novo protein binder design (60-150 residue miniproteins). PXDesign hit rates: 17-82% depending on target.
 
-**Key params:** `preset` (preview/extended), `target_chains`, `hotspot_residues` (chain + label_seq_id, e.g. "A45"), `num_designs`, `nproc` (multi-GPU).
+**Key params:** `--preset` (preview/extended), target chains, `hotspot_residues` (chain + label_seq_id, e.g. "A45"), `--N_sample`, `--nproc` (multi-GPU). See `proteus-prot` skill for full YAML config format.
 
 **Internal pipeline:** Backbone generation (diffusion) -> Sequence design (ProteinMPNN) -> Structure prediction/scoring (AF2-IG + Protenix) -> Filtering/ranking.
 
@@ -217,7 +217,7 @@ This differs from `auth_seq_id` (author PDB numbering with gaps/insertion codes)
 
 **Purpose:** Antibody/nanobody design using BoltzGen all-atom diffusion + Protenix refolding.
 
-**Key params:** `protocol` (nanobody-anything/antibody-anything), `epitope_residues` (label_seq_id integers), `budget` (sampling depth), `diversity_alpha` (0.0=max diversity, 1.0=max quality, default 0.5), `prefilter` (true for production), `msa_mode` (mmseqs2 default).
+**Key params:** `--protocol` (nanobody-anything/antibody-anything), epitope residues in entities YAML, `--budget` (sampling depth), `--diversity_alpha` (0.0=max diversity, 1.0=max quality, default 0.5), `--prefilter` (true for production), `--msa_mode` (mmseqs2 default). See `proteus-ab` skill for full entities YAML format.
 
 **Nanobody vs antibody:** nanobody-anything = single VHH, simpler, faster. antibody-anything = paired VH/VL, more complex, needs more designs.
 

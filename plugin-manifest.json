@@ -24,8 +24,12 @@
     "proteus-pdb",
     "proteus-uniprot",
     "proteus-sabdab",
-    "proteus-tools",
-    "proteus-screening"
+    "proteus-screening",
+    "proteus-tamarind",
+    "proteus-levitate",
+    "proteus-adaptyv",
+    "proteus-campaign",
+    "proteus-research"
   ],
   "skills": [
     "proteus-design-workflow",
@@ -33,7 +37,10 @@
     "proteus-epitope-analysis",
     "proteus-screening",
     "proteus-campaign-manager",
-    "proteus-database"
+    "proteus-database",
+    "proteus-fold",
+    "proteus-prot",
+    "proteus-ab"
   ],
   "scoring": {
     "ipSAE": {

@@ -1,0 +1,154 @@
+import { readFileSync, existsSync, readdirSync } from "fs";
+import { resolve, join } from "path";
+import type { MonitorEvent, MonitorCallback } from "./types.js";
+
+export class CampaignMonitor {
+  private interval: ReturnType<typeof setInterval> | null = null;
+  private pollMs: number;
+  private campaignDir: string;
+  private callbacks: MonitorCallback[] = [];
+  private lastFileCount: Map<string, number> = new Map();
+  private lastProgressTime: Map<string, number> = new Map();
+  private stallThresholdMs = 600000; // 10 minutes
+
+  constructor(campaignDir: string, pollMs: number = 5000) {
+    this.campaignDir = campaignDir;
+    this.pollMs = pollMs;
+  }
+
+  /** Register a callback for monitor events. */
+  onEvent(callback: MonitorCallback): void {
+    this.callbacks.push(callback);
+  }
+
+  private emit(event: MonitorEvent): void {
+    for (const cb of this.callbacks) {
+      cb(event);
+    }
+  }
+
+  /** Start polling for campaign progress. */
+  start(): void {
+    if (this.interval) return;
+    this.interval = setInterval(() => this.tick(), this.pollMs);
+    this.tick(); // immediate first check
+  }
+
+  /** Stop polling. */
+  stop(): void {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+  }
+
+  private tick(): void {
+    try {
+      const state = this.readState();
+      if (!state) return;
+
+      // Find active rounds and runs
+      const rounds = (state.rounds as any[]) ?? [];
+      for (const round of rounds) {
+        const runs = round.runs ?? [];
+        for (const run of runs) {
+          if (run.status === "running") {
+            this.checkRun(run);
+          }
+        }
+      }
+    } catch {
+      // Silent fail on tick errors
+    }
+  }
+
+  private checkRun(run: any): void {
+    const outputDir = run.output_dir;
+    if (!outputDir || !existsSync(outputDir)) return;
+
+    // Count output files
+    const fileCount = this.countFiles(outputDir);
+    const prevCount = this.lastFileCount.get(run.run_id) ?? 0;
+
+    if (fileCount > prevCount) {
+      // Progress detected
+      this.lastFileCount.set(run.run_id, fileCount);
+      this.lastProgressTime.set(run.run_id, Date.now());
+
+      this.emit({
+        type: "progress",
+        runId: run.run_id,
+        message: `${fileCount} files generated (${run.designs_generated ?? "?"} designs)`,
+        data: { fileCount, designsGenerated: run.designs_generated },
+      });
+    } else {
+      // Check for stall
+      const lastProgress =
+        this.lastProgressTime.get(run.run_id) ?? Date.now();
+      if (Date.now() - lastProgress > this.stallThresholdMs) {
+        this.emit({
+          type: "stall",
+          runId: run.run_id,
+          message: `No new output for ${Math.round((Date.now() - lastProgress) / 60000)} minutes`,
+        });
+      }
+    }
+
+    // Check for completion markers
+    if (this.checkCompletion(outputDir)) {
+      this.emit({
+        type: "complete",
+        runId: run.run_id,
+        message: `Run complete: ${fileCount} files`,
+        data: { fileCount },
+      });
+    }
+
+    // Check for error markers
+    const logPath = resolve(outputDir, "..", "proteus_ab.log");
+    if (existsSync(logPath)) {
+      const log = readFileSync(logPath, "utf-8");
+      if (
+        log.includes("Error") ||
+        log.includes("CUDA out of memory") ||
+        log.includes("RuntimeError")
+      ) {
+        this.emit({
+          type: "error",
+          runId: run.run_id,
+          message: "Error detected in pipeline log",
+          data: { logTail: log.slice(-500) },
+        });
+      }
+    }
+  }
+
+  private checkCompletion(outputDir: string): boolean {
+    // Check for final_ranked_designs/ directory with CSV files
+    const finalDir = join(outputDir, "final_ranked_designs");
+    if (existsSync(finalDir)) {
+      const csvFiles = readdirSync(finalDir).filter((f) => f.endsWith(".csv"));
+      return csvFiles.length > 0;
+    }
+    // Check for summary.csv (PXDesign)
+    const summaryPath = join(outputDir, "summary.csv");
+    return existsSync(summaryPath);
+  }
+
+  private countFiles(dir: string): number {
+    try {
+      return readdirSync(dir, { recursive: true }).length;
+    } catch {
+      return 0;
+    }
+  }
+
+  private readState(): Record<string, any> | null {
+    const statePath = resolve(this.campaignDir, "campaign_log.json");
+    try {
+      return JSON.parse(readFileSync(statePath, "utf-8"));
+    } catch {
+      return null;
+    }
+  }
+}

@@ -26,6 +26,7 @@ from proteus_cli.campaign.export import (
     export_fasta as export_fasta_fn,
 )
 from proteus_cli.campaign.decisions import log_decision, read_decisions
+from proteus_cli.campaign.visualization import generate_chimerax_script, generate_pymol_script
 from proteus_cli.campaign.state import (
     CampaignState,
     RoundState,
@@ -646,6 +647,78 @@ async def campaign_get_decisions(campaign_dir: str) -> str:
         return json.dumps(decisions, indent=2)
     except Exception as exc:
         return _error(f"Failed to read decisions: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Tool 13: campaign_generate_visualization
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def campaign_generate_visualization(
+    structure_path: str,
+    format: str = "pymol",
+    design_chains: str = "A",
+    target_chains: str = "B",
+    hotspot_residues: str = "",
+    output_path: str = "",
+) -> str:
+    """Generate a PyMOL (.pml) or ChimeraX (.cxc) visualization script.
+
+    Creates a script that renders the target as a semi-transparent surface,
+    the binder as a cartoon with CDR loops colored by region, and optionally
+    highlights hotspot residues on the target.
+
+    Args:
+        structure_path: Path to the PDB or mmCIF structure file to load.
+        format: Visualization tool — "pymol" (default) or "chimerax".
+        design_chains: Comma-separated chain IDs for the designed binder (default "A").
+        target_chains: Comma-separated chain IDs for the target protein (default "B").
+        hotspot_residues: Comma-separated residue numbers to highlight (default "").
+        output_path: Optional output file path. If empty, the script is returned
+            as a string without writing to disk.
+
+    Returns:
+        JSON with the generated script text and, if written, the output file path.
+    """
+    d_chains = [c.strip() for c in design_chains.split(",") if c.strip()]
+    t_chains = [c.strip() for c in target_chains.split(",") if c.strip()]
+    hotspots: list[int] | None = None
+    if hotspot_residues.strip():
+        try:
+            hotspots = [int(r.strip()) for r in hotspot_residues.split(",") if r.strip()]
+        except ValueError:
+            return _error("hotspot_residues must be comma-separated integers.")
+
+    out = output_path if output_path.strip() else None
+    fmt = format.strip().lower()
+
+    try:
+        if fmt == "chimerax":
+            script = generate_chimerax_script(
+                structure_path=structure_path,
+                design_chains=d_chains,
+                target_chains=t_chains,
+                hotspot_residues=hotspots,
+                output_path=out,
+            )
+        elif fmt == "pymol":
+            script = generate_pymol_script(
+                structure_path=structure_path,
+                design_chains=d_chains,
+                target_chains=t_chains,
+                hotspot_residues=hotspots,
+                output_path=out,
+            )
+        else:
+            return _error(f"Unsupported format {fmt!r}. Use 'pymol' or 'chimerax'.")
+    except Exception as exc:
+        return _error(f"Failed to generate visualization script: {exc}")
+
+    result: dict[str, Any] = {"format": fmt, "script": script}
+    if out:
+        result["output_path"] = out
+    return json.dumps(result, indent=2)
 
 
 # ---------------------------------------------------------------------------

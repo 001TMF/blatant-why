@@ -38,6 +38,7 @@ from .iteration import (
     recommend_next_round,
 )
 from .decisions import log_decision, read_decisions
+from .visualization import generate_chimerax_script, generate_pymol_script
 from .state import (
     CampaignState,
     RoundState,
@@ -99,4 +100,7 @@ __all__ = [
     # decisions
     "log_decision",
     "read_decisions",
+    # visualization
+    "generate_pymol_script",
+    "generate_chimerax_script",
 ]

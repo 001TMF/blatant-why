@@ -26,7 +26,7 @@ Define research boundaries from user input:
 - Target name, organism, UniProt accession (if known)
 - Therapeutic area, modality preference
 - What is already known vs what needs investigation
-- Select research depth: Quick (well-studied), Standard (moderate), Deep (novel)
+- Select research depth: Quick (well-studied), Standard (moderate), Deep (novel), UltraDeep (extremely novel)
 - Write `research/scope.json`
 - Update `research/research_progress.json` with phase 1 complete
 
@@ -50,7 +50,7 @@ Save ALL results to `research/sources.json`. Each source gets:
 - A credibility score (PDB structure: 0.95, peer-reviewed: 0.90, preprint: 0.70, computational: 0.50, blog: 0.30)
 - Key findings extracted from the result
 
-**Quality gate**: Check source count meets depth minimum (Quick: 5+, Standard: 10+, Deep: 15+). If below minimum, broaden queries and retry once.
+**Quality gate**: Check source count meets depth minimum (Quick: 5+, Standard: 10+, Deep: 15+, UltraDeep: 20+). If below minimum, broaden queries and retry once.
 
 Update checkpoint.
 
@@ -111,7 +111,7 @@ Write this after every phase to `research/research_progress.json`:
   },
   "sources_count": <number>,
   "quality_gate_passed": <boolean>,
-  "research_depth": "<quick|standard|deep>",
+  "research_depth": "<quick|standard|deep|ultradeep>",
   "started_at": "<ISO timestamp>",
   "last_checkpoint": "<ISO timestamp>"
 }
@@ -135,9 +135,26 @@ Auto-select depth based on initial target assessment:
 | >10 PDB hits, >5 SAbDab antibodies | Quick | 1-3-5-8 |
 | 2-10 PDB hits, 1-5 SAbDab antibodies | Standard | All 8 |
 | 0-1 PDB hits, 0 SAbDab antibodies | Deep | All 8 + iterate 3-7 |
+| 0 PDB hits, 0 SAbDab, novel organism/modality | **UltraDeep** | All 8 + 2-3 iterations of 3-7 + cross-species homolog search |
 
 For Quick depth, skip Phases 2, 4, 6, 7 (go directly 1 → 3 → 5 → 8).
 Still write checkpoints for every phase you execute.
+
+### UltraDeep Mode
+
+UltraDeep triggers when:
+- Zero PDB structures for the target
+- Zero SAbDab entries
+- Novel organism (not human/mouse)
+- Novel modality request (e.g., bispecific, peptide-protein hybrid)
+- User explicitly requests "deep dive" or "thorough research"
+
+UltraDeep adds the following on top of Deep:
+- **Cross-species homolog search**: Find similar proteins in other organisms with known binders via `research_find_similar_targets`, expanding to orthologs across species
+- **Molecular docking literature review**: Targeted PubMed/bioRxiv search for docking studies on the target or homologs
+- **Patent landscape scan**: PubMed patent filter search to identify prior IP and freedom-to-operate considerations
+- **2-3 iterations of Phase 3-7**: Retrieve-critique loop runs 2-3 times (vs 1 for Deep) to maximize coverage
+- **Minimum 20 sources, 5+ HIGH confidence findings** required to pass quality gates
 
 ## Quality Gates
 

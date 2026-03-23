@@ -28,11 +28,29 @@ Standard and let quality gates decide whether to iterate.
 | Quick | Well-studied target (TNF-alpha, PD-L1, HER2) | 1-3-5-8 | 5 min | 5+ |
 | Standard | Moderate target (some known binders) | All 8 | 15 min | 10+ |
 | Deep | Novel target (no known binders) | All 8 + iteration | 30 min | 15+ |
+| **UltraDeep** | **Extremely novel (0 PDB, 0 SAbDab, novel organism/modality)** | **All 8 + 2-3 iterations of 3-7 + cross-species homolog search** | **45+ min** | **20+** |
 
 Indicators for depth selection:
 - **Quick**: >10 PDB structures, >5 SAbDab antibodies, >50 PubMed papers
 - **Standard**: 2-10 PDB structures, 1-5 SAbDab antibodies, 10-50 papers
 - **Deep**: 0-1 PDB structures, 0 SAbDab antibodies, <10 papers
+- **UltraDeep**: 0 PDB structures, 0 SAbDab entries, AND any of: novel organism (not human/mouse), novel modality (bispecific, peptide-protein hybrid), or user explicitly requests "deep dive" / "thorough research"
+
+### UltraDeep Mode
+
+UltraDeep triggers when:
+- Zero PDB structures for the target
+- Zero SAbDab entries
+- Novel organism (not human/mouse)
+- Novel modality request (e.g., bispecific, peptide-protein hybrid)
+- User explicitly requests "deep dive" or "thorough research"
+
+UltraDeep adds the following on top of Deep:
+- **Cross-species homolog search**: Find similar proteins in other organisms with known binders via `research_find_similar_targets`, expanding to orthologs across species
+- **Molecular docking literature review**: Targeted PubMed/bioRxiv search for docking studies on the target or homologs
+- **Patent landscape scan**: PubMed patent filter search to identify prior IP and freedom-to-operate considerations
+- **2-3 iterations of Phase 3-7**: Retrieve-critique loop runs 2-3 times (vs 1 for Deep) to maximize coverage
+- **Minimum 20 sources, 5+ HIGH confidence findings** required to pass quality gates
 
 ---
 
@@ -230,7 +248,7 @@ phases or skip checkpoints. The checkpoint file is the source of truth for progr
 
 | Gate | Requirement | Action if Failed |
 |------|-------------|-----------------|
-| After Phase 3 (RETRIEVE) | Source count >= depth minimum (5/10/15) | Re-run with broader queries |
+| After Phase 3 (RETRIEVE) | Source count >= depth minimum (5/10/15/20) | Re-run with broader queries |
 | After Phase 4 (TRIANGULATE) | >= 1 HIGH confidence finding | Flag to user, proceed with caveats |
 | After Phase 6 (CRITIQUE) | No critical gaps identified | Return to Phase 3 for targeted retrieval |
 | After Phase 8 (PACKAGE) | All major claims have >= 1 citation | Add missing citations before finalizing |

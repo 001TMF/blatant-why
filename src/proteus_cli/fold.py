@@ -98,12 +98,12 @@ def run_fold(
     Returns:
         A :class:`ToolResult` describing the outcome.
     """
-    tool_dir = validate_tool_path("proteus-fold")
+    tool_dir = validate_tool_path("protenix")
 
     model_name = MODELS.get(model)
     if model_name is None:
         return ToolResult(
-            tool="proteus-fold",
+            tool="protenix",
             status="error",
             error=f"Unknown model '{model}'. Available: {list(MODELS)}",
         )
@@ -111,7 +111,7 @@ def run_fold(
     input_path = Path(input_json_path)
     if not input_path.exists():
         return ToolResult(
-            tool="proteus-fold",
+            tool="protenix",
             status="error",
             error=f"Input JSON not found: {input_path}",
         )
@@ -128,12 +128,12 @@ def run_fold(
         out.mkdir(parents=True, exist_ok=True)
         cmd.extend(["-o", str(out)])
 
-    env = get_tool_env("proteus-fold")
+    env = get_tool_env("protenix")
     proc = run_command(cmd, cwd=tool_dir, env=env)
 
     if proc.returncode != 0:
         return ToolResult(
-            tool="proteus-fold",
+            tool="protenix",
             status="error",
             output_dir=Path(output_dir) if output_dir else None,
             error=proc.stderr or proc.stdout,
@@ -142,7 +142,7 @@ def run_fold(
     resolved_output = Path(output_dir) if output_dir else tool_dir / "output"
     metrics = parse_fold_output(resolved_output)
     return ToolResult(
-        tool="proteus-fold",
+        tool="protenix",
         status="success",
         output_dir=resolved_output,
         metrics=metrics,

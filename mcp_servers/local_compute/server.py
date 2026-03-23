@@ -115,7 +115,7 @@ async def local_run_boltzgen(
     budget: int = 10,
     extra_args: str = "",
 ) -> str:
-    """Run BoltzGen (proteus-ab) locally for antibody/nanobody design.
+    """Run BoltzGen locally for antibody/nanobody design.
 
     Args:
         spec_yaml: Path to the entities YAML spec file.
@@ -127,11 +127,11 @@ async def local_run_boltzgen(
     Returns:
         JSON object with success status, output directory, and any errors.
     """
-    tool_path = TOOL_PATHS["proteus-ab"]
+    tool_path = TOOL_PATHS["boltzgen"]
     if not tool_path.exists():
         return json.dumps(
             _error(
-                f"proteus-ab not found at {tool_path}. "
+                f"BoltzGen not found at {tool_path}. "
                 f"Set PROTEUS_AB_DIR or BOLTZGEN_DIR to override."
             )
         )
@@ -191,7 +191,7 @@ async def local_run_pxdesign(
     n_sample: int = 500,
     extra_args: str = "",
 ) -> str:
-    """Run PXDesign (proteus-prot) locally for de novo protein binder design.
+    """Run PXDesign locally for de novo protein binder design.
 
     Args:
         config_yaml: Path to the PXDesign YAML config file.
@@ -203,11 +203,11 @@ async def local_run_pxdesign(
     Returns:
         JSON object with success status, output directory, and any errors.
     """
-    tool_path = TOOL_PATHS["proteus-prot"]
+    tool_path = TOOL_PATHS["pxdesign"]
     if not tool_path.exists():
         return json.dumps(
             _error(
-                f"proteus-prot not found at {tool_path}. "
+                f"PXDesign not found at {tool_path}. "
                 f"Set PROTEUS_PROT_DIR or PXDESIGN_DIR to override."
             )
         )
@@ -267,7 +267,7 @@ async def local_run_protenix(
     model: str = "base_default",
     extra_args: str = "",
 ) -> str:
-    """Run Protenix (proteus-fold) locally for structure prediction.
+    """Run Protenix locally for structure prediction.
 
     Args:
         input_json: Path to the Protenix input JSON file.
@@ -278,11 +278,11 @@ async def local_run_protenix(
     Returns:
         JSON object with success status, output directory, and any errors.
     """
-    tool_path = TOOL_PATHS["proteus-fold"]
+    tool_path = TOOL_PATHS["protenix"]
     if not tool_path.exists():
         return json.dumps(
             _error(
-                f"proteus-fold not found at {tool_path}. "
+                f"Protenix not found at {tool_path}. "
                 f"Set PROTEUS_FOLD_DIR or PROTENIX_DIR to override."
             )
         )
@@ -451,7 +451,7 @@ async def ssh_run_job(
     the results.
 
     Args:
-        tool: Tool to run ("proteus-fold", "proteus-prot", or "proteus-ab").
+        tool: Tool to run ("protenix", "pxdesign", or "boltzgen").
         config_path: Local path to the config/spec file.
         output_dir: Local directory to download results to.
         extra_args: Additional CLI arguments for the tool (optional).
@@ -464,7 +464,7 @@ async def ssh_run_job(
     Returns:
         JSON object with success status, job_id, output_dir, and any errors.
     """
-    valid_tools = {"proteus-fold", "proteus-prot", "proteus-ab"}
+    valid_tools = {"protenix", "pxdesign", "boltzgen"}
     if tool not in valid_tools:
         return json.dumps(
             _error(f"Unknown tool: {tool}. Must be one of: {sorted(valid_tools)}")

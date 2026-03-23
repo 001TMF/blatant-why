@@ -5,7 +5,7 @@ export interface RunManifest {
   runId: string;
   outputDir: string;
   total: number;
-  tool: "proteus-ab" | "proteus-prot" | "proteus-fold";
+  tool: "boltzgen" | "pxdesign" | "protenix";
   target?: string;
   pdb?: string;
   chain?: string;
@@ -176,9 +176,9 @@ export function pollPXDesign(manifest: RunManifest): RunStatus {
 
 export function pollRunStatus(manifest: RunManifest): RunStatus {
   switch (manifest.tool) {
-    case "proteus-ab":
+    case "boltzgen":
       return pollProteusAb(manifest);
-    case "proteus-prot":
+    case "pxdesign":
       return pollPXDesign(manifest);
     default:
       return { stage: 1, stageName: "Running", stagesTotal: 4, designsComplete: 0, designsTotal: manifest.total, elapsed: Math.floor((Date.now() - manifest.startTime) / 1000), complete: false, error: false };
@@ -187,16 +187,16 @@ export function pollRunStatus(manifest: RunManifest): RunStatus {
 
 export function getStageNames(tool: string): string[] {
   switch (tool) {
-    case "proteus-ab": return AB_STAGES;
-    case "proteus-prot": return PROT_STAGES;
+    case "boltzgen": return AB_STAGES;
+    case "pxdesign": return PROT_STAGES;
     default: return FOLD_STAGES;
   }
 }
 
 export function getToolNames(tool: string): string[] {
   switch (tool) {
-    case "proteus-ab": return AB_TOOLS;
-    case "proteus-prot": return PROT_TOOLS;
+    case "boltzgen": return AB_TOOLS;
+    case "pxdesign": return PROT_TOOLS;
     default: return FOLD_TOOLS;
   }
 }

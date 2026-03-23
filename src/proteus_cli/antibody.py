@@ -150,11 +150,11 @@ def run_antibody_design(
     ToolResult
         Standardized result with status ``"success"`` or ``"error"``.
     """
-    tool_path = validate_tool_path("proteus-ab")
+    tool_path = validate_tool_path("boltzgen")
     spec_path = Path(spec_path)
 
     cmd: list[str] = [
-        "proteus-ab", "run",
+        "boltzgen", "run",
         str(spec_path),
         "--protocol", protocol,
         "--num_designs", str(num_designs),
@@ -168,19 +168,19 @@ def run_antibody_design(
     if prefilter:
         cmd.append("--prefilter")
 
-    env = get_tool_env("proteus-ab")
+    env = get_tool_env("boltzgen")
     proc = run_command(cmd, cwd=tool_path, env=env)
 
     if proc.returncode != 0:
         return ToolResult(
-            tool="proteus-ab",
+            tool="boltzgen",
             status="error",
             error=proc.stderr or proc.stdout,
         )
 
     resolved_output = Path(output_dir) if output_dir else spec_path.parent
     return ToolResult(
-        tool="proteus-ab",
+        tool="boltzgen",
         status="success",
         output_dir=resolved_output,
     )

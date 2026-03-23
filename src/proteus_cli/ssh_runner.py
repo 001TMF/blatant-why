@@ -105,9 +105,9 @@ def ssh_check_tools(config: SSHConfig) -> dict[str, bool]:
     """Check which Proteus tools are available on the remote server."""
     tools: dict[str, bool] = {}
     for name, subdir in [
-        ("proteus-fold", "Protenix"),
-        ("proteus-prot", "PXDesign"),
-        ("proteus-ab", "proteus-design"),
+        ("protenix", "Protenix"),
+        ("pxdesign", "PXDesign"),
+        ("boltzgen", "proteus-design"),
     ]:
         result = ssh_run_command(
             config,
@@ -169,17 +169,17 @@ def ssh_run_design_job(
 
     # Build tool command
     tool_cmds = {
-        "proteus-fold": (
+        "protenix": (
             f"cd {config.tools_path}/Protenix && "
             f"protenix pred -i {remote_config} -o {remote_output} "
             f"--use_default_params true --dtype bf16"
         ),
-        "proteus-prot": (
+        "pxdesign": (
             f"cd {config.tools_path}/PXDesign && "
             f"pxdesign pipeline -i {remote_config} -o {remote_output} "
             f"{extra_args}"
         ),
-        "proteus-ab": (
+        "boltzgen": (
             f"cd {config.tools_path}/proteus-design && "
             f"proteus-ab run {remote_config} --output {remote_output} "
             f"{extra_args}"

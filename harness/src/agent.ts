@@ -119,7 +119,7 @@ For ranked results:
 | "nanobody", "VHH", "single-domain", "sdAb" | VHH | nanobody-anything | caplacizumab, ozoralizumab |
 | "scFv", "antibody", "Fab", "IgG", "mAb" | scFv | antibody-anything | adalimumab, tezepelumab |
 | "binder", "miniprotein", "de novo protein" | De novo | protein-anything | None |
-| "fold", "predict structure", "validate" | Fold (proteus-fold) | -- | -- |
+| "fold", "predict structure", "validate" | Fold (protenix) | -- | -- |
 | Ambiguous / unclear | VHH (default) | nanobody-anything | caplacizumab |
 
 Derive the modality from the user's description. NEVER ask "which modality should I use?"
@@ -264,7 +264,7 @@ STEP 1: Create manifest FIRST (before launching pipeline):
      "runId": "<uuid>",
      "outputDir": "<absolute-path-to-output-dir>",
      "total": <num_designs>,
-     "tool": "<proteus-ab|proteus-prot|proteus-fold>",
+     "tool": "<boltzgen|pxdesign|protenix>",
      "target": "<target-name>",
      "pdb": "<pdb-id>",
      "chain": "<chain-id>",
@@ -274,10 +274,10 @@ STEP 1: Create manifest FIRST (before launching pipeline):
 STEP 2: Launch pipeline in BACKGROUND:
    nohup <pipeline-command> > .proteus/pipeline.log 2>&1 &
 
-   For proteus-ab:
+   For boltzgen:
    nohup proteus-ab run spec.yaml --output <dir> --num_designs <N> ... > .proteus/pipeline.log 2>&1 &
 
-   For PXDesign:
+   For pxdesign:
    nohup pxdesign pipeline --preset extended -i config.yaml ... > .proteus/pipeline.log 2>&1 &
 
 STEP 3: Save the PID — append it to the manifest:
@@ -304,16 +304,16 @@ Your job is to:
 
 ## Core Design Tools
 - **BoltzGen** (via Tamarind Bio): Primary design engine for all 3 modalities (VHH, scFv, De novo). Use tamarind_submit_job with type "boltzgen".
-- **proteus-fold**: Structure prediction/validation. See the \`proteus-fold\` skill.
+- **protenix**: Structure prediction/validation. See the \`protenix\` skill.
 - **Levitate Bio**: Alternative pipeline (RFAntibody). Use levitate_run_rfantibody.
 
 ## Database & Screening MCP Tools
-- proteus-pdb: pdb_search, pdb_fetch_structure, pdb_get_chains, pdb_interface_residues, pdb_download
-- proteus-uniprot: uniprot_search, uniprot_fetch_protein, uniprot_get_domains, uniprot_get_variants
-- proteus-sabdab: search SAbDab for antibody structures
+- pdb: pdb_search, pdb_fetch_structure, pdb_get_chains, pdb_interface_residues, pdb_download
+- uniprot: uniprot_search, uniprot_fetch_protein, uniprot_get_domains, uniprot_get_variants
+- sabdab: search SAbDab for antibody structures
 - proteus-screening: screen_liabilities, screen_developability, screen_net_charge, score_ipsae, score_pbind, screen_composite, interpret_scores
 
-## Full Campaign Pipeline (proteus-ab)
+## Full Campaign Pipeline (boltzgen)
 
 A complete antibody/nanobody campaign runs 6 stages:
 1. DESIGN — BoltzGen diffusion generates backbone structures
@@ -328,7 +328,7 @@ Campaign output structure:
 - intermediate_designs_inverse_folded/ — sequences + refold scores
 - final_ranked_designs/ — filtered top candidates with metrics CSV
 
-## Full Campaign Pipeline (proteus-prot / PXDesign)
+## Full Campaign Pipeline (pxdesign / PXDesign)
 
 De novo binder campaigns use PXDesign with 3 modes:
 - extended: Diffusion → AF2 screening → Protenix validation (full pipeline)
@@ -340,7 +340,7 @@ af2_ipAE, af2_ipTM, ptx_ipTM, ptx_binder_RMSD, AF2-IG-success, Protenix-success
 
 ## Filtering Thresholds (from production configs)
 
-proteus-ab filtering:
+boltzgen filtering:
 - design_to_target_iptm > 0.8
 - design_ptm > 0.75
 - No free cysteines
@@ -454,7 +454,7 @@ When presenting results, always show ipSAE as the first score column.
 - Alternative: Levitate Bio (levitate_run_rfantibody). Local GPU: /data/proteus/ tools.
 - Campaign commands: /campaign, /approve-lab, /costs, /team
 - Lab submissions: ALWAYS require /approve-lab first. NEVER bypass.
-- New MCP servers: proteus-tamarind, proteus-levitate, proteus-adaptyv, proteus-campaign, proteus-research`;
+- New MCP servers: tamarind, levitate, adaptyv, proteus-campaign, proteus-research`;
 }
 
 export async function* streamQuery(

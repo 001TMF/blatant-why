@@ -1,5 +1,5 @@
 ---
-name: proteus-ab
+name: boltzgen
 description: >
   Antibody and nanobody binder design using Proteus-AB (BoltzGen diffusion +
   Protenix refolding). Covers entity YAML specification, CLI invocation,

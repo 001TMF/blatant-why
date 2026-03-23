@@ -1,18 +1,18 @@
 {
   "mcpServers": {
-    "proteus-pdb": {
+    "pdb": {
       "command": "python",
       "args": [
         "mcp_servers/pdb/server.py"
       ]
     },
-    "proteus-uniprot": {
+    "uniprot": {
       "command": "python",
       "args": [
         "mcp_servers/uniprot/server.py"
       ]
     },
-    "proteus-sabdab": {
+    "sabdab": {
       "command": "python",
       "args": [
         "mcp_servers/sabdab/server.py"
@@ -24,19 +24,19 @@
         "mcp_servers/screening/server.py"
       ]
     },
-    "proteus-tamarind": {
+    "tamarind": {
       "command": "python",
       "args": [
         "mcp_servers/tamarind/server.py"
       ]
     },
-    "proteus-levitate": {
+    "levitate": {
       "command": "python",
       "args": [
         "mcp_servers/levitate/server.py"
       ]
     },
-    "proteus-adaptyv": {
+    "adaptyv": {
       "command": "python",
       "args": [
         "mcp_servers/adaptyv/server.py"

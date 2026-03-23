@@ -1,5 +1,5 @@
 ---
-name: proteus-prot
+name: pxdesign
 description: >
   De novo protein binder design using PXDesign. Use this skill when designing
   non-antibody protein binders against a target structure. Covers YAML config

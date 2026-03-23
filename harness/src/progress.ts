@@ -50,7 +50,7 @@ export function renderProgress(run: RunProgress): string {
 }
 
 export function createDefaultStages(tool: string): PipelineStage[] {
-  if (tool === "proteus-ab") {
+  if (tool === "boltzgen") {
     return [
       { name: "Design", toolName: "BoltzGen", status: "pending" },
       { name: "Inverse Fold", toolName: "AntiFold", status: "pending" },
@@ -59,7 +59,7 @@ export function createDefaultStages(tool: string): PipelineStage[] {
       { name: "Filter & Rank", toolName: "Quality Filter", status: "pending" },
     ];
   }
-  if (tool === "proteus-prot") {
+  if (tool === "pxdesign") {
     return [
       { name: "Design", toolName: "PXDesign", status: "pending" },
       { name: "AF2 Screening", toolName: "AlphaFold2", status: "pending" },

@@ -35,9 +35,9 @@ class ToolResult:
 
 # Default tool paths — override via environment variables
 TOOL_PATHS = {
-    "proteus-fold": Path(os.getenv("PROTEUS_FOLD_DIR", os.getenv("PROTENIX_DIR", "/data/proteus/Protenix"))),
-    "proteus-prot": Path(os.getenv("PROTEUS_PROT_DIR", os.getenv("PXDESIGN_DIR", "/data/proteus/PXDesign"))),
-    "proteus-ab": Path(os.getenv("PROTEUS_AB_DIR", os.getenv("BOLTZGEN_DIR", "/data/proteus/proteus-design"))),
+    "protenix": Path(os.getenv("PROTEUS_FOLD_DIR", os.getenv("PROTENIX_DIR", "/data/proteus/Protenix"))),
+    "pxdesign": Path(os.getenv("PROTEUS_PROT_DIR", os.getenv("PXDESIGN_DIR", "/data/proteus/PXDesign"))),
+    "boltzgen": Path(os.getenv("PROTEUS_AB_DIR", os.getenv("BOLTZGEN_DIR", "/data/proteus/proteus-design"))),
 }
 
 
@@ -79,13 +79,13 @@ def get_tool_env(tool_name: str) -> dict[str, str]:
     base = dict(os.environ)
     tool_dir = TOOL_PATHS[tool_name]
 
-    if tool_name == "proteus-fold":
+    if tool_name == "protenix":
         base["PROTENIX_ROOT_DIR"] = str(tool_dir)
-    elif tool_name == "proteus-prot":
+    elif tool_name == "pxdesign":
         base["PROTENIX_DATA_ROOT_DIR"] = str(tool_dir / "release_data" / "ccd_cache")
         base["TOOL_WEIGHTS_ROOT"] = str(tool_dir / "tool_weights")
         base.setdefault("CUTLASS_PATH", str(Path.home() / "cutlass"))
-    elif tool_name == "proteus-ab":
+    elif tool_name == "boltzgen":
         base["PROTEUS_MODELS_DIR"] = str(Path.home() / ".cache" / "proteus-ab")
         base["LAYERNORM_TYPE"] = "openfold"
 

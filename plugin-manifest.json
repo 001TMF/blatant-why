@@ -4,30 +4,30 @@
   "description": "Proteus protein design agent — conversational protein and antibody design with custom scoring",
   "author": "Proteus",
   "tools": {
-    "proteus-fold": {
+    "protenix": {
       "description": "AF3-class structure prediction with Protenix v1",
       "engine": "Protenix",
       "path": "/data/proteus/Protenix"
     },
-    "proteus-prot": {
+    "pxdesign": {
       "description": "De novo protein binder design with PXDesign",
       "engine": "PXDesign",
       "path": "/data/proteus/PXDesign"
     },
-    "proteus-ab": {
+    "boltzgen": {
       "description": "Antibody/nanobody design with BoltzGen + Protenix",
       "engine": "Proteus-AB",
       "path": "/data/proteus/proteus-design"
     }
   },
   "mcpServers": [
-    "proteus-pdb",
-    "proteus-uniprot",
-    "proteus-sabdab",
+    "pdb",
+    "uniprot",
+    "sabdab",
     "proteus-screening",
-    "proteus-tamarind",
-    "proteus-levitate",
-    "proteus-adaptyv",
+    "tamarind",
+    "levitate",
+    "adaptyv",
     "proteus-campaign",
     "proteus-research",
     "proteus-local"
@@ -39,9 +39,9 @@
     "proteus-screening",
     "proteus-campaign-manager",
     "proteus-database",
-    "proteus-fold",
-    "proteus-prot",
-    "proteus-ab"
+    "protenix",
+    "pxdesign",
+    "boltzgen"
   ],
   "scoring": {
     "ipSAE": {

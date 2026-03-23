@@ -55,19 +55,6 @@ PASS_RATES: dict[tuple[str, str, str], dict[str, float]] = {
         "iptm": 0.28, "ipsae": 0.22, "plddt": 0.72, "rmsd": 0.42,
         "liability": 0.75, "developability": 0.78,
     },
-    # Legacy: proteus-ab nanobody (kept for backward compat)
-    ("proteus-ab", "nanobody-anything", "well-studied"): {
-        "iptm": 0.55, "ipsae": 0.45, "plddt": 0.85, "rmsd": 0.65,
-        "liability": 0.75, "developability": 0.85,
-    },
-    ("proteus-ab", "nanobody-anything", "moderate"): {
-        "iptm": 0.40, "ipsae": 0.35, "plddt": 0.80, "rmsd": 0.55,
-        "liability": 0.70, "developability": 0.80,
-    },
-    ("proteus-ab", "nanobody-anything", "novel"): {
-        "iptm": 0.25, "ipsae": 0.25, "plddt": 0.75, "rmsd": 0.45,
-        "liability": 0.70, "developability": 0.80,
-    },
 }
 
 # Ordered sequence of filter stages applied during screening.

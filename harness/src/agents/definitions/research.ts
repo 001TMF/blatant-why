@@ -4,7 +4,7 @@ export const researchAgent: AgentDefinition = {
   name: "research",
   role: "Target analysis, literature search, prior art identification",
   systemPromptPath: "research.md",
-  mcpServers: ["pdb", "uniprot", "sabdab", "research"],
+  mcpServers: ["pdb", "uniprot", "sabdab", "proteus-research"],
   disallowedTools: ["Write", "Edit", "Bash", "NotebookEdit"],
   maxTurns: 15,
 };

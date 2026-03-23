@@ -21,7 +21,7 @@ from pathlib import Path
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("proteus-adaptyv")
+mcp = FastMCP("adaptyv")
 
 # ---------------------------------------------------------------------------
 # Constants

@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("proteus-pdb")
+mcp = FastMCP("pdb")
 
 # ---------------------------------------------------------------------------
 # Constants

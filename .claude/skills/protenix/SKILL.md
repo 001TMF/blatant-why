@@ -1,5 +1,5 @@
 ---
-name: proteus-fold
+name: protenix
 description: >
   Structure prediction using Protenix v1 (AF3-class, 368M params). Use this skill
   when: (1) Predicting protein or complex structure from sequence, (2) Validating

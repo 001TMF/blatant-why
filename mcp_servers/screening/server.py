@@ -744,7 +744,84 @@ async def screen_align_sequences(
 
 
 # ---------------------------------------------------------------------------
-# Tool 12: screen_shape_complementarity
+# Tool 12: screen_cross_validate
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def screen_cross_validate(
+    designs_json: str,
+    predictor_1: str = "boltzgen",
+    predictor_2: str = "protenix",
+) -> str:
+    """Cross-validate designs using dual structure predictor scores.
+
+    Compares binding predictions from two independent predictors (e.g.,
+    BoltzGen and Protenix) to identify consensus high-confidence candidates
+    and reject designs where predictors strongly disagree.
+
+    Classification:
+    - CONSENSUS (high confidence): ipTM delta < 0.3, both ipSAE > 0.3
+    - DIVERGENT (medium confidence): one metric fails threshold
+    - REJECTED (low confidence): ipTM delta > 0.5 or both ipSAE < 0.1
+
+    Args:
+        designs_json: JSON array of design objects. Each must have scores
+            from both predictors, keyed as e.g. "boltzgen_iptm",
+            "protenix_iptm", "boltzgen_ipsae", "protenix_ipsae". Also
+            include "name" or "design_name" for labeling.
+        predictor_1: Key prefix for the first predictor (default "boltzgen").
+        predictor_2: Key prefix for the second predictor (default "protenix").
+
+    Returns:
+        JSON object with per-design results (status, confidence, ipTM delta,
+        ipSAE agreement), summary counts, and a formatted text report.
+    """
+    try:
+        designs = json.loads(designs_json)
+    except json.JSONDecodeError as exc:
+        return _error(f"Invalid designs JSON: {exc}")
+
+    if not isinstance(designs, list):
+        return _error("designs_json must be a JSON array.")
+
+    try:
+        from proteus_cli.screening.cross_validation import (
+            cross_validate_designs,
+            format_cross_validation,
+        )
+
+        results = cross_validate_designs(
+            designs,
+            predictor_1_key=predictor_1,
+            predictor_2_key=predictor_2,
+        )
+        results_json = [asdict(r) for r in results]
+        formatted = format_cross_validation(results)
+
+        consensus = sum(1 for r in results if r.status == "consensus")
+        divergent = sum(1 for r in results if r.status == "divergent")
+        rejected = sum(1 for r in results if r.status == "rejected")
+
+        return json.dumps(
+            {
+                "results": results_json,
+                "summary": {
+                    "total": len(results),
+                    "consensus": consensus,
+                    "divergent": divergent,
+                    "rejected": rejected,
+                },
+                "formatted": formatted,
+            },
+            indent=2,
+        )
+    except Exception as exc:
+        return _error(f"Cross-validation failed: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Tool 13: screen_shape_complementarity
 # ---------------------------------------------------------------------------
 
 
@@ -805,7 +882,7 @@ async def screen_shape_complementarity(
 
 
 # ---------------------------------------------------------------------------
-# Tool 13: screen_naturalness
+# Tool 14: screen_naturalness
 # ---------------------------------------------------------------------------
 
 

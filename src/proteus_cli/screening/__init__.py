@@ -1,4 +1,4 @@
-"""Proteus screening — PTM liabilities, net charge, developability, diversity, diagnosis, Pareto, alignment, shape complementarity."""
+"""Proteus screening — PTM liabilities, net charge, developability, diversity, diagnosis, Pareto, alignment, shape complementarity, cross-validation."""
 
 from .alignment import (
     cdr_align,
@@ -27,11 +27,21 @@ from .pareto import (
     is_dominated,
     pareto_front,
 )
+from .cross_validation import (
+    CrossValidationResult,
+    classify_cross_validation,
+    cross_validate_designs,
+    format_cross_validation,
+)
 from .shape_complementarity import (
     compute_interface_metrics,
 )
 
 __all__ = [
+    "CrossValidationResult",
+    "classify_cross_validation",
+    "cross_validate_designs",
+    "format_cross_validation",
     "FailureDiagnosis",
     "FeatureAnalysis",
     "cdr_align",

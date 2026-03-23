@@ -15,3 +15,27 @@ PRIMARY: ipSAE (rank by this first)
 SECONDARY: ipTM (tiebreaker)
 
 OUTPUT: Write aggregated_results.csv and candidates.json to campaign scores/ directory.
+
+## Cross-Validation Protocol (Dual Predictor)
+
+After composite ranking, take the top N candidates (default: top 10 or top 20% of survivors):
+
+1. **Submit refolding jobs**: For each candidate, submit to Protenix via Tamarind
+   - Use tamarind_submit_job with type "protenix"
+   - Or type "boltz" for Boltz-2 validation
+   - Include both design and target sequences
+
+2. **Compare predictions**:
+   - ipTM agreement: |BoltzGen_ipTM - Protenix_ipTM| < 0.3
+   - ipSAE agreement: both > 0.3 (minimum viable)
+   - Pose RMSD: if structures available, CA-RMSD < 3.0Å between predictions
+
+3. **Classification**:
+   - CONSENSUS: Both predictors agree (pass all thresholds) → HIGH confidence
+   - DIVERGENT: Predictors disagree on one metric → MEDIUM confidence, flag for review
+   - REJECTED: Predictors strongly disagree (ipTM delta > 0.5 or both ipSAE < 0.1) → remove
+
+4. **Output**: Mark each candidate with cross_validation_status in scores
+
+Trigger: Always run when candidates will be submitted to lab (/approve-lab pending).
+Skip: Preview campaigns, iteration rounds where compute budget is tight.

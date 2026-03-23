@@ -227,6 +227,42 @@ For antibody designs, compute sequence identity over CDR regions only (not frame
 
 ---
 
+## Cross-Validation Protocol (Dual Predictor)
+
+After composite ranking, take the top N candidates (default: top 10 or top 20% of survivors) and validate with a second structure predictor to filter out false positives.
+
+### Step 1: Submit Refolding Jobs
+
+For each top candidate, submit to a second predictor via Tamarind:
+- Use `tamarind_submit_job` with type `"protenix"` for Protenix refolding
+- Or type `"boltz"` for Boltz-2 validation
+- Include both design and target sequences in the submission
+
+### Step 2: Compare Predictions
+
+| Metric | Threshold | Description |
+|--------|-----------|-------------|
+| ipTM agreement | \|predictor1_ipTM - predictor2_ipTM\| < 0.3 | Interface confidence must converge |
+| ipSAE agreement | Both > 0.3 | Both predictors see a viable interface |
+| Pose RMSD | CA-RMSD < 3.0 A between predictions | Structural poses must agree |
+
+### Step 3: Classification
+
+| Status | Criteria | Confidence | Action |
+|--------|----------|------------|--------|
+| CONSENSUS | All thresholds pass | HIGH | Advance to lab submission |
+| DIVERGENT | One metric fails | MEDIUM | Flag for manual review |
+| REJECTED | ipTM delta > 0.5 OR both ipSAE < 0.1 | LOW | Remove from candidate set |
+
+### When to Run
+
+- **Always**: When candidates will be submitted to lab (`/approve-lab` pending)
+- **Skip**: Preview campaigns, iteration rounds where compute budget is tight
+
+### MCP Tool
+
+Use `screen_cross_validate` to run programmatic cross-validation on a batch of designs with dual-predictor scores. Input: JSON array of design objects with scores from both predictors. Output: classification, confidence, and formatted report.
+
 ## Failure Recovery
 
 When screening eliminates all or most designs, do not simply report failure. Diagnose the cause and recommend corrective action.
@@ -304,6 +340,15 @@ Generate human-readable interpretation of scoring metrics for a single design.
 Input: `{ "iptm": 0.85, "ipsae": 0.72, "plddt": 82.3 }`
 Output: JSON with per-metric interpretation and summary.
 
+### screen_cross_validate
+
+Cross-validate designs using dual-predictor scores. Classifies each design as CONSENSUS (high confidence), DIVERGENT (medium, needs review), or REJECTED (low confidence, remove).
+
+Input: `{ "designs_json": "[{\"name\": \"d1\", \"boltzgen_iptm\": 0.8, \"protenix_iptm\": 0.75, \"boltzgen_ipsae\": 0.6, \"protenix_ipsae\": 0.55}]" }`
+Output: JSON with per-design classification (status, confidence, ipTM delta, ipSAE agreement) and summary counts.
+
+
+
 ---
 
 ## Quick Reference Card
@@ -321,6 +366,11 @@ LIABILITY TRIAGE:
   Interface + high sev   = STRONG FLAG
   Framework + high sev   = TOLERABLE
   Framework + med/low    = ACCEPTABLE
+
+CROSS-VALIDATION (dual predictor):
+  CONSENSUS: ipTM delta < 0.3, both ipSAE > 0.3 -> HIGH confidence
+  DIVERGENT: one metric fails -> MEDIUM confidence
+  REJECTED: ipTM delta > 0.5 or both ipSAE < 0.1 -> LOW confidence
 
 DIVERSITY CLUSTERING:
   Antibodies: 90% seq ID over CDRs

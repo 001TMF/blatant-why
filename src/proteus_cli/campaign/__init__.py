@@ -37,6 +37,7 @@ from .iteration import (
     analyze_lab_results,
     recommend_next_round,
 )
+from .decisions import log_decision, read_decisions
 from .state import (
     CampaignState,
     RoundState,
@@ -95,4 +96,7 @@ __all__ = [
     "IterationAnalysis",
     "analyze_lab_results",
     "recommend_next_round",
+    # decisions
+    "log_decision",
+    "read_decisions",
 ]

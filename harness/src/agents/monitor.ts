@@ -1,4 +1,5 @@
 import { readFileSync, existsSync, readdirSync } from "fs";
+import { exec } from "child_process";
 import { resolve, join } from "path";
 import type { MonitorEvent, MonitorCallback } from "./types.js";
 
@@ -96,12 +97,14 @@ export class CampaignMonitor {
 
     // Check for completion markers
     if (this.checkCompletion(outputDir)) {
+      const completeMessage = `Run complete: ${fileCount} files`;
       this.emit({
         type: "complete",
         runId: run.run_id,
-        message: `Run complete: ${fileCount} files`,
+        message: completeMessage,
         data: { fileCount },
       });
+      this.notifyCompletion(run.run_id, completeMessage);
     }
 
     // Check for error markers
@@ -140,6 +143,25 @@ export class CampaignMonitor {
       return readdirSync(dir, { recursive: true }).length;
     } catch {
       return 0;
+    }
+  }
+
+  /** Send a desktop notification when a job completes. */
+  private notifyCompletion(runId: string, message: string): void {
+    // Terminal bell
+    process.stdout.write("\x07");
+
+    // Try native notification (Linux notify-send, macOS osascript)
+    const title = "Proteus — Job Complete";
+    const isLinux = process.platform === "linux";
+    const isMac = process.platform === "darwin";
+
+    if (isLinux) {
+      exec(`notify-send "${title}" "${message}" 2>/dev/null`);
+    } else if (isMac) {
+      exec(
+        `osascript -e 'display notification "${message}" with title "${title}"' 2>/dev/null`,
+      );
     }
   }
 

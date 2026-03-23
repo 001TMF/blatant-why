@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 import json
+import os
+import platform
+import shutil
+import subprocess
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -69,10 +73,43 @@ class CampaignState:
     updated_at: str = ""
     iteration: int = 0
     history: list[dict[str, Any]] = field(default_factory=list)
+    environment: dict[str, Any] = field(default_factory=dict)
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _get_cmd_output(cmd: str) -> str:
+    """Run a shell command and return its stdout, or 'not found' on failure."""
+    try:
+        return subprocess.run(
+            cmd.split(), capture_output=True, text=True, timeout=5
+        ).stdout.strip()
+    except Exception:
+        return "not found"
+
+
+def _capture_environment() -> dict:
+    """Capture environment snapshot for reproducibility."""
+    env = {
+        "python_version": platform.python_version(),
+        "node_version": _get_cmd_output("node --version"),
+        "platform": platform.platform(),
+        "hostname": platform.node(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    # Tool versions
+    for tool, cmd in [
+        ("boltzgen", "boltzgen --version"),
+        ("protenix", "protenix --version"),
+        ("pxdesign", "pxdesign --version"),
+    ]:
+        env[f"{tool}_version"] = _get_cmd_output(cmd)
+    # API keys (just whether set, not values)
+    for key in ["TAMARIND_API_KEY", "LEVITATE_CLIENT_ID", "ADAPTYV_API_TOKEN"]:
+        env[f"{key}_set"] = bool(os.getenv(key))
+    return env
 
 
 def create_campaign(
@@ -111,6 +148,7 @@ def create_campaign(
             "to_status": "draft",
             "reason": "Campaign created",
         }],
+        environment=_capture_environment(),
     )
 
     save_campaign(state, str(campaign_dir / "campaign_log.json"))

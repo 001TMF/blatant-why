@@ -386,6 +386,63 @@ async def interpret_scores(
 
 
 # ---------------------------------------------------------------------------
+# Tool 7: screen_diversity
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def screen_diversity(
+    sequences_json: str,
+    identity_threshold: float = 0.9,
+) -> str:
+    """Analyze sequence diversity of a candidate set.
+
+    Clusters sequences by pairwise identity and reports diversity metrics
+    including cluster count, diversity ratio, average pairwise identity,
+    and a redundancy warning if the set is too homogeneous.
+
+    Args:
+        sequences_json: JSON array of objects, each with at least a
+            "sequence" key containing the amino acid string. May also
+            include "name" or other metadata fields.
+        identity_threshold: Clustering threshold (0.0-1.0). Sequences
+            with identity >= this value are placed in the same cluster.
+            Default 0.9 (90% identity).
+
+    Returns:
+        JSON object with num_sequences, num_clusters, diversity_ratio,
+        avg_pairwise_identity, largest_cluster_size, singleton_clusters,
+        redundancy_warning, and a formatted text report.
+    """
+    try:
+        sequences = json.loads(sequences_json)
+    except json.JSONDecodeError as exc:
+        return _error(f"Invalid sequences JSON: {exc}")
+
+    if not isinstance(sequences, list):
+        return _error("sequences_json must be a JSON array.")
+
+    for i, seq in enumerate(sequences):
+        if not isinstance(seq, dict) or "sequence" not in seq:
+            return _error(
+                f"Entry {i} must be an object with a 'sequence' key."
+            )
+
+    try:
+        from proteus_cli.screening.diversity import (
+            diversity_report,
+            format_diversity,
+        )
+
+        report = diversity_report(sequences, identity_threshold=identity_threshold)
+        report["threshold"] = int(identity_threshold * 100)
+        report["formatted"] = format_diversity(report)
+        return json.dumps(report, indent=2)
+    except Exception as exc:
+        return _error(f"Diversity analysis failed: {exc}")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 

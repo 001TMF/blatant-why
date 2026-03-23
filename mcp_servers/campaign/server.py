@@ -25,6 +25,7 @@ from proteus_cli.campaign.export import (
     export_csv as export_csv_fn,
     export_fasta as export_fasta_fn,
 )
+from proteus_cli.campaign.decisions import log_decision, read_decisions
 from proteus_cli.campaign.state import (
     CampaignState,
     RoundState,
@@ -553,6 +554,98 @@ async def campaign_export_csv(
         return json.dumps({"exported": path, "format": "csv"}, indent=2)
     except Exception as exc:
         return _error(f"Failed to export CSV: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Tool 11: campaign_log_decision
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def campaign_log_decision(
+    campaign_dir: str,
+    agent: str,
+    decision: str,
+    reasoning: str,
+    alternatives: str = "[]",
+    confidence: str = "high",
+) -> str:
+    """Record a decision in the campaign audit trail.
+
+    Appends an entry to decision_log.jsonl inside the campaign directory.
+
+    Args:
+        campaign_dir: Path to the campaign directory.
+        agent: Name of the agent making the decision.
+        decision: Short description of what was decided.
+        reasoning: Explanation of why this decision was made.
+        alternatives: JSON array of alternative options considered (default "[]").
+        confidence: Confidence level — "high", "medium", or "low".
+
+    Returns:
+        JSON confirmation with timestamp and decision summary.
+    """
+    if not agent.strip():
+        return _error("agent must not be empty.")
+    if not decision.strip():
+        return _error("decision must not be empty.")
+    if not reasoning.strip():
+        return _error("reasoning must not be empty.")
+    if confidence not in ("high", "medium", "low"):
+        return _error(f"confidence must be 'high', 'medium', or 'low', got {confidence!r}")
+
+    try:
+        alt_list = json.loads(alternatives)
+        if not isinstance(alt_list, list):
+            return _error("alternatives must be a JSON array.")
+    except json.JSONDecodeError as exc:
+        return _error(f"Invalid alternatives JSON: {exc}")
+
+    try:
+        log_decision(
+            campaign_dir=campaign_dir,
+            agent=agent.strip(),
+            decision=decision.strip(),
+            reasoning=reasoning.strip(),
+            alternatives=alt_list,
+            confidence=confidence,
+        )
+        return json.dumps(
+            {
+                "logged": True,
+                "agent": agent.strip(),
+                "decision": decision.strip(),
+                "confidence": confidence,
+            },
+            indent=2,
+        )
+    except Exception as exc:
+        return _error(f"Failed to log decision: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Tool 12: campaign_get_decisions
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def campaign_get_decisions(campaign_dir: str) -> str:
+    """Retrieve all decisions from the campaign audit trail.
+
+    Reads decision_log.jsonl from the campaign directory.
+
+    Args:
+        campaign_dir: Path to the campaign directory.
+
+    Returns:
+        JSON array of decision entries with timestamp, agent, decision,
+        reasoning, alternatives, and confidence.
+    """
+    try:
+        decisions = read_decisions(campaign_dir)
+        return json.dumps(decisions, indent=2)
+    except Exception as exc:
+        return _error(f"Failed to read decisions: {exc}")
 
 
 # ---------------------------------------------------------------------------

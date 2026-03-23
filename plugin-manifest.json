@@ -33,7 +33,8 @@
     "adaptyv",
     "proteus-campaign",
     "proteus-research",
-    "proteus-local"
+    "proteus-local",
+    "proteus-knowledge"
   ],
   "skills": [
     "proteus-design-workflow",

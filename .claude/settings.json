@@ -59,6 +59,12 @@
       "args": [
         "mcp_servers/local_compute/server.py"
       ]
+    },
+    "proteus-knowledge": {
+      "command": "python",
+      "args": [
+        "mcp_servers/knowledge/server.py"
+      ]
     }
   }
 }

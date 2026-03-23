@@ -1,16 +1,23 @@
-"""Tamarind Bio MCP Server — default compute provider for open-source users."""
+"""Tamarind Bio MCP Server — default compute provider for open-source users.
+
+Endpoints verified by live API testing (2026-03-23).
+
+WARNING: Free tier allows only 10 jobs/month. The agent should minimize
+unnecessary submissions and prefer batching where possible.
+"""
 from __future__ import annotations
 
 import asyncio
 import json
 import os
 import time
+import uuid
 from pathlib import Path
 
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-from mcp_servers._shared.base import _error, _validate_pdb_path
+from mcp_servers._shared.base import _error
 
 mcp = FastMCP("tamarind")
 
@@ -20,12 +27,12 @@ mcp = FastMCP("tamarind")
 
 DEFAULT_BASE_URL = "https://app.tamarind.bio/api"
 TIMEOUT = 60.0
-MAX_PDB_UPLOAD_SIZE = 4 * 1024 * 1024  # 4 MB
+MAX_FILE_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
 
-# Model cache (populated by tamarind_list_models, expires after 1 hour)
-_model_cache: dict[str, object] = {}
-_model_cache_ts: float = 0.0
-_MODEL_CACHE_TTL = 3600.0  # seconds
+# Tool cache (populated by tamarind_list_tools, expires after 1 hour)
+_tool_cache: list[dict] | None = None
+_tool_cache_ts: float = 0.0
+_TOOL_CACHE_TTL = 3600.0  # seconds
 
 
 # ---------------------------------------------------------------------------
@@ -48,16 +55,29 @@ def _auth_headers() -> dict[str, str]:
     return {"x-api-key": key}
 
 
-def _handle_auth_error(status_code: int) -> str | None:
+def _require_api_key() -> str | None:
+    """Return an error JSON string if the API key is missing, else None."""
+    if not _api_key():
+        return json.dumps(
+            _error(
+                "TAMARIND_API_KEY is not set. "
+                "Get a free key at https://app.tamarind.bio and set it: "
+                "export TAMARIND_API_KEY=<your-key>"
+            )
+        )
+    return None
+
+
+def _handle_http_error(resp: httpx.Response) -> str | None:
     """Return an error string for auth/rate-limit issues, or None."""
-    if status_code == 401:
+    if resp.status_code == 401:
         return json.dumps(
             _error(
                 "Invalid TAMARIND_API_KEY. "
                 "Get one at https://app.tamarind.bio"
             )
         )
-    if status_code == 429:
+    if resp.status_code == 429:
         return json.dumps(
             _error(
                 "Rate limited. Free tier allows 10 jobs/month. "
@@ -67,176 +87,268 @@ def _handle_auth_error(status_code: int) -> str | None:
     return None
 
 
+def _generate_job_name(prefix: str = "proteus") -> str:
+    """Generate a unique job name with a prefix and short UUID."""
+    short_id = uuid.uuid4().hex[:8]
+    return f"{prefix}_{short_id}"
+
+
+def _parse_score(score_field: str | dict | None) -> dict | None:
+    """Parse the Score field from a job object (may be a JSON string or dict)."""
+    if score_field is None:
+        return None
+    if isinstance(score_field, dict):
+        return score_field
+    if isinstance(score_field, str) and score_field.strip():
+        try:
+            return json.loads(score_field)
+        except json.JSONDecodeError:
+            return {"raw": score_field}
+    return None
+
+
+def _parse_settings(settings_field: str | dict | None) -> dict | None:
+    """Parse the Settings field from a job object."""
+    if settings_field is None:
+        return None
+    if isinstance(settings_field, dict):
+        return settings_field
+    if isinstance(settings_field, str) and settings_field.strip():
+        try:
+            return json.loads(settings_field)
+        except json.JSONDecodeError:
+            return {"raw": settings_field}
+    return None
+
+
 # ---------------------------------------------------------------------------
-# Tool 1: tamarind_list_models
+# Tool 1: tamarind_list_tools
 # ---------------------------------------------------------------------------
 
 
 @mcp.tool()
-async def tamarind_list_models() -> str:
-    """List available models on Tamarind Bio with their capabilities.
+async def tamarind_list_tools() -> str:
+    """List all available tools on Tamarind Bio with their settings schemas.
+
+    Returns 226+ tools including structure prediction (protenix, boltz,
+    esmfold), binder design (boltzgen), developability (tap, tnp),
+    humanization (ablang), and more.
+
+    Results are cached for 1 hour.
 
     Returns:
-        JSON list of model objects with model_id, name, description,
-        and supported input types.
+        JSON list of tool objects with name, description, and settings schema.
     """
-    global _model_cache, _model_cache_ts
+    global _tool_cache, _tool_cache_ts
 
-    key = _api_key()
-    if not key:
-        return json.dumps(
-            _error(
-                "TAMARIND_API_KEY is not set. "
-                "Get a free key at https://app.tamarind.bio and set it: "
-                "export TAMARIND_API_KEY=<your-key>"
-            )
-        )
+    err = _require_api_key()
+    if err:
+        return err
 
     # Return cached result if still valid
     now = time.monotonic()
-    if _model_cache and (now - _model_cache_ts) < _MODEL_CACHE_TTL:
-        return json.dumps(_model_cache, indent=2)
+    if _tool_cache is not None and (now - _tool_cache_ts) < _TOOL_CACHE_TTL:
+        return json.dumps(
+            {"tools": _tool_cache, "count": len(_tool_cache), "cached": True},
+            indent=2,
+        )
 
-    url = f"{_base_url()}/models"
+    url = f"{_base_url()}/tools"
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(
                 url, headers=_auth_headers(), timeout=TIMEOUT
             )
-            auth_err = _handle_auth_error(resp.status_code)
-            if auth_err:
-                return auth_err
+            http_err = _handle_http_error(resp)
+            if http_err:
+                return http_err
             resp.raise_for_status()
             data = resp.json()
 
             # Cache the result
-            _model_cache = data
-            _model_cache_ts = time.monotonic()
+            tools = data if isinstance(data, list) else data.get("tools", data)
+            _tool_cache = tools
+            _tool_cache_ts = time.monotonic()
 
-            return json.dumps(data, indent=2)
+            return json.dumps(
+                {"tools": tools, "count": len(tools), "cached": False},
+                indent=2,
+            )
 
     except httpx.HTTPError as exc:
-        return json.dumps(_error(f"Failed to list Tamarind models: {exc}"))
+        return json.dumps(_error(f"Failed to list Tamarind tools: {exc}"))
     except Exception as exc:
         return json.dumps(
-            _error(f"Unexpected error listing Tamarind models: {exc}")
+            _error(f"Unexpected error listing Tamarind tools: {exc}")
         )
 
 
 # ---------------------------------------------------------------------------
-# Tool 2: tamarind_submit_job
+# Tool 2: tamarind_upload_file
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def tamarind_upload_file(file_path: str) -> str:
+    """Upload a file to Tamarind Bio for use in jobs.
+
+    Supports PDB, CIF, FASTA, and other structural biology file formats.
+
+    Args:
+        file_path: Absolute path to the local file to upload.
+
+    Returns:
+        JSON object with the uploaded file reference from Tamarind.
+    """
+    err = _require_api_key()
+    if err:
+        return err
+
+    p = Path(file_path).resolve()
+    if not p.exists():
+        return json.dumps(_error(f"File not found: {p}"))
+    if p.stat().st_size > MAX_FILE_UPLOAD_SIZE:
+        return json.dumps(
+            _error(
+                f"File exceeds {MAX_FILE_UPLOAD_SIZE // (1024 * 1024)} MB "
+                f"limit: {p} ({p.stat().st_size / (1024 * 1024):.1f} MB)"
+            )
+        )
+
+    url = f"{_base_url()}/files"
+    try:
+        file_content = p.read_bytes()
+        files = {"file": (p.name, file_content, "application/octet-stream")}
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url, headers=_auth_headers(), files=files, timeout=TIMEOUT
+            )
+            http_err = _handle_http_error(resp)
+            if http_err:
+                return http_err
+            resp.raise_for_status()
+            data = resp.json()
+
+            return json.dumps(data, indent=2)
+
+    except httpx.HTTPError as exc:
+        return json.dumps(_error(f"Failed to upload file to Tamarind: {exc}"))
+    except Exception as exc:
+        return json.dumps(
+            _error(f"Unexpected error uploading file to Tamarind: {exc}")
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tool 3: tamarind_list_files
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def tamarind_list_files() -> str:
+    """List files uploaded to Tamarind Bio.
+
+    Returns:
+        JSON list of uploaded file objects.
+    """
+    err = _require_api_key()
+    if err:
+        return err
+
+    url = f"{_base_url()}/files"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                url, headers=_auth_headers(), timeout=TIMEOUT
+            )
+            http_err = _handle_http_error(resp)
+            if http_err:
+                return http_err
+            resp.raise_for_status()
+            data = resp.json()
+
+            return json.dumps(data, indent=2)
+
+    except httpx.HTTPError as exc:
+        return json.dumps(_error(f"Failed to list Tamarind files: {exc}"))
+    except Exception as exc:
+        return json.dumps(
+            _error(f"Unexpected error listing Tamarind files: {exc}")
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tool 4: tamarind_submit_job
 # ---------------------------------------------------------------------------
 
 
 @mcp.tool()
 async def tamarind_submit_job(
-    model_id: str,
     job_name: str,
-    pdb_path: str = "",
-    sequence: str = "",
-    parameters: str = "",
+    tool_type: str,
+    settings_json: str,
 ) -> str:
     """Submit a compute job to Tamarind Bio.
 
+    WARNING: Free tier allows only 10 jobs/month. Use sparingly.
+
     Args:
-        model_id: Identifier of the model to run (from tamarind_list_models).
-        job_name: Human-readable name for the job.
-        pdb_path: Path to a local PDB file to upload (optional).
-        sequence: Amino acid sequence input (optional).
-        parameters: JSON string with model-specific settings (optional).
+        job_name: Unique human-readable name for the job. Use a prefix like
+            'proteus_' with a short UUID to ensure uniqueness.
+        tool_type: The tool name from tamarind_list_tools (e.g., "boltzgen",
+            "tap", "ablang", "protenix", "tnp", "esmfold").
+        settings_json: JSON string matching the tool's settings schema.
+            Get the schema from tamarind_list_tools.
 
     Returns:
-        JSON object with job_id, model_id, status, submitted_at,
-        and estimated_cost_usd.
+        JSON object with submission confirmation.
     """
-    key = _api_key()
-    if not key:
-        return json.dumps(
-            _error(
-                "TAMARIND_API_KEY is not set. "
-                "Get a free key at https://app.tamarind.bio and set it: "
-                "export TAMARIND_API_KEY=<your-key>"
-            )
-        )
+    err = _require_api_key()
+    if err:
+        return err
 
-    if not model_id.strip():
-        return json.dumps(_error("model_id must not be empty."))
     if not job_name.strip():
         return json.dumps(_error("job_name must not be empty."))
+    if not tool_type.strip():
+        return json.dumps(_error("tool_type must not be empty."))
 
-    # Parse optional parameters
-    params_dict: dict = {}
-    if parameters:
-        try:
-            params_dict = json.loads(parameters)
-        except json.JSONDecodeError as exc:
-            return json.dumps(
-                _error(f"Invalid JSON in parameters: {exc}")
-            )
+    # Parse and validate settings
+    try:
+        settings = json.loads(settings_json)
+    except json.JSONDecodeError as exc:
+        return json.dumps(_error(f"Invalid JSON in settings_json: {exc}"))
 
-    url = f"{_base_url()}/jobs"
+    url = f"{_base_url()}/submit-job"
+    body = {
+        "jobName": job_name,
+        "type": tool_type,
+        "settings": settings,
+    }
 
     try:
         async with httpx.AsyncClient() as client:
-            # Build request depending on whether we have a PDB file
-            if pdb_path:
-                # Validate PDB path exists and check size
-                p = Path(pdb_path).resolve()
-                if not p.exists():
-                    return json.dumps(
-                        _error(f"PDB file not found: {p}")
-                    )
-                if p.stat().st_size > MAX_PDB_UPLOAD_SIZE:
-                    return json.dumps(
-                        _error(
-                            f"PDB file exceeds 4 MB limit: {p} "
-                            f"({p.stat().st_size / (1024 * 1024):.1f} MB)"
-                        )
-                    )
-
-                pdb_bytes = p.read_bytes()
-                files = {"file": (p.name, pdb_bytes, "chemical/x-pdb")}
-                form_data = {
-                    "model_id": model_id,
-                    "job_name": job_name,
-                }
-                if sequence:
-                    form_data["sequence"] = sequence
-                if params_dict:
-                    form_data["parameters"] = json.dumps(params_dict)
-
-                resp = await client.post(
-                    url,
-                    headers=_auth_headers(),
-                    data=form_data,
-                    files=files,
-                    timeout=TIMEOUT,
-                )
-            else:
-                # JSON body request
-                body: dict = {
-                    "model_id": model_id,
-                    "job_name": job_name,
-                }
-                if sequence:
-                    body["sequence"] = sequence
-                if params_dict:
-                    body["parameters"] = params_dict
-
-                resp = await client.post(
-                    url,
-                    headers=_auth_headers(),
-                    json=body,
-                    timeout=TIMEOUT,
-                )
-
-            auth_err = _handle_auth_error(resp.status_code)
-            if auth_err:
-                return auth_err
+            resp = await client.post(
+                url,
+                headers={**_auth_headers(), "Content-Type": "application/json"},
+                json=body,
+                timeout=TIMEOUT,
+            )
+            http_err = _handle_http_error(resp)
+            if http_err:
+                return http_err
             resp.raise_for_status()
             data = resp.json()
 
-            return json.dumps(data, indent=2)
+            return json.dumps(
+                {
+                    "submitted": True,
+                    "job_name": job_name,
+                    "tool_type": tool_type,
+                    "response": data,
+                },
+                indent=2,
+            )
 
     except httpx.HTTPError as exc:
         return json.dumps(_error(f"Failed to submit Tamarind job: {exc}"))
@@ -247,164 +359,230 @@ async def tamarind_submit_job(
 
 
 # ---------------------------------------------------------------------------
-# Tool 3: tamarind_get_job_status
+# Tool 5: tamarind_submit_batch
 # ---------------------------------------------------------------------------
 
 
 @mcp.tool()
-async def tamarind_get_job_status(job_id: str) -> str:
-    """Get the status of a Tamarind Bio compute job.
+async def tamarind_submit_batch(
+    batch_name: str,
+    tool_type: str,
+    settings_list_json: str,
+) -> str:
+    """Submit a batch of jobs to Tamarind Bio (same tool, multiple inputs).
+
+    More efficient than submitting individual jobs. Each element in the
+    settings list becomes one job in the batch.
+
+    WARNING: Free tier allows only 10 jobs/month. Each batch item counts
+    as one job.
 
     Args:
-        job_id: The job identifier returned by tamarind_submit_job.
+        batch_name: Unique name for the batch.
+        tool_type: The tool name from tamarind_list_tools.
+        settings_list_json: JSON array of settings objects, each matching
+            the tool's settings schema.
 
     Returns:
-        JSON object with job_id, status, progress_pct, started_at,
-        estimated_completion, and error_message.
+        JSON object with batch submission confirmation.
     """
-    key = _api_key()
-    if not key:
+    err = _require_api_key()
+    if err:
+        return err
+
+    if not batch_name.strip():
+        return json.dumps(_error("batch_name must not be empty."))
+    if not tool_type.strip():
+        return json.dumps(_error("tool_type must not be empty."))
+
+    # Parse and validate settings list
+    try:
+        settings_list = json.loads(settings_list_json)
+    except json.JSONDecodeError as exc:
         return json.dumps(
-            _error(
-                "TAMARIND_API_KEY is not set. "
-                "Get a free key at https://app.tamarind.bio and set it: "
-                "export TAMARIND_API_KEY=<your-key>"
-            )
+            _error(f"Invalid JSON in settings_list_json: {exc}")
         )
 
-    if not job_id.strip():
-        return json.dumps(_error("job_id must not be empty."))
+    if not isinstance(settings_list, list):
+        return json.dumps(
+            _error("settings_list_json must be a JSON array of settings objects.")
+        )
+    if len(settings_list) == 0:
+        return json.dumps(_error("settings_list_json must not be empty."))
 
-    url = f"{_base_url()}/jobs/{job_id}"
+    url = f"{_base_url()}/submit-batch"
+    body = {
+        "batchName": batch_name,
+        "type": tool_type,
+        "settings": settings_list,
+    }
 
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                url, headers=_auth_headers(), timeout=TIMEOUT
+            resp = await client.post(
+                url,
+                headers={**_auth_headers(), "Content-Type": "application/json"},
+                json=body,
+                timeout=TIMEOUT,
             )
-            auth_err = _handle_auth_error(resp.status_code)
-            if auth_err:
-                return auth_err
+            http_err = _handle_http_error(resp)
+            if http_err:
+                return http_err
             resp.raise_for_status()
             data = resp.json()
-
-            return json.dumps(data, indent=2)
-
-    except httpx.HTTPError as exc:
-        return json.dumps(
-            _error(f"Failed to get Tamarind job status for {job_id}: {exc}")
-        )
-    except Exception as exc:
-        return json.dumps(
-            _error(
-                f"Unexpected error getting Tamarind job status "
-                f"for {job_id}: {exc}"
-            )
-        )
-
-
-# ---------------------------------------------------------------------------
-# Tool 4: tamarind_get_job_results
-# ---------------------------------------------------------------------------
-
-
-@mcp.tool()
-async def tamarind_get_job_results(job_id: str, output_dir: str) -> str:
-    """Download results of a completed Tamarind Bio job.
-
-    Args:
-        job_id: The job identifier.
-        output_dir: Local directory to save result files.
-
-    Returns:
-        JSON object with job_id, output_dir, files (list of {name, size_bytes}),
-        and metrics.
-    """
-    key = _api_key()
-    if not key:
-        return json.dumps(
-            _error(
-                "TAMARIND_API_KEY is not set. "
-                "Get a free key at https://app.tamarind.bio and set it: "
-                "export TAMARIND_API_KEY=<your-key>"
-            )
-        )
-
-    if not job_id.strip():
-        return json.dumps(_error("job_id must not be empty."))
-
-    out_path = Path(output_dir)
-    try:
-        out_path.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        return json.dumps(_error(f"Cannot create output directory: {exc}"))
-
-    url = f"{_base_url()}/jobs/{job_id}/results"
-
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                url, headers=_auth_headers(), timeout=120.0
-            )
-            auth_err = _handle_auth_error(resp.status_code)
-            if auth_err:
-                return auth_err
-            resp.raise_for_status()
-            data = resp.json()
-
-            # Download each result file
-            saved_files: list[dict] = []
-            for file_info in data.get("files", []):
-                file_url = file_info.get("url", "")
-                file_name = file_info.get("name", "unknown")
-                if not file_url:
-                    continue
-
-                file_resp = await client.get(
-                    file_url, headers=_auth_headers(), timeout=120.0
-                )
-                file_resp.raise_for_status()
-
-                file_path = out_path / file_name
-                file_path.write_bytes(file_resp.content)
-                saved_files.append(
-                    {
-                        "name": file_name,
-                        "size_bytes": file_path.stat().st_size,
-                    }
-                )
 
             return json.dumps(
                 {
-                    "job_id": job_id,
-                    "output_dir": str(out_path),
-                    "files": saved_files,
-                    "metrics": data.get("metrics", {}),
+                    "submitted": True,
+                    "batch_name": batch_name,
+                    "tool_type": tool_type,
+                    "job_count": len(settings_list),
+                    "response": data,
                 },
                 indent=2,
             )
 
     except httpx.HTTPError as exc:
         return json.dumps(
-            _error(f"Failed to get Tamarind results for {job_id}: {exc}")
+            _error(f"Failed to submit Tamarind batch: {exc}")
+        )
+    except Exception as exc:
+        return json.dumps(
+            _error(f"Unexpected error submitting Tamarind batch: {exc}")
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tool 6: tamarind_list_jobs
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def tamarind_list_jobs() -> str:
+    """List all jobs on Tamarind Bio with their status and results.
+
+    Returns:
+        JSON list of job objects. Each job contains JobName, JobStatus,
+        Type, Settings, Created, Started, Completed, and Score fields.
+        The Score field contains results/metrics as a JSON string (parsed
+        automatically).
+    """
+    err = _require_api_key()
+    if err:
+        return err
+
+    url = f"{_base_url()}/jobs"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                url, headers=_auth_headers(), timeout=TIMEOUT
+            )
+            http_err = _handle_http_error(resp)
+            if http_err:
+                return http_err
+            resp.raise_for_status()
+            data = resp.json()
+
+            # Parse Score and Settings fields for each job
+            jobs = data if isinstance(data, list) else data.get("jobs", [data])
+            for job in jobs:
+                if "Score" in job:
+                    job["Score"] = _parse_score(job["Score"])
+                if "Settings" in job:
+                    job["Settings"] = _parse_settings(job["Settings"])
+
+            return json.dumps(jobs, indent=2)
+
+    except httpx.HTTPError as exc:
+        return json.dumps(_error(f"Failed to list Tamarind jobs: {exc}"))
+    except Exception as exc:
+        return json.dumps(
+            _error(f"Unexpected error listing Tamarind jobs: {exc}")
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tool 7: tamarind_get_job
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def tamarind_get_job(job_name: str) -> str:
+    """Get a specific Tamarind Bio job by name.
+
+    Fetches all jobs via GET /api/jobs and filters by JobName.
+
+    Args:
+        job_name: The job name used when submitting.
+
+    Returns:
+        JSON object with the job's status, settings, and results (Score).
+        JobStatus values: "Submitted", "In Queue", "Running", "Complete",
+        "Failed".
+    """
+    err = _require_api_key()
+    if err:
+        return err
+
+    if not job_name.strip():
+        return json.dumps(_error("job_name must not be empty."))
+
+    url = f"{_base_url()}/jobs"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                url, headers=_auth_headers(), timeout=TIMEOUT
+            )
+            http_err = _handle_http_error(resp)
+            if http_err:
+                return http_err
+            resp.raise_for_status()
+            data = resp.json()
+
+            jobs = data if isinstance(data, list) else data.get("jobs", [data])
+
+            # Filter by JobName
+            matching = [
+                j for j in jobs if j.get("JobName") == job_name
+            ]
+
+            if not matching:
+                return json.dumps(
+                    _error(
+                        f"No job found with name '{job_name}'. "
+                        f"Use tamarind_list_jobs to see all jobs."
+                    )
+                )
+
+            # Return the most recent match (in case of duplicates)
+            job = matching[-1]
+            if "Score" in job:
+                job["Score"] = _parse_score(job["Score"])
+            if "Settings" in job:
+                job["Settings"] = _parse_settings(job["Settings"])
+
+            return json.dumps(job, indent=2)
+
+    except httpx.HTTPError as exc:
+        return json.dumps(
+            _error(f"Failed to get Tamarind job '{job_name}': {exc}")
         )
     except Exception as exc:
         return json.dumps(
             _error(
-                f"Unexpected error getting Tamarind results "
-                f"for {job_id}: {exc}"
+                f"Unexpected error getting Tamarind job '{job_name}': {exc}"
             )
         )
 
 
 # ---------------------------------------------------------------------------
-# Tool 5: tamarind_wait_for_job
+# Tool 8: tamarind_wait_for_job
 # ---------------------------------------------------------------------------
 
 
 @mcp.tool()
 async def tamarind_wait_for_job(
-    job_id: str,
+    job_name: str,
     timeout_seconds: int = 3600,
     poll_interval_seconds: int = 30,
 ) -> str:
@@ -414,46 +592,39 @@ async def tamarind_wait_for_job(
     each iteration up to a maximum of 120 seconds.
 
     Args:
-        job_id: The job identifier.
+        job_name: The job name used when submitting.
         timeout_seconds: Maximum time to wait in seconds (default 3600).
         poll_interval_seconds: Initial polling interval in seconds (default 30).
 
     Returns:
-        JSON object with the final job status (same shape as
-        tamarind_get_job_status).
+        JSON object with the final job status and results.
     """
-    key = _api_key()
-    if not key:
-        return json.dumps(
-            _error(
-                "TAMARIND_API_KEY is not set. "
-                "Get a free key at https://app.tamarind.bio and set it: "
-                "export TAMARIND_API_KEY=<your-key>"
-            )
-        )
+    err = _require_api_key()
+    if err:
+        return err
 
-    if not job_id.strip():
-        return json.dumps(_error("job_id must not be empty."))
+    if not job_name.strip():
+        return json.dumps(_error("job_name must not be empty."))
 
-    terminal_statuses = {"completed", "failed", "cancelled", "error"}
+    terminal_statuses = {"Complete", "Failed"}
     interval = max(1, poll_interval_seconds)
     max_interval = 120
     deadline = time.monotonic() + timeout_seconds
 
     while True:
-        status_json = await tamarind_get_job_status(job_id)
+        job_json = await tamarind_get_job(job_name)
         try:
-            status_data = json.loads(status_json)
+            job_data = json.loads(job_json)
         except json.JSONDecodeError:
-            return status_json  # Propagate raw error
+            return job_json  # Propagate raw error
 
-        # If we got an error from the status call, return it
-        if "error" in status_data:
-            return status_json
+        # If we got an error from the get call, return it
+        if "error" in job_data:
+            return job_json
 
-        current_status = status_data.get("status", "").lower()
+        current_status = job_data.get("JobStatus", "")
         if current_status in terminal_statuses:
-            return status_json
+            return job_json
 
         # Check timeout
         remaining = deadline - time.monotonic()
@@ -461,7 +632,7 @@ async def tamarind_wait_for_job(
             return json.dumps(
                 _error(
                     f"Timeout after {timeout_seconds}s waiting for job "
-                    f"{job_id}. Last status: {current_status}"
+                    f"'{job_name}'. Last status: {current_status}"
                 )
             )
 
@@ -469,6 +640,155 @@ async def tamarind_wait_for_job(
         sleep_time = min(interval, max_interval, remaining)
         await asyncio.sleep(sleep_time)
         interval = min(interval * 2, max_interval)
+
+
+# ---------------------------------------------------------------------------
+# Tool 9: tamarind_screen_developability
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def tamarind_screen_developability(
+    sequence: str,
+    modality: str = "vhh",
+) -> str:
+    """Screen an antibody/nanobody sequence for developability.
+
+    Smart wrapper that selects the right Tamarind tool based on modality:
+    - VHH/nanobody: submits to 'tnp' (Therapeutic Nanobody Profiler)
+    - scFv/antibody: submits to 'tap' (Therapeutic Antibody Profiler v2)
+
+    WARNING: Counts as 1 of 10 free jobs/month.
+
+    Args:
+        sequence: Amino acid sequence (VH, VHH, or VL).
+        modality: One of "vhh", "nanobody", "scfv", "antibody", "mab".
+            Defaults to "vhh".
+
+    Returns:
+        JSON object with submitted job_name for polling with
+        tamarind_get_job or tamarind_wait_for_job.
+    """
+    err = _require_api_key()
+    if err:
+        return err
+
+    if not sequence.strip():
+        return json.dumps(_error("sequence must not be empty."))
+
+    modality_lower = modality.strip().lower()
+
+    if modality_lower in ("vhh", "nanobody"):
+        tool_type = "tnp"
+        settings = {"sequence": sequence}
+    elif modality_lower in ("scfv", "antibody", "mab"):
+        tool_type = "tap"
+        settings = {"sequence": sequence}
+    else:
+        return json.dumps(
+            _error(
+                f"Unknown modality '{modality}'. "
+                f"Use 'vhh', 'nanobody', 'scfv', 'antibody', or 'mab'."
+            )
+        )
+
+    job_name = _generate_job_name(f"proteus_dev_{tool_type}")
+
+    # Submit via the submit-job tool
+    result = await tamarind_submit_job(
+        job_name=job_name,
+        tool_type=tool_type,
+        settings_json=json.dumps(settings),
+    )
+
+    try:
+        result_data = json.loads(result)
+    except json.JSONDecodeError:
+        return result
+
+    if "error" in result_data:
+        return result
+
+    return json.dumps(
+        {
+            "job_name": job_name,
+            "tool_type": tool_type,
+            "modality": modality_lower,
+            "message": (
+                f"Developability screening submitted as '{job_name}'. "
+                f"Poll with tamarind_get_job('{job_name}') or "
+                f"tamarind_wait_for_job('{job_name}')."
+            ),
+        },
+        indent=2,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tool 10: tamarind_screen_naturalness
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def tamarind_screen_naturalness(
+    heavy_sequence: str,
+    light_sequence: str = "",
+) -> str:
+    """Screen antibody sequences for naturalness using AbLang2.
+
+    Submits to Tamarind's 'ablang' tool which evaluates how natural
+    (human-like) an antibody sequence is.
+
+    WARNING: Counts as 1 of 10 free jobs/month.
+
+    Args:
+        heavy_sequence: Heavy chain amino acid sequence (VH or VHH).
+        light_sequence: Light chain amino acid sequence (VL). Optional,
+            omit for VHH/nanobodies.
+
+    Returns:
+        JSON object with submitted job_name for polling with
+        tamarind_get_job or tamarind_wait_for_job.
+    """
+    err = _require_api_key()
+    if err:
+        return err
+
+    if not heavy_sequence.strip():
+        return json.dumps(_error("heavy_sequence must not be empty."))
+
+    settings: dict = {"heavy_sequence": heavy_sequence}
+    if light_sequence.strip():
+        settings["light_sequence"] = light_sequence
+
+    job_name = _generate_job_name("proteus_nat_ablang")
+
+    result = await tamarind_submit_job(
+        job_name=job_name,
+        tool_type="ablang",
+        settings_json=json.dumps(settings),
+    )
+
+    try:
+        result_data = json.loads(result)
+    except json.JSONDecodeError:
+        return result
+
+    if "error" in result_data:
+        return result
+
+    return json.dumps(
+        {
+            "job_name": job_name,
+            "tool_type": "ablang",
+            "message": (
+                f"Naturalness screening submitted as '{job_name}'. "
+                f"Poll with tamarind_get_job('{job_name}') or "
+                f"tamarind_wait_for_job('{job_name}')."
+            ),
+        },
+        indent=2,
+    )
 
 
 # ---------------------------------------------------------------------------

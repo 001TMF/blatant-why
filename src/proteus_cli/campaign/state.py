@@ -17,7 +17,8 @@ from .config import CampaignConfig
 # Valid campaign statuses and allowed transitions.
 VALID_TRANSITIONS: dict[str, list[str]] = {
     "draft": ["configured"],
-    "configured": ["designing"],
+    "configured": ["debating", "designing"],
+    "debating": ["designing", "failed"],
     "designing": ["screening", "failed"],
     "failed": ["draft", "closed"],
     "screening": ["ranked"],

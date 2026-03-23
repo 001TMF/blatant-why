@@ -12,6 +12,7 @@ export type CampaignPhase =
   | "planning"
   | "researching"
   | "cost_estimate"
+  | "debating"
   | "designing"
   | "screening"
   | "ranking"

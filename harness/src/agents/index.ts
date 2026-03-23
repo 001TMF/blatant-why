@@ -5,4 +5,10 @@ export { researchAgent } from "./definitions/research.js";
 export { designAgent } from "./definitions/design.js";
 export { screeningAgent } from "./definitions/screening.js";
 export { labAgent } from "./definitions/lab.js";
+export {
+  hypothesisEpitopeAgent,
+  hypothesisScaffoldAgent,
+  hypothesisParameterAgent,
+  reflectionAgent,
+} from "./definitions/debate.js";
 export * from "./types.js";

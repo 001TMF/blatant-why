@@ -33,11 +33,36 @@ class ToolResult:
         )
 
 
+# Default tool paths — override via environment variables
 TOOL_PATHS = {
-    "proteus-fold": Path("/data/proteus/Protenix"),
-    "proteus-prot": Path("/data/proteus/PXDesign"),
-    "proteus-ab": Path("/data/proteus/proteus-design"),
+    "proteus-fold": Path(os.getenv("PROTEUS_FOLD_DIR", os.getenv("PROTENIX_DIR", "/data/proteus/Protenix"))),
+    "proteus-prot": Path(os.getenv("PROTEUS_PROT_DIR", os.getenv("PXDESIGN_DIR", "/data/proteus/PXDesign"))),
+    "proteus-ab": Path(os.getenv("PROTEUS_AB_DIR", os.getenv("BOLTZGEN_DIR", "/data/proteus/proteus-design"))),
 }
+
+
+def detect_local_tools() -> dict[str, bool]:
+    """Check which local tools are available."""
+    return {name: path.exists() for name, path in TOOL_PATHS.items()}
+
+
+def get_available_providers() -> list[str]:
+    """Detect available compute providers.
+
+    Checks for local tools, cloud API keys, and SSH configuration
+    and returns a list of provider names that are ready to use.
+    """
+    providers = []
+    local = detect_local_tools()
+    if any(local.values()):
+        providers.append("local")
+    if os.getenv("TAMARIND_API_KEY"):
+        providers.append("tamarind")
+    if os.getenv("LEVITATE_CLIENT_ID"):
+        providers.append("levitate")
+    if os.getenv("PROTEUS_SSH_HOST"):
+        providers.append("ssh")
+    return providers if providers else ["tamarind"]  # default fallback
 
 
 def validate_tool_path(tool_name: str) -> Path:

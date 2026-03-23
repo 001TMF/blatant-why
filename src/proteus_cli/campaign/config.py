@@ -84,8 +84,15 @@ class LabConfig:
 @dataclass
 class ComputeConfig:
     """Compute backend configuration."""
-    provider: str = "tamarind"
+    provider: str = "tamarind"      # tamarind | levitate | local | ssh
     gpu_type: str = "A100"
+    gpu_ids: str = ""               # for local: "0,1" for specific GPUs
+    # SSH options
+    ssh_host: str = ""
+    ssh_user: str = ""
+    ssh_port: int = 22
+    ssh_key_path: str = ""
+    ssh_tools_path: str = "/opt/proteus"
 
 
 @dataclass
@@ -171,6 +178,12 @@ def _dict_to_config(raw: dict[str, Any]) -> CampaignConfig:
     compute = ComputeConfig(
         provider=compute_raw.get("provider", "tamarind"),
         gpu_type=compute_raw.get("gpu_type", "A100"),
+        gpu_ids=compute_raw.get("gpu_ids", ""),
+        ssh_host=compute_raw.get("ssh_host", ""),
+        ssh_user=compute_raw.get("ssh_user", ""),
+        ssh_port=int(compute_raw.get("ssh_port", 22)),
+        ssh_key_path=compute_raw.get("ssh_key_path", ""),
+        ssh_tools_path=compute_raw.get("ssh_tools_path", "/opt/proteus"),
     )
 
     return CampaignConfig(

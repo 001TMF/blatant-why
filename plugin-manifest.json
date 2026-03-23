@@ -29,7 +29,8 @@
     "proteus-levitate",
     "proteus-adaptyv",
     "proteus-campaign",
-    "proteus-research"
+    "proteus-research",
+    "proteus-local"
   ],
   "skills": [
     "proteus-design-workflow",

@@ -1,0 +1,58 @@
+name: "tnfa_vhh_ssh"
+tier: "standard"
+target_difficulty: "well-studied"
+
+target:
+  name: "TNF-alpha"
+  pdb_id: "1TNF"
+  chain_id: "A"
+  uniprot_id: "P01375"
+
+epitope:
+  hotspot_residues: [75, 76, 77, 79, 81, 87, 88, 89, 90, 91, 92, 95, 96, 97]
+  region_notation: "75..97"
+
+design:
+  tool: "boltzgen"
+  modality: "vhh"
+  protocol: "nanobody-anything"
+  scaffolds:
+    - name: "caplacizumab"
+      pdb: "7eow"
+    - name: "ozoralizumab"
+      pdb: "8z8v"
+  designs_per_scaffold: 5000
+
+boltzgen:
+  num_designs: 5000
+  budget: 50
+  alpha: 0.001
+  step_scale: 1.8
+  tier: "standard"
+
+screening:
+  hard_filters:
+    iptm_min: 0.5
+    ipsae_min: 0.3
+    plddt_min: 70
+    rmsd_max: 5.0
+  ranking_weights:
+    iptm: 0.30
+    ipsae_min: 0.25
+    pbind: 0.20
+    liability_penalty: 0.15
+    developability: 0.10
+
+lab:
+  max_candidates: 20
+  cost_per_variant_usd: 175
+  provider: "adaptyv_bio"
+
+compute:
+  provider: "ssh"
+  gpu_type: "A100"
+  ssh_host: "gpu-server.example.com"
+  ssh_user: "researcher"
+  ssh_port: 22
+  ssh_key_path: "~/.ssh/id_rsa"
+  ssh_tools_path: "/opt/proteus"

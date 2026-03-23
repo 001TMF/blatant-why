@@ -18,6 +18,7 @@ export const SLASH_COMMANDS = [
   { name: "/team", description: "Show active agent team status" },
   { name: "/resume", description: "Resume a previous campaign" },
   { name: "/export", description: "Export conversation log (markdown or csv)" },
+  { name: "/compare", description: "Compare metrics across campaign rounds" },
 ] as const;
 
 export function getCompletions(input: string): typeof SLASH_COMMANDS[number][] {
@@ -47,6 +48,7 @@ export function handleSlashCommand(input: string): SlashCommandResult {
         "  /team         Show active agent team status",
         "  /resume       Resume a previous campaign",
         "  /export       Export conversation log (markdown or csv)",
+        "  /compare      Compare metrics across campaign rounds",
         "",
         "Shift+Tab to cycle modes: Binder → Antibody → Structure",
         "",
@@ -78,6 +80,10 @@ export function handleSlashCommand(input: string): SlashCommandResult {
 
   if (trimmed === "/resume") {
     return { handled: true, local: "resume_campaign" };
+  }
+
+  if (trimmed === "/compare") {
+    return { handled: true, local: "compare_rounds" };
   }
 
   if (trimmed === "/export" || trimmed.startsWith("/export ")) {

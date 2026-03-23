@@ -20,6 +20,7 @@ export const SLASH_COMMANDS = [
   { name: "/export", description: "Export conversation log (markdown or csv)" },
   { name: "/compare", description: "Compare metrics across campaign rounds" },
   { name: "/pareto", description: "Show Pareto-optimal designs (multi-objective trade-offs)" },
+  { name: "/jobs", description: "Show active cloud compute jobs" },
 ] as const;
 
 export function getCompletions(input: string): typeof SLASH_COMMANDS[number][] {
@@ -51,6 +52,7 @@ export function handleSlashCommand(input: string): SlashCommandResult {
         "  /export       Export conversation log (markdown or csv)",
         "  /compare      Compare metrics across campaign rounds",
         "  /pareto       Show Pareto-optimal designs (multi-objective trade-offs)",
+        "  /jobs         Show active cloud compute jobs",
         "",
         "Shift+Tab to cycle modes: Binder → Antibody → Structure",
         "",
@@ -94,6 +96,10 @@ export function handleSlashCommand(input: string): SlashCommandResult {
       return { handled: true, local: "export_csv" };
     }
     return { handled: true, local: "export_markdown" };
+  }
+
+  if (trimmed === "/jobs") {
+    return { handled: true, local: "show_jobs" };
   }
 
   // /status, /results, /screen, /watch, /load, /campaign, /pareto are handled by the agent

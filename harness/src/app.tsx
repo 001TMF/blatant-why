@@ -547,6 +547,43 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
           setShowTeam(true);
           return;
         }
+        if (cmdResult.local === "show_jobs") {
+          setMessages((prev) => {
+            // Read active-run manifest to find cloud jobs
+            const manifestPath = resolve(configRef.projectDir, ".proteus", "active-run.json");
+            let jobLines: string[] = [];
+            if (existsSync(manifestPath)) {
+              try {
+                const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+                const elapsed = manifest.startTime
+                  ? Math.round((Date.now() - manifest.startTime) / 60000)
+                  : 0;
+                const status = manifest.pid ? "running" : "pending";
+                jobLines.push(`  ${manifest.runId ?? "unknown"}    ${manifest.tool ?? "unknown"}    ${status}    ${elapsed}m elapsed`);
+              } catch {
+                // Ignore parse errors
+              }
+            }
+            if (jobLines.length === 0) {
+              return [
+                ...prev,
+                { type: "user", text: trimmed },
+                { type: "assistant", text: "No active cloud compute jobs." },
+              ];
+            }
+            const header = "  Job ID                              Tool           Status     Elapsed";
+            const sep = "  " + "\u2500".repeat(68);
+            return [
+              ...prev,
+              { type: "user", text: trimmed },
+              {
+                type: "assistant" as const,
+                text: ["Active Cloud Jobs", "", header, sep, ...jobLines].join("\n"),
+              },
+            ];
+          });
+          return;
+        }
         if (cmdResult.local === "export_markdown" || cmdResult.local === "export_csv") {
           const logger = loggerRef.current;
           const isCsv = cmdResult.local === "export_csv";

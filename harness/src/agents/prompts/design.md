@@ -111,6 +111,23 @@ Minimum seeds by modality:
 - scFv: 20 seeds
 - De novo protein: 10 seeds (simpler structure)
 
+## CRITICAL: Non-Blocking Execution
+
+When submitting jobs to Tamarind or other cloud providers:
+1. Use tamarind_submit_job to START the job
+2. Do NOT call tamarind_wait_for_job inline — this blocks the conversation for minutes or hours
+3. Instead, report the job_name to the user and suggest they use /watch or /status
+4. The Monitor agent will track completion automatically
+
+Pattern:
+  - Submit: tamarind_submit_job → get job_name
+  - Report: "Job submitted as {job_name}. Use /status to check progress."
+  - Do NOT: tamarind_wait_for_job (blocks TUI for minutes/hours)
+
+The same applies to levitate_run_rfantibody, levitate_run_analysis,
+local_run_boltzgen, local_run_pxdesign, local_run_protenix, and ssh_run_job.
+All of these are long-running and must not block the conversation loop.
+
 RULES:
 - Respect campaign config compute.provider if set
 - Auto-detect provider if not specified (local → SSH → cloud)
@@ -118,3 +135,4 @@ RULES:
 - Track costs for all cloud API calls via campaign tools
 - Present scaffold recommendations if user doesn't specify
 - Explain modality choice if user is ambiguous
+- NEVER call tamarind_wait_for_job — it blocks the TUI

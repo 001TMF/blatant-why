@@ -9,6 +9,21 @@ import type {
 } from "./types.js";
 import { EventEmitter } from "events";
 
+// Known long-running tools that should not block the TUI.
+// When a subagent invokes one of these, the orchestrator emits a
+// "long_running_job" event so the TUI can display status to the user.
+const LONG_RUNNING_TOOLS = new Set([
+  "tamarind_wait_for_job",
+  "tamarind_submit_job",
+  "tamarind_submit_batch",
+  "levitate_run_rfantibody",
+  "levitate_run_analysis",
+  "local_run_boltzgen",
+  "local_run_pxdesign",
+  "local_run_protenix",
+  "ssh_run_job",
+]);
+
 export class CampaignOrchestrator extends EventEmitter {
   private campaignDir: string;
   private projectDir: string;
@@ -62,6 +77,24 @@ export class CampaignOrchestrator extends EventEmitter {
 
       let resultText = "";
       for await (const message of result) {
+        // Detect long-running tool invocations and emit a warning event
+        if (message.type === "stream_event") {
+          const event = (message as any).event;
+          if (
+            event?.type === "content_block_start" &&
+            event.content_block?.type === "tool_use"
+          ) {
+            const toolName = event.content_block.name as string;
+            if (toolName && LONG_RUNNING_TOOLS.has(toolName)) {
+              this.emit("long_running_job", {
+                agentName: def.name,
+                toolName,
+                message: `${def.name} agent submitted a cloud job (${toolName}). This may take several minutes.`,
+              });
+            }
+          }
+        }
+
         if (message.type === "result") {
           resultText = (message as any).result ?? "";
         }

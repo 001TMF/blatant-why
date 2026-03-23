@@ -3,6 +3,13 @@ import { exec } from "child_process";
 import { resolve, join } from "path";
 import type { MonitorEvent, MonitorCallback } from "./types.js";
 
+export interface CloudJob {
+  jobName: string;
+  provider: string;
+  submittedAt: number;
+  status: "pending" | "running" | "complete" | "failed";
+}
+
 export class CampaignMonitor {
   private interval: ReturnType<typeof setInterval> | null = null;
   private pollMs: number;
@@ -11,6 +18,7 @@ export class CampaignMonitor {
   private lastFileCount: Map<string, number> = new Map();
   private lastProgressTime: Map<string, number> = new Map();
   private stallThresholdMs = 600000; // 10 minutes
+  private cloudJobs: Map<string, CloudJob> = new Map();
 
   constructor(campaignDir: string, pollMs: number = 5000) {
     this.campaignDir = campaignDir;
@@ -163,6 +171,44 @@ export class CampaignMonitor {
         `osascript -e 'display notification "${message}" with title "${title}"' 2>/dev/null`,
       );
     }
+  }
+
+  /** Track a cloud job that was submitted by an agent. */
+  trackCloudJob(jobName: string, provider: string): void {
+    this.cloudJobs.set(jobName, {
+      jobName,
+      provider,
+      submittedAt: Date.now(),
+      status: "pending",
+    });
+  }
+
+  /** Update the status of a tracked cloud job. */
+  updateCloudJob(jobName: string, status: CloudJob["status"]): void {
+    const job = this.cloudJobs.get(jobName);
+    if (job) {
+      job.status = status;
+      if (status === "complete" || status === "failed") {
+        this.emit({
+          type: status === "complete" ? "complete" : "error",
+          runId: jobName,
+          message: `Cloud job ${jobName} (${job.provider}): ${status}`,
+          data: {
+            provider: job.provider,
+            elapsedMs: Date.now() - job.submittedAt,
+          },
+        });
+      }
+    }
+  }
+
+  /** Get all tracked cloud jobs, optionally filtered by status. */
+  getCloudJobs(statusFilter?: CloudJob["status"]): CloudJob[] {
+    const jobs = Array.from(this.cloudJobs.values());
+    if (statusFilter) {
+      return jobs.filter((j) => j.status === statusFilter);
+    }
+    return jobs;
   }
 
   private readState(): Record<string, any> | null {

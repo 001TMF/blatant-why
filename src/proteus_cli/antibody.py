@@ -247,3 +247,40 @@ def parse_antibody_results(output_dir: str | Path) -> list[dict]:
 
     designs.sort(key=lambda d: float(d.get("iptm", 0.0) or 0.0), reverse=True)
     return designs
+
+
+def convert_fab_to_scfv(vh_sequence: str, vl_sequence: str, linker: str = "GGGGSGGGGSGGGGS") -> str:
+    """Convert Fab VH + VL chains to single-chain scFv format.
+
+    BoltzGen designs with Fab templates produce separate VH and VL chains.
+    This function joins them into a single scFv: VH-linker-VL.
+
+    Args:
+        vh_sequence: Variable heavy chain sequence.
+        vl_sequence: Variable light chain sequence.
+        linker: Flexible peptide linker (default: (G4S)3).
+
+    Returns:
+        Single-chain scFv sequence: VH + linker + VL.
+
+    Raises:
+        ValueError: If either sequence is empty or contains non-standard amino acids.
+    """
+    VALID_AA = set("ACDEFGHIKLMNPQRSTVWY")
+
+    if not vh_sequence.strip():
+        raise ValueError("VH sequence must not be empty")
+    if not vl_sequence.strip():
+        raise ValueError("VL sequence must not be empty")
+
+    vh = vh_sequence.strip().upper()
+    vl = vl_sequence.strip().upper()
+
+    invalid_vh = set(vh) - VALID_AA
+    if invalid_vh:
+        raise ValueError(f"Invalid amino acids in VH: {invalid_vh}")
+    invalid_vl = set(vl) - VALID_AA
+    if invalid_vl:
+        raise ValueError(f"Invalid amino acids in VL: {invalid_vl}")
+
+    return vh + linker + vl

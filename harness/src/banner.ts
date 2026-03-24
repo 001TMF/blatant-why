@@ -12,7 +12,7 @@ const TITLE_LINES = [
   "╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝   ╚══════╝ ╚═════╝ ╚══════╝",
 ];
 
-function getForename(): string {
+export function getForename(): string {
   // Try GECOS field first (has real name: "Tristan Farmer" → "Tristan")
   try {
     const { execSync } = require("child_process");

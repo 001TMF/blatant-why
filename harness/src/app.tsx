@@ -4,7 +4,7 @@ import TextInput from "ink-text-input";
 import { execSync } from "child_process";
 import { writeFileSync, mkdirSync, readFileSync, existsSync, readdirSync } from "fs";
 import { resolve, basename } from "path";
-import { renderBanner } from "./banner.js";
+import { renderBanner, getForename } from "./banner.js";
 import { ProteusMode, cycleMode, getModeConfig } from "./modes.js";
 import { theme } from "./theme.js";
 import { Spinner } from "./components/Spinner.js";
@@ -13,6 +13,7 @@ import { AgentTeamStatus } from "./components/AgentTeamStatus.js";
 import { CostSummary } from "./components/CostSummary.js";
 import { LabApproval } from "./components/LabApproval.js";
 import { ToolActivityPanel, ToolEntry } from "./components/ToolActivityPanel.js";
+import { BannerComponent } from "./components/BannerComponent.js";
 import { useInputHistory } from "./hooks/useInputHistory.js";
 import { useTerminalSize } from "./hooks/useTerminalSize.js";
 import { useCampaignState } from "./hooks/useCampaignState.js";
@@ -258,13 +259,12 @@ function discoverCampaigns(projectDir: string): CampaignSummary[] {
 }
 
 /**
- * Build the initial completedMessages array: banner + campaign menu (if any).
+ * Build the initial completedMessages array: campaign menu (if any).
+ * The banner is rendered as a live React component (BannerComponent) above
+ * the Static block so the scientist animation can update.
  */
 function buildStartupMessages(mode: string, termWidth: number, projectDir: string): Message[] {
   const messages: Message[] = [];
-
-  // Banner is always first — nothing can appear above it
-  messages.push({ type: "banner", text: renderBanner(mode, termWidth) });
 
   // Discover existing campaigns
   const campaigns = discoverCampaigns(projectDir);
@@ -681,9 +681,19 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
   // Stable items array for Static — each item needs a unique key
   const staticItems = completedMessages.map((msg, i) => ({ id: i, msg }));
 
+  // Resolve the display name once — same logic as banner.ts
+  const forename = getForename();
+
   return (
     <Box flexDirection="column">
-      {/* All completed messages including banner (first item) — permanently rendered */}
+      {/* Animated banner — lives outside Static so the scientist can animate */}
+      <BannerComponent
+        mode={modeConfig.displayName}
+        forename={forename}
+        termWidth={termWidth}
+      />
+
+      {/* All completed messages (campaign menu, system, user, assistant, etc.) */}
       <Static items={staticItems}>
         {(item) => (
           <Box key={item.id} flexDirection="column">

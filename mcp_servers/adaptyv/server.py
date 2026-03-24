@@ -8,7 +8,7 @@
 # ///
 """Adaptyv Bio MCP Server — Lab submission tools with triple-layer safety gate.
 
-This is the MOST SECURITY-SENSITIVE component of the Proteus agent.
+This is the MOST SECURITY-SENSITIVE component of the BY agent.
 It sends real sequences to a physical lab for synthesis and testing.
 
 Safety architecture:
@@ -75,7 +75,7 @@ _pending: dict[str, PendingSubmission] = {}
 
 def _generate_code() -> str:
     """Generate a cryptographically random confirmation code."""
-    return f"PROTEUS-{secrets.token_hex(3).upper()}"
+    return f"BY-{secrets.token_hex(3).upper()}"
 
 
 def _cleanup_expired():
@@ -166,7 +166,7 @@ def _check_approval_file(campaign_dir: str) -> str | None:
     if not campaign_dir:
         return (
             "Lab submission requires a campaign directory with an approval file. "
-            "The user must type /approve-lab in the Proteus TUI."
+            "The user must type /approve-lab in the BY TUI."
         )
 
     approval_path = Path(campaign_dir) / "lab" / "approval.json"
@@ -174,7 +174,7 @@ def _check_approval_file(campaign_dir: str) -> str | None:
     if not approval_path.exists():
         return (
             "Lab submission requires user approval. "
-            "The user must type /approve-lab in the Proteus TUI."
+            "The user must type /approve-lab in the BY TUI."
         )
 
     try:

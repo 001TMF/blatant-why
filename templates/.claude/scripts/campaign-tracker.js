@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Proteus campaign-tracker hook — PostToolUse
+// BY campaign-tracker hook — PostToolUse
 // Detects campaign completion events and writes a knowledge entry to the
 // campaign's JSON file for future reference.
 
@@ -12,7 +12,7 @@ import { resolve, dirname } from 'path';
 function findProjectRoot(start) {
   let dir = resolve(start);
   while (dir !== '/') {
-    if (existsSync(resolve(dir, '.proteus'))) return dir;
+    if (existsSync(resolve(dir, '.by'))) return dir;
     dir = dirname(dir);
   }
   return null;
@@ -28,8 +28,8 @@ function readJson(filePath) {
 
 // Tool names that signal campaign completion
 const COMPLETION_TOOLS = new Set([
-  'mcp__proteus-campaign__campaign_update_status',
-  'mcp__proteus-screening__screen_composite'
+  'mcp__by-campaign__campaign_update_status',
+  'mcp__by-screening__screen_composite'
 ]);
 
 // ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ function run() {
   const root = findProjectRoot(process.cwd());
   if (!root) return;
 
-  const campaignsDir = resolve(root, '.proteus', 'campaigns');
+  const campaignsDir = resolve(root, '.by', 'campaigns');
   if (!existsSync(campaignsDir)) {
     mkdirSync(campaignsDir, { recursive: true });
   }
@@ -116,7 +116,7 @@ function run() {
   const output = {
     hookSpecificOutput: {
       hookEventName: 'PostToolUse',
-      additionalContext: `Campaign ${campaignId} completed. Knowledge entry saved to .proteus/campaigns/${campaignId}.json.`
+      additionalContext: `Campaign ${campaignId} completed. Knowledge entry saved to .by/campaigns/${campaignId}.json.`
     }
   };
   process.stdout.write(JSON.stringify(output) + '\n');

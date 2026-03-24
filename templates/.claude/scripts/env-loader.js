@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-// Proteus env-loader hook — SessionStart
+// BY env-loader hook — SessionStart
 // Loads .env from project root, detects compute providers, outputs context for Claude Code.
 
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 
 // ---------------------------------------------------------------------------
-// 1. Locate the project root by walking up until we find .proteus/
+// 1. Locate the project root by walking up until we find .by/
 // ---------------------------------------------------------------------------
 function findProjectRoot(start) {
   let dir = resolve(start);
   while (dir !== '/') {
-    if (existsSync(resolve(dir, '.proteus'))) return dir;
+    if (existsSync(resolve(dir, '.by'))) return dir;
     dir = dirname(dir);
   }
   return null;
@@ -97,9 +97,9 @@ const providerSummary = providers.length > 0
   ? providers.join(', ')
   : 'none detected — set TAMARIND_API_KEY or PROTEUS_*_DIR';
 
-const parts = [`Proteus environment loaded. Providers: ${providerSummary}.`];
+const parts = [`BY environment loaded. Providers: ${providerSummary}.`];
 if (hasAdaptyv) parts.push('Adaptyv Bio lab integration available.');
-if (!root) parts.push('Warning: .proteus/ directory not found — run /proteus:init.');
+if (!root) parts.push('Warning: .by/ directory not found — run /by:init.');
 
 const output = {
   hookSpecificOutput: {

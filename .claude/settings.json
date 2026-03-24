@@ -18,7 +18,7 @@
         "mcp_servers/sabdab/server.py"
       ]
     },
-    "proteus-screening": {
+    "by-screening": {
       "command": "python",
       "args": [
         "mcp_servers/screening/server.py"
@@ -42,25 +42,25 @@
         "mcp_servers/adaptyv/server.py"
       ]
     },
-    "proteus-campaign": {
+    "by-campaign": {
       "command": "python",
       "args": [
         "mcp_servers/campaign/server.py"
       ]
     },
-    "proteus-research": {
+    "by-research": {
       "command": "python",
       "args": [
         "mcp_servers/research/server.py"
       ]
     },
-    "proteus-local": {
+    "by-local": {
       "command": "python",
       "args": [
         "mcp_servers/local_compute/server.py"
       ]
     },
-    "proteus-knowledge": {
+    "by-knowledge": {
       "command": "python",
       "args": [
         "mcp_servers/knowledge/server.py"

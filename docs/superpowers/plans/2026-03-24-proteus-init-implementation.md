@@ -1,14 +1,14 @@
-# Proteus Init Redesign — Implementation Plan
+# BY Init Redesign — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the buggy Ink TUI with `npx proteus init` — a Ruflo-pattern npm package that generates the complete protein design environment for Claude Code.
+**Goal:** Replace the buggy Ink TUI with `npx by init` — a Ruflo-pattern npm package that generates the complete protein design environment for Claude Code.
 
 **Architecture:** npm CLI package generates files into the project directory: 10 PEP 723 MCP servers, 9 agents, 15 skills, 8 commands, 4 hooks, ChromaDB knowledge system, CLAUDE.md. Claude Code is the native frontend. Model routing via GSD-pattern config profiles.
 
 **Tech Stack:** TypeScript (init CLI), Python + uv (MCP servers), ChromaDB + sentence-transformers (knowledge), Claude Code plugin conventions (agents/skills/commands/hooks).
 
-**Spec:** `docs/superpowers/specs/2026-03-24-proteus-init-redesign.md`
+**Spec:** `docs/superpowers/specs/2026-03-24-by-init-redesign.md`
 
 ---
 
@@ -26,12 +26,12 @@
 
 ```json
 {
-  "name": "proteus-design",
+  "name": "by-design",
   "version": "0.1.0",
   "description": "Protein design agent for Claude Code — MCP servers, skills, agents, and learning system",
   "type": "module",
   "bin": {
-    "proteus": "./dist/index.js"
+    "by": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -86,9 +86,9 @@ const flags = {
 
 if (flags.help) {
   console.log(`
-  proteus init — Generate protein design environment for Claude Code
+  by init — Generate protein design environment for Claude Code
 
-  Usage: npx proteus-design init [options]
+  Usage: npx by-design init [options]
 
   Options:
     --skip-keys   Skip API key prompts
@@ -114,7 +114,7 @@ export interface InitOptions {
 
 export async function runInit(options: InitOptions): Promise<void> {
   const cwd = process.cwd();
-  console.log(chalk.bold("\n  Proteus — Protein Design Agent\n"));
+  console.log(chalk.bold("\n  BY — Protein Design Agent\n"));
 
   // Step 1: Check prereqs
   console.log("  Checking prerequisites...");
@@ -133,7 +133,7 @@ export async function runInit(options: InitOptions): Promise<void> {
   console.log("  Verifying MCP servers...");
   // TODO: implement in Task 4
 
-  console.log(chalk.green("\n  Proteus initialized. Run:\n"));
+  console.log(chalk.green("\n  BY initialized. Run:\n"));
   console.log("    claude\n");
   console.log("  Then try:");
   console.log('    "Research PD-L1 as a target for nanobody design"\n');
@@ -174,7 +174,7 @@ Expected: Compiles to `dist/index.js`
 
 ```bash
 git add package.json tsconfig.json src/
-git commit -m "feat: proteus init CLI skeleton with prereq checks"
+git commit -m "feat: by init CLI skeleton with prereq checks"
 ```
 
 ---
@@ -242,7 +242,7 @@ export function generateSettingsJson(
   const serverFiles = readdirSync(mcpServerDir).filter(f => f.endsWith(".py"));
   for (const file of serverFiles) {
     const name = file.replace(".py", "").replace("_", "-");
-    servers[`proteus-${name}`] = {
+    servers[`by-${name}`] = {
       command: "uv",
       args: ["run", "--script", resolve(mcpServerDir, file)],
     };
@@ -251,7 +251,7 @@ export function generateSettingsJson(
   const settings = {
     permissions: {
       allow: [
-        "mcp__proteus-*",
+        "mcp__by-*",
         "Bash(uv run *)",
       ],
     },
@@ -268,9 +268,9 @@ export function generateSettingsJson(
 - [ ] **Step 2: Create templates directory skeleton**
 
 ```bash
-mkdir -p templates/.claude/{agents,skills,commands/proteus,hooks,scripts}
+mkdir -p templates/.claude/{agents,skills,commands/by,hooks,scripts}
 mkdir -p templates/mcp_servers
-mkdir -p templates/.proteus/{campaigns}
+mkdir -p templates/.by/{campaigns}
 touch templates/.claude/agents/.gitkeep
 touch templates/.claude/skills/.gitkeep
 touch templates/mcp_servers/.gitkeep
@@ -300,7 +300,7 @@ Expected: Shows help text
 
 ```bash
 git add src/templates.ts templates/
-git commit -m "feat: template copy system for proteus init"
+git commit -m "feat: template copy system for by init"
 ```
 
 ---
@@ -445,34 +445,34 @@ git commit -m "feat: ChromaDB knowledge server with semantic search and Reasonin
 ### Task 6: Create 9 agent markdown files
 
 **Files:**
-- Create: `templates/.claude/agents/proteus-research.md`
-- Create: `templates/.claude/agents/proteus-design.md`
-- Create: `templates/.claude/agents/proteus-screening.md`
-- Create: `templates/.claude/agents/proteus-campaign.md`
-- Create: `templates/.claude/agents/proteus-knowledge.md`
-- Create: `templates/.claude/agents/proteus-verifier.md`
-- Create: `templates/.claude/agents/proteus-plan-checker.md`
-- Create: `templates/.claude/agents/proteus-environment.md`
-- Create: `templates/.claude/agents/proteus-lab.md`
+- Create: `templates/.claude/agents/by-research.md`
+- Create: `templates/.claude/agents/by-design.md`
+- Create: `templates/.claude/agents/by-screening.md`
+- Create: `templates/.claude/agents/by-campaign.md`
+- Create: `templates/.claude/agents/by-knowledge.md`
+- Create: `templates/.claude/agents/by-verifier.md`
+- Create: `templates/.claude/agents/by-plan-checker.md`
+- Create: `templates/.claude/agents/by-environment.md`
+- Create: `templates/.claude/agents/by-lab.md`
 
-- [ ] **Step 1: Create proteus-research agent**
+- [ ] **Step 1: Create by-research agent**
 
 ```markdown
 ---
-name: proteus-research
+name: by-research
 description: Target analysis, literature review, prior art search, epitope identification. Uses PDB, UniProt, SAbDab, and research MCP tools directly.
-tools: Read, Bash, Grep, Glob, WebSearch, WebFetch, mcp__proteus-pdb__*, mcp__proteus-uniprot__*, mcp__proteus-sabdab__*, mcp__proteus-research__*, mcp__proteus-knowledge__*
-disallowedTools: mcp__proteus-cloud__cloud_submit_job, mcp__proteus-adaptyv__*
+tools: Read, Bash, Grep, Glob, WebSearch, WebFetch, mcp__by-pdb__*, mcp__by-uniprot__*, mcp__by-sabdab__*, mcp__by-research__*, mcp__by-knowledge__*
+disallowedTools: mcp__by-cloud__cloud_submit_job, mcp__by-adaptyv__*
 ---
 
-You are the Proteus Research Agent. Your job is to thoroughly analyze a protein target for binder design.
+You are the BY Research Agent. Your job is to thoroughly analyze a protein target for binder design.
 
 ## Workflow
 
 1. Search UniProt for the target protein (sequence, function, domains, variants)
 2. Search PDB for crystal structures (resolution, chains, ligands)
 3. Search SAbDab for existing antibody/nanobody binders
-4. Search prior art via proteus-research tools
+4. Search prior art via by-research tools
 5. Identify the best structure for design (highest resolution, relevant complex)
 6. Analyze interface residues and classify hotspots
 7. Query knowledge base for similar past campaigns
@@ -496,7 +496,7 @@ Return a structured research report with:
 - Must check knowledge base for prior campaigns against similar targets
 ```
 
-- [ ] **Step 2: Create remaining 8 agents (proteus-design, proteus-screening, proteus-campaign, proteus-knowledge, proteus-verifier, proteus-plan-checker, proteus-environment, proteus-lab)**
+- [ ] **Step 2: Create remaining 8 agents (by-design, by-screening, by-campaign, by-knowledge, by-verifier, by-plan-checker, by-environment, by-lab)**
 
 Each follows the same YAML frontmatter pattern with:
 - `name`, `description`, `tools`, `disallowedTools`
@@ -506,14 +506,14 @@ Each follows the same YAML frontmatter pattern with:
 - Quality gates
 
 Key constraints per agent:
-- **proteus-design**: Can call cloud/local compute. Cannot call adaptyv.
-- **proteus-screening**: Fast, bulk work. Cannot submit compute or lab.
-- **proteus-campaign**: Planning agent. Can create campaigns, estimate costs. Cannot confirm lab.
-- **proteus-knowledge**: Retrieval only. Cannot submit anything.
-- **proteus-verifier**: Checks quality gates independently. Cannot modify campaign state.
-- **proteus-plan-checker**: Reviews plans for completeness. Cannot modify campaign.
-- **proteus-environment**: Discovers tools, GPU, SSH. Writes environment.json. Runs on /proteus:setup.
-- **proteus-lab**: Triple-gated Adaptyv submission. Requires lab-approval.json.
+- **by-design**: Can call cloud/local compute. Cannot call adaptyv.
+- **by-screening**: Fast, bulk work. Cannot submit compute or lab.
+- **by-campaign**: Planning agent. Can create campaigns, estimate costs. Cannot confirm lab.
+- **by-knowledge**: Retrieval only. Cannot submit anything.
+- **by-verifier**: Checks quality gates independently. Cannot modify campaign state.
+- **by-plan-checker**: Reviews plans for completeness. Cannot modify campaign.
+- **by-environment**: Discovers tools, GPU, SSH. Writes environment.json. Runs on /by:setup.
+- **by-lab**: Triple-gated Adaptyv submission. Requires lab-approval.json.
 
 - [ ] **Step 3: Commit**
 
@@ -529,39 +529,39 @@ git commit -m "feat: 9 agent definitions with roles, tools, and quality gates"
 ### Task 7: Create 4 new slash commands
 
 **Files:**
-- Create: `templates/.claude/commands/proteus/load.md`
-- Create: `templates/.claude/commands/proteus/approve-lab.md`
-- Create: `templates/.claude/commands/proteus/set-profile.md`
-- Create: `templates/.claude/commands/proteus/setup.md`
+- Create: `templates/.claude/commands/by/load.md`
+- Create: `templates/.claude/commands/by/approve-lab.md`
+- Create: `templates/.claude/commands/by/set-profile.md`
+- Create: `templates/.claude/commands/by/setup.md`
 - Copy existing: `watch.md`, `status.md`, `screen.md`, `results.md`
 
-- [ ] **Step 1: Create /proteus:load command**
+- [ ] **Step 1: Create /by:load command**
 
 ```markdown
 ---
-name: proteus:load
+name: by:load
 description: Load a protein target from PDB or UniProt and analyze it for design
 argument-hint: "<target name or ID>"
 ---
 
 ## Instructions
 
-You are running the /proteus:load command. Spawn the proteus-research agent to analyze the target.
+You are running the /by:load command. Spawn the by-research agent to analyze the target.
 
 ### Step 0: Read model profile
 
 ```bash
-MODEL_PROFILE=$(cat .proteus/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
+MODEL_PROFILE=$(cat .by/config.json 2>/dev/null | grep -o '"model_profile"[[:space:]]*:[[:space:]]*"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "balanced")
 ```
 
 Model lookup for this command:
 | Agent | quality | balanced | budget |
 |-------|---------|----------|--------|
-| proteus-research | opus | sonnet | sonnet |
+| by-research | opus | sonnet | sonnet |
 
 ### Step 1: Spawn research agent
 
-Spawn proteus-research agent with the target from the user's argument. Pass the resolved model.
+Spawn by-research agent with the target from the user's argument. Pass the resolved model.
 
 ### Step 2: Review output
 
@@ -571,7 +571,7 @@ Present the research report to the user. Suggest next steps:
 3. Load a different target
 ```
 
-- [ ] **Step 2: Create /proteus:approve-lab, /proteus:set-profile, /proteus:setup**
+- [ ] **Step 2: Create /by:approve-lab, /by:set-profile, /by:setup**
 
 Each command follows the same pattern:
 - YAML frontmatter with name, description, argument-hint
@@ -582,13 +582,13 @@ Each command follows the same pattern:
 - [ ] **Step 3: Copy existing commands**
 
 ```bash
-cp .claude/commands/watch.md templates/.claude/commands/proteus/watch.md
-cp .claude/commands/screen.md templates/.claude/commands/proteus/screen.md
-cp .claude/commands/status.md templates/.claude/commands/proteus/status.md
-cp .claude/commands/results.md templates/.claude/commands/proteus/results.md
+cp .claude/commands/watch.md templates/.claude/commands/by/watch.md
+cp .claude/commands/screen.md templates/.claude/commands/by/screen.md
+cp .claude/commands/status.md templates/.claude/commands/by/status.md
+cp .claude/commands/results.md templates/.claude/commands/by/results.md
 ```
 
-Update frontmatter to use `proteus:` prefix.
+Update frontmatter to use `by:` prefix.
 
 - [ ] **Step 4: Commit**
 
@@ -660,12 +660,12 @@ Reads `.env` from project root, sets `process.env`, detects compute providers, o
 
 - [ ] **Step 3: Create statusline.js**
 
-Reads `.proteus/config.json` and campaign state. Outputs statusline:
-`Proteus | Tamarind (Pro, 477 left) | campaign: pd-l1-abc | round 2/3`
+Reads `.by/config.json` and campaign state. Outputs statusline:
+`BY | Tamarind (Pro, 477 left) | campaign: pd-l1-abc | round 2/3`
 
 - [ ] **Step 4: Create safety-gate.js**
 
-Checks `.proteus/lab-approval.json` exists and timestamp < 5 minutes. Blocks `adaptyv_confirm_submission` if not.
+Checks `.by/lab-approval.json` exists and timestamp < 5 minutes. Blocks `adaptyv_confirm_submission` if not.
 
 - [ ] **Step 5: Create campaign-tracker.js**
 
@@ -686,13 +686,13 @@ git commit -m "feat: 4 hooks — env loader, statusline, safety gate, campaign t
 
 **Files:**
 - Create: `templates/CLAUDE.md`
-- Create: `templates/.proteus/config.json`
+- Create: `templates/.by/config.json`
 - Create: `templates/.gitignore-append`
 
 - [ ] **Step 1: Create CLAUDE.md template**
 
 Consolidate from existing `harness/CLAUDE.md` + `harness/src/agent.ts` `buildSystemPrompt()`. Sections:
-- Identity (Proteus, hands-on protein design agent)
+- Identity (BY, hands-on protein design agent)
 - Tool priority (MCP first, exact tool names listed)
 - Scoring hierarchy (ipSAE primary, composite formula)
 - Campaign workflow
@@ -728,16 +728,16 @@ Consolidate from existing `harness/CLAUDE.md` + `harness/src/agent.ts` `buildSys
 - [ ] **Step 3: Create gitignore append**
 
 ```
-# Proteus
+# BY
 .claude/settings.local.json
-.proteus/knowledge.db
-.proteus/environment.json
+.by/knowledge.db
+.by/environment.json
 ```
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add templates/CLAUDE.md templates/.proteus/ templates/.gitignore-append
+git add templates/CLAUDE.md templates/.by/ templates/.gitignore-append
 git commit -m "feat: CLAUDE.md template and default config"
 ```
 
@@ -793,7 +793,7 @@ Wire together: checkPrereqs → copyTemplates → generateSettingsJson → promp
 
 - [ ] **Step 4: Build and test end-to-end**
 
-Run: `npm run build && mkdir /tmp/test-proteus && cd /tmp/test-proteus && node /path/to/dist/index.js`
+Run: `npm run build && mkdir /tmp/test-by && cd /tmp/test-by && node /path/to/dist/index.js`
 Expected: Files generated, settings.json has MCP servers, CLAUDE.md exists.
 
 - [ ] **Step 5: Commit**
@@ -826,7 +826,7 @@ Remove any harness-specific entries.
 
 ```bash
 git rm -r harness/
-git commit -m "chore: remove old Ink TUI harness — replaced by npx proteus init"
+git commit -m "chore: remove old Ink TUI harness — replaced by npx by init"
 ```
 
 ---
@@ -842,7 +842,7 @@ git commit -m "chore: remove old Ink TUI harness — replaced by npx proteus ini
 
 - [ ] **Step 1: Create init test**
 
-`tests/test_init.sh` — runs `npx proteus-design init --skip-keys` in a temp dir, verifies all expected files exist.
+`tests/test_init.sh` — runs `npx by-design init --skip-keys` in a temp dir, verifies all expected files exist.
 
 - [ ] **Step 2: Create MCP server test**
 

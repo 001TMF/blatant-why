@@ -1,4 +1,4 @@
-"""Shared utilities for Proteus MCP servers."""
+"""Shared utilities for BY MCP servers."""
 
 from .base import (
     _error,

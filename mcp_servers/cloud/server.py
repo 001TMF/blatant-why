@@ -8,7 +8,7 @@
 # ]
 # ///
 """Unified Cloud Compute MCP Server — consolidates Tamarind API + SSH remote
-compute into a single interface for the Proteus campaign orchestrator.
+compute into a single interface for the BY campaign orchestrator.
 
 Providers:
   - tamarind: Tamarind Bio cloud API (free tier, 200+ tools)
@@ -62,8 +62,8 @@ def _gen_id(prefix: str = "cloud") -> str:
 # Configuration loading
 # ---------------------------------------------------------------------------
 
-_ENV_PATH = Path.home() / ".proteus" / "environment.json"
-_CONFIG_PATH = Path.home() / ".proteus" / "config.json"
+_ENV_PATH = Path.home() / ".by" / "environment.json"
+_CONFIG_PATH = Path.home() / ".by" / "config.json"
 
 
 def _load_json(path: Path) -> dict:
@@ -154,7 +154,7 @@ def _tam_handle_http(resp: httpx.Response) -> str | None:
 
 
 def _ssh_hosts() -> list[dict]:
-    """Load SSH host configurations from ~/.proteus/config.json."""
+    """Load SSH host configurations from ~/.by/config.json."""
     cfg = _load_config()
     return cfg.get("ssh_hosts", [])
 
@@ -230,8 +230,8 @@ _batches: dict[str, dict] = {}
 async def cloud_list_providers() -> str:
     """List available compute providers with status and capability details.
 
-    Reads ~/.proteus/environment.json for Tamarind config, pings each SSH
-    host from ~/.proteus/config.json, and checks CUDA_VISIBLE_DEVICES for
+    Reads ~/.by/environment.json for Tamarind config, pings each SSH
+    host from ~/.by/config.json, and checks CUDA_VISIBLE_DEVICES for
     local GPU availability.
 
     Returns:
@@ -443,7 +443,7 @@ async def _submit_tamarind(
     if uploaded_refs:
         parameters["_uploaded_files"] = uploaded_refs
 
-    job_name = _gen_id(f"proteus_{tool}")
+    job_name = _gen_id(f"by_{tool}")
     submit_url = f"{_tam_base_url()}/submit-job"
     body = {
         "jobName": job_name,
@@ -502,7 +502,7 @@ async def _submit_ssh(
         return _error(f"SSH connection to {host_name} failed: {exc}")
 
     job_id = _gen_id(f"ssh_{tool}")
-    remote_work_dir = host_cfg.get("work_dir", "/tmp/proteus_jobs")
+    remote_work_dir = host_cfg.get("work_dir", "/tmp/by_jobs")
     remote_job_dir = f"{remote_work_dir}/{job_id}"
 
     try:
@@ -532,9 +532,9 @@ async def _submit_ssh(
         # Write parameters to a JSON file on remote
         params_json = json.dumps(parameters)
         _stdin, _stdout, _stderr = client.exec_command(
-            f"cat > {remote_job_dir}/params.json << 'PROTEUS_EOF'\n"
+            f"cat > {remote_job_dir}/params.json << 'BY_EOF'\n"
             f"{params_json}\n"
-            f"PROTEUS_EOF",
+            f"BY_EOF",
             timeout=10,
         )
 
@@ -544,7 +544,7 @@ async def _submit_ssh(
             # Default command pattern
             tool_cmd = (
                 f"cd {remote_job_dir} && "
-                f"python -m proteus.tools.{tool} "
+                f"python -m by.tools.{tool} "
                 f"--params {remote_job_dir}/params.json "
                 f"--output {remote_job_dir}/output"
             )

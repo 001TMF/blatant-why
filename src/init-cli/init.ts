@@ -1,5 +1,9 @@
 import { execSync } from "node:child_process";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { resolve, join } from "node:path";
 import { copyTemplates, generateSettingsJson } from "./templates.js";
+import { promptApiKeys } from "./api-keys.js";
+import { verifyMcpServers } from "./verify.js";
 
 export interface InitOptions {
   skipKeys: boolean;
@@ -60,14 +64,66 @@ function checkPrereqs(): void {
 }
 
 /**
+ * Read the .gitignore-append template and append its contents to .gitignore.
+ * Creates .gitignore if it doesn't exist. Skips lines already present.
+ */
+function appendGitignore(targetDir: string, templatesDir: string): void {
+  const appendFile = join(templatesDir, ".gitignore-append");
+  if (!existsSync(appendFile)) return;
+
+  const appendContent = readFileSync(appendFile, "utf-8").trim();
+  if (!appendContent) return;
+
+  const gitignorePath = join(targetDir, ".gitignore");
+  let existing = "";
+
+  if (existsSync(gitignorePath)) {
+    existing = readFileSync(gitignorePath, "utf-8");
+  }
+
+  // Collect lines that are not already present
+  const existingLines = new Set(
+    existing.split("\n").map(l => l.trim())
+  );
+  const newLines = appendContent
+    .split("\n")
+    .filter(line => !existingLines.has(line.trim()));
+
+  if (newLines.length === 0) {
+    console.log("  .gitignore already up to date");
+    return;
+  }
+
+  // Ensure trailing newline before appending
+  const separator = existing.endsWith("\n") ? "\n" : "\n\n";
+  writeFileSync(gitignorePath, existing + separator + newLines.join("\n") + "\n");
+  console.log(`  Appended ${newLines.length} line(s) to .gitignore`);
+}
+
+/**
+ * Resolve the templates/ directory by walking up from this file to package.json.
+ */
+function findTemplatesDir(): string {
+  // Walk up from the built file to find the package root
+  let dir = resolve(import.meta.dirname ?? ".");
+  while (dir !== resolve(dir, "..")) {
+    if (existsSync(join(dir, "package.json"))) {
+      return join(dir, "templates");
+    }
+    dir = resolve(dir, "..");
+  }
+  throw new Error("Could not find package root (no package.json found)");
+}
+
+/**
  * Main init orchestrator.
  */
 export async function runInit(options: InitOptions): Promise<void> {
   const targetDir = process.cwd();
 
   console.log("");
-  console.log("  PROTEUS INIT");
-  console.log("  Protein design agent for Claude Code");
+  console.log("  BY INIT");
+  console.log("  BY (Blatant-Why) protein design agent for Claude Code");
   console.log("");
 
   // Step 1: Check prerequisites
@@ -86,6 +142,31 @@ export async function runInit(options: InitOptions): Promise<void> {
   console.log(`  ${serverCount} MCP server(s) registered`);
   console.log("");
 
+  // Step 4: Prompt for API keys
+  await promptApiKeys(targetDir, options.skipKeys);
+  console.log("");
+
+  // Step 5: Append to .gitignore
+  console.log("Updating .gitignore...");
+  const templatesDir = findTemplatesDir();
+  appendGitignore(targetDir, templatesDir);
+  console.log("");
+
+  // Step 6: Ensure .by/ directory exists
+  mkdirSync(join(targetDir, ".by", "campaigns"), { recursive: true });
+
+  // Step 7: Verify MCP servers
+  const mcpDir = join(targetDir, "mcp_servers");
+  if (existsSync(mcpDir)) {
+    console.log("Verifying MCP servers...");
+    const { passed, failed } = verifyMcpServers(mcpDir);
+    console.log(`  ${passed} server(s) OK`);
+    if (failed.length > 0) {
+      console.log(`  ${failed.length} server(s) failed: ${failed.join(", ")}`);
+    }
+    console.log("");
+  }
+
   // Summary
   console.log("Initialization complete!");
   console.log("");
@@ -96,11 +177,12 @@ export async function runInit(options: InitOptions): Promise<void> {
   console.log("  .claude/hooks/        Hook scripts");
   console.log("  .claude/scripts/      Hook shell scripts");
   console.log("  mcp_servers/          MCP server scripts");
-  console.log("  .proteus/campaigns/   Campaign data");
+  console.log("  .by/campaigns/        Campaign data");
   console.log("");
   console.log("Next steps:");
-  console.log("  1. Add MCP server scripts to mcp_servers/");
-  console.log("  2. Run `proteus` again to regenerate settings.json");
+  console.log("  1. Review .claude/settings.json for MCP server registrations");
+  console.log("  2. Set API keys if skipped: edit .claude/settings.local.json");
   console.log("  3. Open Claude Code in this directory");
+  console.log("  4. Try: /by:status or /by:load <PDB_ID>");
   console.log("");
 }

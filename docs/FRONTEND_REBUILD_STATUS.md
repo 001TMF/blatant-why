@@ -48,7 +48,7 @@ The current rebuild was written from scratch and has fundamental Ink `<Static>` 
 ## Known Bugs to Fix (Priority Order)
 
 ### BUG 1: Banner/content duplication (CRITICAL)
-**Symptom**: PROTEUS banner and content re-renders every time user submits a message.
+**Symptom**: BY banner and content re-renders every time user submits a message.
 **Root cause**: Ink's `<Static>` re-renders all items when the items array reference changes. Even with the ref-based approach in `MessageList.tsx`, the component itself re-renders because React state changes trigger parent re-renders which recreate the items array.
 **Attempted fixes**:
 1. Moved banner inside Static items — still duplicates

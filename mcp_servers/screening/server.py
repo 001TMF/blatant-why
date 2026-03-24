@@ -5,10 +5,10 @@
 #   "mcp>=1.0.0",
 # ]
 # ///
-"""Screening MCP Server — protein sequence screening and scoring tools for Proteus agent.
+"""Screening MCP Server — protein sequence screening and scoring tools for BY agent.
 
 Wraps the Phase 1 screening (liabilities, developability) and scoring (ipSAE)
-modules into MCP tools for the Proteus harness.
+modules into MCP tools for the BY harness.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("proteus-screening")
+mcp = FastMCP("by-screening")
 
 
 # ---------------------------------------------------------------------------
@@ -270,7 +270,7 @@ async def screen_composite(
     plddt: float | None = None,
     rmsd: float | None = None,
 ) -> str:
-    """Run the full Proteus screening battery on a design.
+    """Run the full BY screening battery on a design.
 
     Combines liability scanning, developability assessment, and
     interpretation of any supplied structure/binding scores. Returns a
@@ -402,7 +402,7 @@ async def interpret_scores(
     """Provide human-readable interpretation of structure/binding scores.
 
     Interprets any combination of ipTM, ipSAE, and pLDDT scores
-    using the Proteus scoring scales.
+    using the BY scoring scales.
 
     Args:
         iptm: Interface predicted TM-score (optional).

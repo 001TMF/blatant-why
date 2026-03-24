@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Proteus statusline hook — PostToolUse
+// BY statusline hook — PostToolUse
 // Generates a compact status string for the Claude Code status bar.
-// Reads config, active campaign, and provider info from .proteus/.
+// Reads config, active campaign, and provider info from .by/.
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
 import { resolve, dirname } from 'path';
@@ -12,7 +12,7 @@ import { resolve, dirname } from 'path';
 function findProjectRoot(start) {
   let dir = resolve(start);
   while (dir !== '/') {
-    if (existsSync(resolve(dir, '.proteus'))) return dir;
+    if (existsSync(resolve(dir, '.by'))) return dir;
     dir = dirname(dir);
   }
   return null;
@@ -40,24 +40,24 @@ process.stdin.on('end', () => {
 function run() {
   const root = findProjectRoot(process.cwd());
   if (!root) {
-    // No .proteus directory — output nothing (silent)
+    // No .by directory — output nothing (silent)
     return;
   }
 
-  const proteusDir = resolve(root, '.proteus');
+  const byDir = resolve(root, '.by');
 
   // 1. Read model profile from config
-  const config = readJson(resolve(proteusDir, 'config.json'));
+  const config = readJson(resolve(byDir, 'config.json'));
   const profile = config?.model_profile || 'balanced';
 
   // 2. Detect provider from environment.json
-  const envInfo = readJson(resolve(proteusDir, 'environment.json'));
+  const envInfo = readJson(resolve(byDir, 'environment.json'));
   const provider = envInfo?.primary_provider || 'Tamarind';
   const providerTier = envInfo?.provider_tier || '';
   const providerLabel = providerTier ? `${provider} (${providerTier})` : provider;
 
   // 3. Find the most recent active campaign
-  const campaignsDir = resolve(proteusDir, 'campaigns');
+  const campaignsDir = resolve(byDir, 'campaigns');
   let campaignSlug = 'none';
   let roundInfo = '';
 
@@ -87,7 +87,7 @@ function run() {
   }
 
   // 4. Format the statusline
-  const statusline = `Proteus | ${providerLabel} | campaign: ${campaignSlug}${roundInfo} | ${profile}`;
+  const statusline = `BY | ${providerLabel} | campaign: ${campaignSlug}${roundInfo} | ${profile}`;
 
   const output = {
     hookSpecificOutput: {

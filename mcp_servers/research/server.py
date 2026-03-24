@@ -6,7 +6,7 @@
 #   "httpx",
 # ]
 # ///
-"""Research MCP Server — public API queries for target research in Proteus agent."""
+"""Research MCP Server — public API queries for target research in BY agent."""
 from __future__ import annotations
 
 import json
@@ -18,7 +18,7 @@ from urllib.parse import quote, urlencode
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("proteus-research")
+mcp = FastMCP("by-research")
 
 # ---------------------------------------------------------------------------
 # Constants

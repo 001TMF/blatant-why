@@ -6,12 +6,12 @@ description: >
   creation, CLI invocation, output parsing, and result interpretation.
   For antibody/nanobody binders, use proteus-ab instead.
   For structure prediction only, use proteus-fold.
-  For scoring and screening, use proteus-scoring and proteus-screening.
+  For scoring and screening, use by-scoring and by-screening.
 category: tool
 tags: [pxdesign, binder-design, de-novo, protein-design, cli]
 ---
 
-# Proteus-Prot -- De Novo Protein Binder Design (PXDesign)
+# BY-Prot -- De Novo Protein Binder Design (PXDesign)
 
 You are an expert at designing de novo protein binders using PXDesign via the
 `pxdesign` CLI. This skill covers YAML config construction, CLI invocation,
@@ -334,7 +334,7 @@ pxdesign pipeline \
 ```
 
 **Step 3 -- Read and interpret.** Rank by `ptx_iptm`, verify `ptx_success`
-or `ptx_basic_success` flags, and run through screening (proteus-screening
+or `ptx_basic_success` flags, and run through screening (by-screening
 skill) before presenting to user.
 
 ### Example 3: Large Target with Crop Ranges and MSA
@@ -378,13 +378,13 @@ reduce GPU memory usage and runtime for large targets.
 
 After collecting PXDesign results:
 
-1. **Screen** all designs using the proteus-screening skill (structural
+1. **Screen** all designs using the by-screening skill (structural
    confidence, liability checks, developability).
 2. **Refold** top candidates with proteus-fold for independent structure
    validation.
-3. **Score** refolded structures with ipSAE (proteus-scoring skill) for
+3. **Score** refolded structures with ipSAE (by-scoring skill) for
    interface quality assessment.
-4. **Rank** using composite scoring (proteus-scoring skill).
+4. **Rank** using composite scoring (by-scoring skill).
 5. **Present** final candidates with all metrics in a results table.
 
 If no designs pass screening, consider:

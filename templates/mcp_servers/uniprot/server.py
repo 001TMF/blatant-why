@@ -6,7 +6,7 @@
 #   "httpx",
 # ]
 # ///
-"""Proteus UniProt MCP Server — tools for querying the UniProt REST API."""
+"""BY UniProt MCP Server — tools for querying the UniProt REST API."""
 from __future__ import annotations
 
 import json

@@ -7,7 +7,7 @@
 #   "sentence-transformers>=3.0.0",
 # ]
 # ///
-"""Proteus Knowledge MCP Server — semantic memory with ChromaDB + sentence-transformers."""
+"""BY Knowledge MCP Server — semantic memory with ChromaDB + sentence-transformers."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ def _get_embedding_function() -> embedding_functions.SentenceTransformerEmbeddin
 def _get_client() -> chromadb.ClientAPI:
     global _client
     if _client is None:
-        db_path = os.path.join(os.getcwd(), ".proteus", "knowledge.db")
+        db_path = os.path.join(os.getcwd(), ".by", "knowledge.db")
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         _client = chromadb.PersistentClient(
             path=db_path,
@@ -164,7 +164,7 @@ def _mmr_rerank(
 # Server definition
 # ---------------------------------------------------------------------------
 
-server = Server("proteus-knowledge")
+server = Server("by-knowledge")
 
 
 @server.list_tools()

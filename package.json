@@ -1,10 +1,10 @@
 {
-  "name": "proteus-design",
+  "name": "by-design",
   "version": "0.1.0",
-  "description": "Protein design agent for Claude Code",
+  "description": "BY (Blatant-Why) protein design agent for Claude Code",
   "type": "module",
   "bin": {
-    "proteus": "./dist/index.js"
+    "by": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.init.json",

@@ -5,7 +5,7 @@
 #   "mcp>=1.0.0",
 # ]
 # ///
-"""Local compute MCP Server — run Proteus tools on local or SSH-remote GPUs."""
+"""Local compute MCP Server — run BY tools on local or SSH-remote GPUs."""
 from __future__ import annotations
 
 import json
@@ -28,7 +28,7 @@ def _error(msg: str) -> str:
     """Return a JSON-encoded error payload."""
     return json.dumps({"error": msg})
 
-mcp = FastMCP("proteus-local")
+mcp = FastMCP("by-local")
 
 
 # ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ mcp = FastMCP("proteus-local")
 
 @mcp.tool()
 async def local_detect_tools() -> str:
-    """Check which Proteus tools are installed locally.
+    """Check which BY tools are installed locally.
 
     Inspects the configured tool paths (override with PROTEUS_FOLD_DIR,
     PROTEUS_PROT_DIR, PROTEUS_AB_DIR environment variables).
@@ -342,7 +342,7 @@ async def ssh_detect_tools_remote(
     key_path: str = "",
     tools_path: str = "",
 ) -> str:
-    """Check which Proteus tools are installed on a remote SSH server.
+    """Check which BY tools are installed on a remote SSH server.
 
     Args:
         host: SSH hostname (default from PROTEUS_SSH_HOST env var).
@@ -442,7 +442,7 @@ async def ssh_run_job(
     key_path: str = "",
     tools_path: str = "",
 ) -> str:
-    """Run a Proteus design job on a remote GPU server via SSH.
+    """Run a BY design job on a remote GPU server via SSH.
 
     Uploads the config file, executes the tool remotely, and downloads
     the results.

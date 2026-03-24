@@ -51,7 +51,7 @@ User wants a binder...
 │   └── Use proteus-fold instead
 │
 └── Need to score an existing antibody design?
-    └── Use proteus-scoring skill (ipSAE)
+    └── Use by-scoring skill (ipSAE)
 ```
 
 ---
@@ -202,7 +202,7 @@ Output CSV: `<output_dir>/final_ranked_designs/final_designs_metrics_*.csv`
 | `sequence` | string | Full amino acid sequence |
 
 **Sorted by `iptm` descending.** Apply hard filters: ipTM > 0.5, pLDDT > 70,
-RMSD < 3.5 A. Then rank by composite score (see proteus-scoring skill).
+RMSD < 3.5 A. Then rank by composite score (see by-scoring skill).
 
 ---
 

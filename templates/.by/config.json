@@ -1,0 +1,17 @@
+{
+  "model_profile": "balanced",
+  "compute": {
+    "default_provider": "tamarind",
+    "ssh_hosts": [],
+    "local_gpu": false
+  },
+  "workflow": {
+    "auto_research": true,
+    "auto_screen": true,
+    "fold_validation": true
+  },
+  "safety": {
+    "require_plan_approval": true,
+    "require_lab_approval": true
+  }
+}

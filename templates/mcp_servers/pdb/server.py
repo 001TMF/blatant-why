@@ -6,7 +6,7 @@
 #   "httpx",
 # ]
 # ///
-"""PDB MCP Server — RCSB Protein Data Bank query tools for Proteus agent."""
+"""PDB MCP Server — RCSB Protein Data Bank query tools for BY agent."""
 from __future__ import annotations
 
 import json

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== Proteus Environment Setup ==="
+echo "=== BY Environment Setup ==="
 echo ""
 
 # Check Node.js
@@ -65,7 +65,7 @@ done
 echo ""
 echo "=== Setup Complete ==="
 echo ""
-echo "To start Proteus:"
+echo "To start BY:"
 echo "  cd harness && npm run dev"
 echo ""
 echo "Or run the built version:"

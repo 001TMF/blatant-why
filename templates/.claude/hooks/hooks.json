@@ -26,7 +26,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "mcp__proteus-adaptyv__adaptyv_confirm_submission",
+        "matcher": "mcp__by-adaptyv__adaptyv_confirm_submission",
         "hooks": [
           {
             "type": "command",

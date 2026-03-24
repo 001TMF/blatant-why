@@ -89,11 +89,11 @@ export async function copyTemplates(
   ensureDirs(targetDir, [
     ".claude/agents",
     ".claude/skills",
-    ".claude/commands/proteus",
+    ".claude/commands/by",
     ".claude/hooks",
     ".claude/scripts",
     "mcp_servers",
-    ".proteus/campaigns",
+    ".by/campaigns",
   ]);
 
   // Copy template files
@@ -131,7 +131,7 @@ export async function generateSettingsJson(
 
     for (const file of files) {
       const name = path.basename(file, ".py");
-      const serverKey = `proteus-${name}`;
+      const serverKey = `by-${name}`;
       const scriptPath = path.join(mcpServerDir, file);
 
       mcpServers[serverKey] = {

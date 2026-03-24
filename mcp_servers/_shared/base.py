@@ -1,4 +1,4 @@
-"""Shared MCP server utilities for Proteus agent."""
+"""Shared MCP server utilities for BY agent."""
 
 import json
 

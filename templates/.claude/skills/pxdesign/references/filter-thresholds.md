@@ -81,7 +81,7 @@ scaffolds because Protenix handles de novo designs better.
 
 **When to use**: As the primary acceptance criterion for designs. Designs
 passing Protenix basic are good candidates for experimental testing, especially
-when combined with downstream screening (proteus-screening skill).
+when combined with downstream screening (by-screening skill).
 
 ---
 
@@ -154,5 +154,5 @@ homologs in its training data.
 2. **Filter by `ptx_basic_success=True`** as minimum acceptance
 3. **Highlight `ptx_success=True`** designs as top candidates
 4. **Note `af2_easy_success` and `af2_opt_success`** as supplementary evidence
-5. **Run passing designs through proteus-screening** for liability and
+5. **Run passing designs through by-screening** for liability and
    developability checks before final selection

@@ -39,10 +39,10 @@ function parseArgs(argv: string[]): CliFlags {
 
 function printHelp(): void {
   console.log(`
-proteus - Protein design agent for Claude Code
+by - BY (Blatant-Why) protein design agent for Claude Code
 
 Usage:
-  proteus [options]
+  by [options]
 
 Options:
   --help, -h       Show this help message
@@ -50,8 +50,8 @@ Options:
   --force, -f      Overwrite existing files instead of skipping
 
 Description:
-  Initializes a new Proteus project in the current directory.
-  Copies template files (.claude/, mcp_servers/, .proteus/) and
+  Initializes a new BY project in the current directory.
+  Copies template files (.claude/, mcp_servers/, .by/) and
   generates .claude/settings.json with MCP server registrations.
 `);
 }

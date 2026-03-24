@@ -7,8 +7,8 @@ description: >
   (4) Multi-seed ensemble validation, (5) Predicting protein-ligand complexes.
 
   For design generation, use proteus-prot or proteus-ab instead.
-  For scoring existing predictions, use proteus-scoring.
-  For full pipeline orchestration, use proteus-design-workflow.
+  For scoring existing predictions, use by-scoring.
+  For full pipeline orchestration, use by-design-workflow.
 category: tool
 tags: [structure-prediction, protenix, fold, validation, confidence]
 ---
@@ -313,6 +313,6 @@ Step 3 — Read confidence JSON from each seed directory.
 
 ## 11. Integration with Other Skills
 
-- **After proteus-fold:** Use `proteus-scoring` for ipSAE from PAE matrices, `proteus-screening` for full liability battery.
-- **Before proteus-fold:** Use `proteus-database` to fetch target sequences from PDB/UniProt.
-- **Workflow context:** `proteus-design-workflow` orchestrates when to call proteus-fold in the overall pipeline.
+- **After proteus-fold:** Use `by-scoring` for ipSAE from PAE matrices, `by-screening` for full liability battery.
+- **Before proteus-fold:** Use `by-database` to fetch target sequences from PDB/UniProt.
+- **Workflow context:** `by-design-workflow` orchestrates when to call proteus-fold in the overall pipeline.

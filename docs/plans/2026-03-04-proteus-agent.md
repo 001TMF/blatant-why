@@ -1,10 +1,10 @@
-# Proteus Agent — Full Implementation Plan (v2)
+# BY Agent — Full Implementation Plan (v2)
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Build a green-themed Claude Code harness + skill system ("Proteus") that wraps three local protein design tools (proteus-fold, proteus-prot, proteus-ab) into a conversational, expert-guided CLI agent for de novo protein and antibody design — with deep integration of ipSAE/p_bind custom scoring and comprehensive screening tools.
+**Goal:** Build a green-themed Claude Code harness + skill system ("BY") that wraps three local protein design tools (by-fold, by-prot, by-ab) into a conversational, expert-guided CLI agent for de novo protein and antibody design — with deep integration of ipSAE/p_bind custom scoring and comprehensive screening tools.
 
-**Architecture:** A TypeScript harness app launches a custom green-themed terminal UI (inspired by Adaptyv's protein designer screenshots) via Ink/React, wrapping Claude Code through the Agent SDK. MCP servers expose biological databases (PDB, UniProt, SAbDab) and the Proteus tool suite. Claude Code skills encode expert domain workflows. Python wrapper scripts provide unified CLI interfaces to tools at `/data/proteus/`. A dedicated screening MCP server integrates ipSAE, p_bind, developability scoring, PTM liability scanning, and ESM2 pseudo-log-likelihood scoring.
+**Architecture:** A TypeScript harness app launches a custom green-themed terminal UI (inspired by Adaptyv's protein designer screenshots) via Ink/React, wrapping Claude Code through the Agent SDK. MCP servers expose biological databases (PDB, UniProt, SAbDab) and the BY tool suite. Claude Code skills encode expert domain workflows. Python wrapper scripts provide unified CLI interfaces to tools at `/data/proteus/`. A dedicated screening MCP server integrates ipSAE, p_bind, developability scoring, PTM liability scanning, and ESM2 pseudo-log-likelihood scoring.
 
 **Tech Stack:** TypeScript (harness, MCP servers), Python (tool wrappers, scoring, screening), Claude Agent SDK, MCP protocol, Ink/React + ink-ui for terminal UI, chalk for green theming.
 
@@ -24,11 +24,11 @@
 
 ### Tool Suite (3 tools, no ODesign)
 
-| Proteus Name | Internal Tool | Directory | CLI Entry | Purpose |
+| BY Name | Internal Tool | Directory | CLI Entry | Purpose |
 |-------------|---------------|-----------|-----------|---------|
-| **proteus-fold** | Protenix v1 | `/data/proteus/Protenix/` | `protenix pred -i input.json` | AF3-class structure prediction & validation |
-| **proteus-prot** | PXDesign | `/data/proteus/PXDesign/` | `pxdesign pipeline --preset extended` | De novo protein binder design (17-82% hit rates) |
-| **proteus-ab** | Proteus-AB | `/data/proteus/proteus-design/` | `proteus-ab run spec.yaml` | Antibody/nanobody design (BoltzGen + Protenix refolding) |
+| **by-fold** | Protenix v1 | `/data/proteus/Protenix/` | `protenix pred -i input.json` | AF3-class structure prediction & validation |
+| **by-prot** | PXDesign | `/data/proteus/PXDesign/` | `pxdesign pipeline --preset extended` | De novo protein binder design (17-82% hit rates) |
+| **by-ab** | BY-AB | `/data/proteus/proteus-design/` | `by-ab run spec.yaml` | Antibody/nanobody design (BoltzGen + Protenix refolding) |
 
 ### Custom Scoring Metrics (ipSAE + p_bind)
 
@@ -37,7 +37,7 @@
 - Core function: `compute_ipsae_score()` in `deps/BoltzGen/src/boltzgen/model/layers/confidence_utils.py`
 - Directional: `design_to_target_ipsae`, `target_to_design_ipsae`, `design_ipsae_min`
 - PAE cutoff: 15.0 A, d0 formula: `1.24 * (clamp(n0, 19) - 15)^(1/3) - 1.8`
-- Wrapper: `compute_ipsae_from_protenix()` in `src/proteus_ab/pipeline/scoring.py`
+- Wrapper: `compute_ipsae_from_protenix()` in `src/by_ab/pipeline/scoring.py`
 
 **p_bind (Binding Probability Prediction):**
 - 3-layer MLP: Input(1024) → Hidden(512, 256, 128) → Output(1)
@@ -67,7 +67,7 @@
 ### Design Direction (from inspo screenshots)
 
 - **Green ink theme**: Primary accent `#4CAF50` / `#66BB6A` on charcoal `#1A1A2E`
-- **ASCII art banner**: Large pixel-font "PROTEUS" in green
+- **ASCII art banner**: Large pixel-font "BY" in green
 - **Mode indicator**: "Binder Designer mode" / "Antibody Designer mode" / "Structure Predictor mode"
 - **Natural language input**: "let's load pd-l1 as a target"
 - **Proactive recommendations**: Agent suggests best target, explains rationale
@@ -94,9 +94,9 @@
 
 ```toml
 [project]
-name = "proteus-agent"
+name = "by-agent"
 version = "0.1.0"
-description = "Proteus protein design agent - CLI wrappers, scoring, and screening"
+description = "BY protein design agent - CLI wrappers, scoring, and screening"
 requires-python = ">=3.11"
 dependencies = [
     "click>=8.0",
@@ -126,7 +126,7 @@ where = ["src"]
 
 ```python
 # src/proteus_cli/common.py
-"""Shared utilities for Proteus CLI wrappers."""
+"""Shared utilities for BY CLI wrappers."""
 from __future__ import annotations
 
 import json
@@ -138,7 +138,7 @@ from typing import Any
 
 @dataclass
 class ToolResult:
-    """Standardized result from any Proteus tool invocation."""
+    """Standardized result from any BY tool invocation."""
     tool: str
     status: str  # "success", "error", "running"
     output_dir: Path | None = None
@@ -161,9 +161,9 @@ class ToolResult:
 
 
 TOOL_PATHS = {
-    "proteus-fold": Path("/data/proteus/Protenix"),
-    "proteus-prot": Path("/data/proteus/PXDesign"),
-    "proteus-ab": Path("/data/proteus/proteus-design"),
+    "by-fold": Path("/data/proteus/Protenix"),
+    "by-prot": Path("/data/proteus/PXDesign"),
+    "by-ab": Path("/data/proteus/proteus-design"),
 }
 
 
@@ -190,7 +190,7 @@ git init && git add src/ tests/ pyproject.toml && git commit -m "feat: project s
 
 ---
 
-### Task 1.2: proteus-fold Wrapper (Protenix)
+### Task 1.2: by-fold Wrapper (Protenix)
 
 **Files:** `src/proteus_cli/fold.py`, `tests/test_fold.py`
 
@@ -198,7 +198,7 @@ Wraps `protenix pred` with standardized JSON input builder (`build_protenix_json
 
 ---
 
-### Task 1.3: proteus-prot Wrapper (PXDesign)
+### Task 1.3: by-prot Wrapper (PXDesign)
 
 **Files:** `src/proteus_cli/protein.py`, `tests/test_protein.py`
 
@@ -206,11 +206,11 @@ Wraps `pxdesign pipeline` with YAML config builder, preset selection (preview/ex
 
 ---
 
-### Task 1.4: proteus-ab Wrapper (Antibody Design)
+### Task 1.4: by-ab Wrapper (Antibody Design)
 
 **Files:** `src/proteus_cli/antibody.py`, `tests/test_antibody.py`
 
-Wraps `proteus-ab run` with design spec builder, protocol selection (nanobody-anything/antibody-anything), prefilter toggle, MSA mode selection, budget/diversity alpha configuration. Parses `final_designs_metrics_*.csv` and `results_overview.pdf`.
+Wraps `by-ab run` with design spec builder, protocol selection (nanobody-anything/antibody-anything), prefilter toggle, MSA mode selection, budget/diversity alpha configuration. Parses `final_designs_metrics_*.csv` and `results_overview.pdf`.
 
 ---
 
@@ -372,7 +372,7 @@ def extract_features_from_trunk(
     """
     import torch
     from boltzgen.model.layers.binding_utils import extract_pbind_features
-    from proteus_ab.pbind.trunk import build_chain_design_mask
+    from by_ab.pbind.trunk import build_chain_design_mask
 
     chain_mask = build_chain_design_mask(asym_id)
     token_pad_mask = torch.ones(1, s_trunk.shape[1], device=s_trunk.device)
@@ -582,16 +582,16 @@ git commit -m "feat: screening module — PTM liabilities, net charge, developab
 
 Click group with commands: `fold`, `protein`, `ab`, `check`, `screen`, `score`.
 
-- `proteus fold` — structure prediction
-- `proteus protein` — de novo binder design
-- `proteus ab` — antibody/nanobody design
-- `proteus check <tool>` — verify tool installation
-- `proteus screen <sequence>` — run liability + developability screening
-- `proteus score <npz_path>` — compute ipSAE from NPZ
+- `by fold` — structure prediction
+- `by protein` — de novo binder design
+- `by ab` — antibody/nanobody design
+- `by check <tool>` — verify tool installation
+- `by screen <sequence>` — run liability + developability screening
+- `by score <npz_path>` — compute ipSAE from NPZ
 
 ```bash
 git add src/proteus_cli/main.py
-git commit -m "feat: unified proteus CLI with fold/protein/ab/check/screen/score"
+git commit -m "feat: unified by CLI with fold/protein/ab/check/screen/score"
 ```
 
 ---
@@ -624,21 +624,21 @@ Uses UniProt REST API (`https://rest.uniprot.org`).
 
 Tools: `sabdab_search_antibodies`, `sabdab_get_structure`, `sabdab_cdr_sequences`, `sabdab_search_by_antigen`
 
-Uses SAbDab API (`https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab/`). Critical for antibody scaffold selection in proteus-ab workflows.
+Uses SAbDab API (`https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab/`). Critical for antibody scaffold selection in by-ab workflows.
 
 ---
 
-### Task 2.4: Proteus Tools MCP Server
+### Task 2.4: BY Tools MCP Server
 
-**Files:** `mcp_servers/proteus_tools/server.py`
+**Files:** `mcp_servers/by_tools/server.py`
 
 Tools:
-- `proteus_fold_predict` — Run Protenix structure prediction
-- `proteus_prot_design` — Run PXDesign binder design pipeline
-- `proteus_ab_design` — Run antibody/nanobody design pipeline
-- `proteus_check_input` — Validate design spec YAML
-- `proteus_parse_results` — Parse and rank design campaign results
-- `proteus_download_target` — Download and prepare target from PDB
+- `by_fold_predict` — Run Protenix structure prediction
+- `by_prot_design` — Run PXDesign binder design pipeline
+- `by_ab_design` — Run antibody/nanobody design pipeline
+- `by_check_input` — Validate design spec YAML
+- `by_parse_results` — Parse and rank design campaign results
+- `by_download_target` — Download and prepare target from PDB
 
 Each tool calls the Python wrappers from Phase 1 and returns structured JSON.
 
@@ -667,23 +667,23 @@ This is a key differentiator from the Adaptyv skill. Tools:
 ```json
 {
   "mcpServers": {
-    "proteus-pdb": {
+    "by-pdb": {
       "command": "python",
       "args": ["mcp_servers/pdb/server.py"]
     },
-    "proteus-uniprot": {
+    "by-uniprot": {
       "command": "python",
       "args": ["mcp_servers/uniprot/server.py"]
     },
-    "proteus-sabdab": {
+    "by-sabdab": {
       "command": "python",
       "args": ["mcp_servers/sabdab/server.py"]
     },
-    "proteus-tools": {
+    "by-tools": {
       "command": "python",
-      "args": ["mcp_servers/proteus_tools/server.py"]
+      "args": ["mcp_servers/by_tools/server.py"]
     },
-    "proteus-screening": {
+    "by-screening": {
       "command": "python",
       "args": ["mcp_servers/screening/server.py"]
     }
@@ -695,16 +695,16 @@ This is a key differentiator from the Adaptyv skill. Tools:
 
 ## Phase 3: Claude Code Skills {#phase-3}
 
-### Task 3.1: Skill — proteus-design-workflow
+### Task 3.1: Skill — by-design-workflow
 
-**Files:** `.claude/skills/proteus-design-workflow/SKILL.md`
+**Files:** `.claude/skills/by-design-workflow/SKILL.md`
 
 Master orchestration skill with decision tree:
 ```
 Want to design a binder?
-├── Antibody/nanobody? → proteus-ab (nanobody-anything | antibody-anything)
-├── Protein binder? → proteus-prot (preview | extended)
-└── Validate a structure? → proteus-fold
+├── Antibody/nanobody? → by-ab (nanobody-anything | antibody-anything)
+├── Protein binder? → by-prot (preview | extended)
+└── Validate a structure? → by-fold
 ```
 
 Standard pipeline: Target Prep → Hotspot Analysis → Design Generation → Screening → Ranking → Review.
@@ -713,9 +713,9 @@ Quality thresholds table. Campaign sizing guide. Residue numbering convention (l
 
 ---
 
-### Task 3.2: Skill — proteus-scoring
+### Task 3.2: Skill — by-scoring
 
-**Files:** `.claude/skills/proteus-scoring/SKILL.md`
+**Files:** `.claude/skills/by-scoring/SKILL.md`
 
 **Deep scoring skill** covering ipSAE and p_bind:
 
@@ -759,16 +759,16 @@ Must use FULL VH/VL chains (not CDR-only).
 v1 (CDR-only) gave ROC 0.60 → v2 (full chains) gave ROC 0.906.
 
 ### When to use
-- After proteus-ab designs are refolded
+- After by-ab designs are refolded
 - Before final candidate selection
 - As additional ranking signal alongside ipTM and ipSAE
 ```
 
 ---
 
-### Task 3.3: Skill — proteus-epitope-analysis
+### Task 3.3: Skill — by-epitope-analysis
 
-**Files:** `.claude/skills/proteus-epitope-analysis/SKILL.md`
+**Files:** `.claude/skills/by-epitope-analysis/SKILL.md`
 
 Teaches Claude to:
 1. Use `pdb_interface_residues` to identify binding interface
@@ -779,9 +779,9 @@ Teaches Claude to:
 
 ---
 
-### Task 3.4: Skill — proteus-screening
+### Task 3.4: Skill — by-screening
 
-**Files:** `.claude/skills/proteus-screening/SKILL.md`
+**Files:** `.claude/skills/by-screening/SKILL.md`
 
 Comprehensive screening skill encoding ALL screening metrics:
 
@@ -794,19 +794,19 @@ Comprehensive screening skill encoding ALL screening metrics:
 
 ---
 
-### Task 3.5: Skill — proteus-campaign-manager
+### Task 3.5: Skill — by-campaign-manager
 
-**Files:** `.claude/skills/proteus-campaign-manager/SKILL.md`
+**Files:** `.claude/skills/by-campaign-manager/SKILL.md`
 
 Campaign planning, state tracking, multi-run coordination, cost/time estimation, progress monitoring, health assessment.
 
 ---
 
-### Task 3.6: Skill — proteus-database
+### Task 3.6: Skill — by-database
 
-**Files:** `.claude/skills/proteus-database/SKILL.md`
+**Files:** `.claude/skills/by-database/SKILL.md`
 
-How to use MCP tools for PDB, UniProt, SAbDab queries. Template selection guidance for proteus-ab scaffolds.
+How to use MCP tools for PDB, UniProt, SAbDab queries. Template selection guidance for by-ab scaffolds.
 
 ---
 
@@ -866,9 +866,9 @@ const BANNER = `
 **Files:** `harness/src/modes.ts`
 
 Three modes (Shift-Tab to cycle, matching inspo):
-1. **Binder Designer** — proteus-prot focused (de novo protein binders)
-2. **Antibody Designer** — proteus-ab focused (VHH/Fab design)
-3. **Structure Predictor** — proteus-fold focused (validation)
+1. **Binder Designer** — by-prot focused (de novo protein binders)
+2. **Antibody Designer** — by-ab focused (VHH/Fab design)
+3. **Structure Predictor** — by-fold focused (validation)
 
 Each mode sets active skills and default tool parameters.
 
@@ -955,19 +955,19 @@ Connects harness UI to Claude:
 
 ## Phase 5: Integration & Polish {#phase-5}
 
-### Task 5.1: CLAUDE.md for Proteus Agent
+### Task 5.1: CLAUDE.md for BY Agent
 
 ```markdown
-# CLAUDE.md — Proteus Protein Design Agent
+# CLAUDE.md — BY Protein Design Agent
 
 ## Identity
-You are Proteus, an expert computational protein engineer. You design protein
-binders and antibodies using the Proteus tool suite.
+You are BY, an expert computational protein engineer. You design protein
+binders and antibodies using the BY tool suite.
 
 ## Tools (3 core)
-- **proteus-fold**: Structure prediction & validation (Protenix v1)
-- **proteus-prot**: De novo protein binder design (PXDesign, 17-82% hit rates)
-- **proteus-ab**: Antibody/nanobody design (BoltzGen + Protenix refolding)
+- **by-fold**: Structure prediction & validation (Protenix v1)
+- **by-prot**: De novo protein binder design (PXDesign, 17-82% hit rates)
+- **by-ab**: Antibody/nanobody design (BoltzGen + Protenix refolding)
 
 ## Scoring (custom metrics — use these proactively)
 - **ipSAE**: TM-align-inspired interface score from PAE matrices. Higher = better.
@@ -1032,7 +1032,7 @@ exec npx tsx src/index.ts "$@"
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    PROTEUS HARNESS (Green UI)                 │
+│                    BY HARNESS (Green UI)                 │
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │  Ink/React Terminal UI                                  │  │
 │  │  ┌────────┐ ┌─────────────┐ ┌───────────────────────┐ │  │
@@ -1070,7 +1070,7 @@ exec npx tsx src/index.ts "$@"
                    │                    └──────────────┘
                    │  Protenix (fold)
                    │  PXDesign (prot)
-                   │  Proteus-AB (ab)
+                   │  BY-AB (ab)
                    └────────────────────
 ```
 
@@ -1085,11 +1085,11 @@ protein_design_agent/
 ├── src/
 │   └── proteus_cli/
 │       ├── __init__.py
-│       ├── main.py                     # CLI: proteus {fold,protein,ab,check,screen,score}
+│       ├── main.py                     # CLI: by {fold,protein,ab,check,screen,score}
 │       ├── common.py                   # ToolResult, TOOL_PATHS
-│       ├── fold.py                     # proteus-fold (Protenix)
-│       ├── protein.py                  # proteus-prot (PXDesign)
-│       ├── antibody.py                 # proteus-ab
+│       ├── fold.py                     # by-fold (Protenix)
+│       ├── protein.py                  # by-prot (PXDesign)
+│       ├── antibody.py                 # by-ab
 │       ├── scoring/
 │       │   ├── __init__.py
 │       │   ├── ipsae.py               # ipSAE from PAE matrices
@@ -1102,7 +1102,7 @@ protein_design_agent/
 │   ├── pdb/server.py
 │   ├── uniprot/server.py
 │   ├── sabdab/server.py
-│   ├── proteus_tools/server.py
+│   ├── by_tools/server.py
 │   └── screening/server.py            # ipSAE + p_bind + liabilities + developability
 ├── harness/
 │   ├── package.json
@@ -1111,7 +1111,7 @@ protein_design_agent/
 │       ├── index.ts
 │       ├── app.tsx                     # Main Ink app
 │       ├── agent.ts                    # Agent SDK integration
-│       ├── banner.ts                   # GREEN ASCII PROTEUS banner
+│       ├── banner.ts                   # GREEN ASCII BY banner
 │       ├── theme.ts                    # Green color palette
 │       ├── modes.ts                    # Binder/Antibody/Structure modes
 │       ├── progress.ts                 # Pipeline stage display
@@ -1124,12 +1124,12 @@ protein_design_agent/
 │   │   ├── results.md
 │   │   └── screen.md
 │   └── skills/
-│       ├── proteus-design-workflow/SKILL.md
-│       ├── proteus-scoring/SKILL.md    # ipSAE + p_bind deep guide
-│       ├── proteus-epitope-analysis/SKILL.md
-│       ├── proteus-screening/SKILL.md  # Full screening battery
-│       ├── proteus-campaign-manager/SKILL.md
-│       └── proteus-database/SKILL.md
+│       ├── by-design-workflow/SKILL.md
+│       ├── by-scoring/SKILL.md    # ipSAE + p_bind deep guide
+│       ├── by-epitope-analysis/SKILL.md
+│       ├── by-screening/SKILL.md  # Full screening battery
+│       ├── by-campaign-manager/SKILL.md
+│       └── by-database/SKILL.md
 ├── tests/
 │   ├── test_common.py
 │   ├── test_fold.py
@@ -1150,6 +1150,6 @@ protein_design_agent/
 |-------|-------|---------------------|
 | 1. Python Wrappers & Scoring | 8 | ipSAE module, p_bind inference, screening module |
 | 2. MCP Servers | 6 | Screening MCP server (ipSAE + p_bind + liabilities) |
-| 3. Skills | 6 | proteus-scoring skill (ipSAE/p_bind deep guide), screening skill |
+| 3. Skills | 6 | by-scoring skill (ipSAE/p_bind deep guide), screening skill |
 | 4. Harness UI | 8 | Green theme, slash commands, results with scoring columns |
 | 5. Integration | 4 | Updated CLAUDE.md with scoring conventions |

@@ -103,7 +103,7 @@ def _handle_http_error(resp: httpx.Response) -> str | None:
     return None
 
 
-def _generate_job_name(prefix: str = "proteus") -> str:
+def _generate_job_name(prefix: str = "by") -> str:
     """Generate a unique job name with a prefix and short UUID."""
     short_id = uuid.uuid4().hex[:8]
     return f"{prefix}_{short_id}"
@@ -307,7 +307,7 @@ async def tamarind_submit_job(
 
     Args:
         job_name: Unique human-readable name for the job. Use a prefix like
-            'proteus_' with a short UUID to ensure uniqueness.
+            'by_' with a short UUID to ensure uniqueness.
         tool_type: The tool name from tamarind_list_tools (e.g., "boltzgen",
             "tap", "ablang", "protenix", "tnp", "esmfold").
         settings_json: JSON string matching the tool's settings schema.
@@ -682,7 +682,7 @@ async def tamarind_screen_developability(
                 f"Use 'vhh', 'nanobody', 'scfv', 'antibody', or 'mab'."
             )
 
-    job_name = _generate_job_name(f"proteus_dev_{tool_type}")
+    job_name = _generate_job_name(f"by_dev_{tool_type}")
 
     # Submit via the submit-job tool
     result = await tamarind_submit_job(
@@ -751,7 +751,7 @@ async def tamarind_screen_naturalness(
     if light_sequence.strip():
         settings["light_sequence"] = light_sequence
 
-    job_name = _generate_job_name("proteus_nat_ablang")
+    job_name = _generate_job_name("by_nat_ablang")
 
     result = await tamarind_submit_job(
         job_name=job_name,

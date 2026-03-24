@@ -6,7 +6,7 @@ arguments:
     required: true
 ---
 
-Watch the live progress of design run `$ARGUMENTS`. Use the proteus-tools MCP server to check the current status and display the pipeline stages with progress indicators.
+Watch the live progress of design run `$ARGUMENTS`. Use the by-tools MCP server to check the current status and display the pipeline stages with progress indicators.
 
 Show the pipeline progress display with:
 - Current stage (marked with green dot ●)

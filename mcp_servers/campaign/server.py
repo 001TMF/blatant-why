@@ -5,7 +5,7 @@
 #   "mcp>=1.0.0",
 # ]
 # ///
-"""Campaign State MCP Server — local campaign lifecycle management for Proteus agent."""
+"""Campaign State MCP Server — local campaign lifecycle management for BY agent."""
 from __future__ import annotations
 
 import fcntl
@@ -46,7 +46,7 @@ from proteus_cli.campaign.state import (
     update_run,
 )
 
-mcp = FastMCP("proteus-campaign")
+mcp = FastMCP("by-campaign")
 
 # ---------------------------------------------------------------------------
 # Constants

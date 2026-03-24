@@ -8,7 +8,7 @@ arguments:
 
 Run the complete screening battery on design `$ARGUMENTS`.
 
-Use the proteus-screening MCP server to run:
+Use the by-screening MCP server to run:
 1. PTM liability scan (deamidation, isomerization, oxidation, glycosylation, free Cys)
 2. Net charge at pH 7.4
 3. Developability assessment (CDR length, hydrophobic fraction, composition)
@@ -19,4 +19,4 @@ Present results with:
 - Per-category breakdown with severity levels
 - Overall verdict (PASS/MARGINAL/FAIL)
 - Specific recommendations for addressing any issues
-- Comparison to quality thresholds from proteus-screening skill
+- Comparison to quality thresholds from by-screening skill

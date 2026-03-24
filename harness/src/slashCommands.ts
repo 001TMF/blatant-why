@@ -21,6 +21,7 @@ export const SLASH_COMMANDS = [
   { name: "/compare", description: "Compare metrics across campaign rounds" },
   { name: "/pareto", description: "Show Pareto-optimal designs (multi-objective trade-offs)" },
   { name: "/jobs", description: "Show active cloud compute jobs" },
+  { name: "/view", description: "View a protein structure in ProteinView" },
 ] as const;
 
 export function getCompletions(input: string): typeof SLASH_COMMANDS[number][] {
@@ -53,6 +54,7 @@ export function handleSlashCommand(input: string): SlashCommandResult {
         "  /compare      Compare metrics across campaign rounds",
         "  /pareto       Show Pareto-optimal designs (multi-objective trade-offs)",
         "  /jobs         Show active cloud compute jobs",
+        "  /view         View a protein structure in ProteinView",
         "",
         "Shift+Tab to cycle modes: Binder → Antibody → Structure",
         "",
@@ -100,6 +102,10 @@ export function handleSlashCommand(input: string): SlashCommandResult {
 
   if (trimmed === "/jobs") {
     return { handled: true, local: "show_jobs" };
+  }
+
+  if (trimmed === "/view" || trimmed.startsWith("/view ")) {
+    return { handled: true, local: "view_structure" };
   }
 
   // /status, /results, /screen, /watch, /load, /campaign, /pareto are handled by the agent

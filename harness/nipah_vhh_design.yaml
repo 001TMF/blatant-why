@@ -1,0 +1,36 @@
+entities:
+  - name: nipah_g_protein
+    pdb_path: structures/2vsm.pdb
+    chain: A
+    epitope: "389..389,402..402,504..504,581..581"
+    description: "Nipah virus Glycoprotein G ephrin-binding site"
+
+  - name: vhh_binder
+    type: nanobody
+    modality: vhh
+    scaffolds:
+      - caplacizumab
+      - ozoralizumab
+    description: "VHH nanobody targeting Nipah G protein"
+
+design_params:
+  num_designs_per_scaffold: 5000
+  budget: 50
+  alpha: 0.001
+  hotspots:
+    - A389  # TYR - aromatic stacking
+    - A402  # ARG - salt bridge
+    - A504  # TRP - hydrophobic anchor
+    - A581  # TYR - H-bond network
+
+  constraints:
+    min_binding_interface: 800  # Å²
+    max_cdr3_length: 25
+    block_ephrin_binding: true
+
+campaign:
+  name: "Nipah-G-VHH-Blocker"
+  target: "Nipah virus Glycoprotein G (2VSM)"
+  objective: "Block ephrin-B2/B3 receptor binding"
+  competition: "Adaptyv Bio style design"
+  compute_provider: "tamarind"

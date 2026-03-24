@@ -24,6 +24,20 @@ const LONG_RUNNING_TOOLS = new Set([
   "ssh_run_job",
 ]);
 
+// Compute tools that require an approved campaign plan before execution.
+// Research tools (PDB, UniProt, SAbDab, PubMed) are NOT gated.
+const COMPUTE_TOOLS = new Set([
+  "tamarind_submit_job",
+  "tamarind_submit_batch",
+  "tamarind_wait_for_job",
+  "levitate_run_rfantibody",
+  "levitate_run_analysis",
+  "local_run_boltzgen",
+  "local_run_pxdesign",
+  "local_run_protenix",
+  "ssh_run_job",
+]);
+
 export class CampaignOrchestrator extends EventEmitter {
   private campaignDir: string;
   private projectDir: string;
@@ -85,6 +99,20 @@ export class CampaignOrchestrator extends EventEmitter {
             event.content_block?.type === "tool_use"
           ) {
             const toolName = event.content_block.name as string;
+
+            // Gate: block compute tools until a campaign plan has been approved
+            if (toolName && COMPUTE_TOOLS.has(toolName)) {
+              const state = this.readCampaignState();
+              if (!state || state.plan_approved !== true) {
+                this.emit("plan_required", {
+                  agentName: def.name,
+                  toolName,
+                  message:
+                    "Campaign plan must be approved before submitting compute jobs. Present the plan to the user first.",
+                });
+              }
+            }
+
             if (toolName && LONG_RUNNING_TOOLS.has(toolName)) {
               this.emit("long_running_job", {
                 agentName: def.name,

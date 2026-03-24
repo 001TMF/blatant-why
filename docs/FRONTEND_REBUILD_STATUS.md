@@ -2,6 +2,19 @@
 
 ## Branch: `frontend-rebuild` (off master)
 
+## CRITICAL: Use an existing template harness
+
+Before fixing bugs individually, research whether there's an existing Claude Code SDK harness/template we can build from. The official SDK has demo apps:
+- **github.com/anthropics/claude-agent-sdk-demos** — includes Simple Chat App, Research Agent, etc.
+- **github.com/anthropics/claude-code** — the actual Claude Code TUI source patterns
+- Any community harness templates on npm/GitHub
+
+The current rebuild was written from scratch and has fundamental Ink `<Static>` rendering issues. A proven template that already handles scrolling, streaming, tool calls, and Ctrl+C correctly would save days of debugging.
+
+**First task next session: Research and evaluate existing harness templates before writing more code.**
+
+## Branch: `frontend-rebuild` (off master)
+
 ## What's Done
 
 ### Architecture (correct, keep)
@@ -41,14 +54,17 @@
 1. Moved banner inside Static items — still duplicates
 2. Used useRef with append-only array — still duplicates
 **Real fix needed**: The issue is likely that `useAgent` hook returns a new `messages` array on each state update, causing the `useEffect` in `MessageList` to re-run. Need to either:
-- Use `useMemo` on the messages array in the parent
-- Or switch to a different rendering approach entirely (don't use `<Static>`, use terminal scrollback directly via `process.stdout.write`)
+- Use a proven harness template that already solves this
+- Or bypass `<Static>` entirely and use `process.stdout.write` for the scrollback
 - Or investigate if Ink v5 `<Static>` has a known bug with dynamic items
 
 ### BUG 2: Ctrl+C doesn't exit (CRITICAL)
-**Symptom**: User can't quit the TUI.
+**Symptom**: User can't quit the TUI. Should be double Ctrl+C like Claude Code (first cancels current operation, second exits).
 **Root cause**: `index.ts` has `exitOnCtrlC: false` in the Ink render options. The SIGINT handler exists but may not be firing, or `useInput` is capturing it.
-**Fix**: In `index.ts`, either set `exitOnCtrlC: true` or ensure the SIGINT handler calls `process.exit(0)`. Also check that `useInput` in `app.tsx` has an escape/ctrl-c handler.
+**Fix**: Implement double Ctrl+C pattern:
+- First Ctrl+C: if agent is running, cancel the current operation (abort controller)
+- Second Ctrl+C (within 2 seconds): exit the process
+- Show "Press Ctrl+C again to exit" message after first press
 
 ### BUG 3: Content appears twice (raw + rendered)
 **Symptom**: The assistant's response appears once as raw markdown (with `##`, `**`, `•`) and again as rendered text.
@@ -86,6 +102,30 @@
 5. **Tables** — need better rendering within terminal width constraints
 6. **Tool output visibility** — show tools being called but NOT raw intermediate data
 7. **Timeline** — campaign plan should include realistic timeline estimates
+8. **Double Ctrl+C to exit** — first cancels operation, second exits (like Claude Code)
+
+---
+
+## Recommended Approach for Next Session
+
+### Step 1: Research existing harness templates
+Before fixing bugs, check:
+- `github.com/anthropics/claude-agent-sdk-demos` — official demo apps
+- Search npm for `claude-code-harness`, `ink-chat`, `claude-agent-tui`
+- Check if there's a community template that handles Static + streaming correctly
+- Look at how the official Claude Code handles scrollback (they use Ink too)
+
+### Step 2: If good template exists → adapt it
+- Port our theme, toolNames, markdown renderer on top
+- Keep all backend (agents/, lib/ that doesn't touch rendering)
+- This would be faster than debugging Ink's Static behavior
+
+### Step 3: If no template → fix bugs in order
+1. Fix Ctrl+C (quick, high impact)
+2. Fix content duplication (hardest, may need to bypass Static)
+3. Fix session context (sessionId pass-through)
+4. Fix double content (streaming vs final dedup)
+5. Fix tables (width-aware rendering)
 
 ---
 
@@ -113,6 +153,8 @@ cd harness && npm install && npx tsc && npm start
 
 ## Session Stats
 - ~80+ agent teams deployed this session
-- 78 commits on master + ~5 on frontend-rebuild
+- 78 commits on master + ~8 on frontend-rebuild
 - 128 backend tests passing
-- Frontend rebuild: architecture correct, rendering bugs remain
+- Frontend rebuild: architecture correct, 7 rendering bugs remain
+- Real Tamarind BoltzGen smoke test completed successfully
+- 10-scenario stress test: 8 PASS, 2 PARTIAL

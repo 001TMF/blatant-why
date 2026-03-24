@@ -177,7 +177,7 @@ async function main() {
     // Run the query via Claude Agent SDK
     const abortController = createTimeoutController(600_000);
     const cwd = PROJECT_ROOT;
-    const result = await query({
+    const stream = query({
       prompt,
       options: {
         cwd,
@@ -187,102 +187,63 @@ async function main() {
         abortController,
         systemPrompt: { type: "preset", preset: "claude_code" },
         settingSources: ["user", "project", "local"],
-        allowedTools: [
-          "mcp__pdb__*",
-          "mcp__uniprot__*",
-          "mcp__sabdab__*",
-          "mcp__by-screening__*",
-          "mcp__tamarind__*",
-          "mcp__levitate__*",
-          "mcp__by-campaign__*",
-          "mcp__by-research__*",
-          "mcp__by-local__*",
-          "mcp__by-knowledge__*",
-        ],
       },
     });
-
-    endPhase();
-
-    // Process the result messages
-    const messages = Array.isArray(result) ? result : [result];
 
     transcriptLines.push("## Conversation");
     transcriptLines.push("");
 
-    for (const message of messages) {
-      // Handle text content
-      if (typeof message === "string") {
-        transcriptLines.push(message);
-        transcriptLines.push("");
+    for await (const message of stream) {
+      // Handle system init
+      if (message.type === "system" && message.subtype === "init") {
+        console.log(`  [INIT] Model: ${message.model}, Tools: ${message.tools?.length || 0}`);
+        const mcpStatus = (message.mcp_servers || []).map(s => `${s.name}:${s.status}`).join(", ");
+        if (mcpStatus) console.log(`  [MCP] ${mcpStatus}`);
         continue;
       }
 
-      // Handle structured messages
-      if (message.role) {
-        transcriptLines.push(`### ${message.role === "assistant" ? "BY Agent" : "User"}`);
-        transcriptLines.push("");
+      // Handle assistant messages (text + tool calls)
+      if (message.type === "assistant") {
+        const content = message.message?.content || [];
+        for (const block of content) {
+          if (block.type === "tool_use") {
+            const toolName = block.name || "unknown";
+            toolCalls.push({ name: toolName, timestamp: Date.now() });
+            console.log(`  [TOOL] ${toolName}`);
+
+            // Detect phase changes
+            const phase = classifyTool(toolName);
+            if (phase && phase !== lastDetectedPhase) {
+              endPhase();
+              startPhase(phase);
+              lastDetectedPhase = phase;
+            }
+          } else if (block.type === "text" && block.text) {
+            const preview = block.text.substring(0, 200);
+            console.log(`  [TEXT] ${preview}${block.text.length > 200 ? "..." : ""}`);
+            transcriptLines.push(`### BY Agent`);
+            transcriptLines.push("");
+            transcriptLines.push(block.text);
+            transcriptLines.push("");
+          }
+        }
+        continue;
       }
 
-      // Extract content blocks
-      const contentBlocks = Array.isArray(message.content) ? message.content : [message.content];
-
-      for (const block of contentBlocks) {
-        if (!block) continue;
-
-        // Text block
-        if (typeof block === "string") {
-          transcriptLines.push(block);
+      // Handle result
+      if (message.type === "result") {
+        endPhase();
+        console.log(`\n  [RESULT] ${message.num_turns || 0} turns, $${(message.total_cost_usd || 0).toFixed(4)}`);
+        if (message.subtype === "success" && message.result) {
+          transcriptLines.push(`### Final Result`);
           transcriptLines.push("");
-        } else if (block.type === "text") {
-          transcriptLines.push(block.text);
-          transcriptLines.push("");
-        }
-
-        // Tool use block
-        if (block.type === "tool_use") {
-          const toolCall = {
-            id: block.id,
-            name: block.name,
-            input: block.input,
-            timestamp: new Date().toISOString(),
-          };
-          toolCalls.push(toolCall);
-
-          // Detect phase transitions
-          const detectedPhase = classifyPhase(block.name);
-          if (detectedPhase && detectedPhase !== lastDetectedPhase) {
-            startPhase(detectedPhase);
-            lastDetectedPhase = detectedPhase;
-          }
-
-          transcriptLines.push(`**Tool Call**: \`${block.name}\``);
-          transcriptLines.push("```json");
-          transcriptLines.push(JSON.stringify(block.input, null, 2));
-          transcriptLines.push("```");
-          transcriptLines.push("");
-        }
-
-        // Tool result block
-        if (block.type === "tool_result") {
-          const resultText =
-            typeof block.content === "string"
-              ? block.content
-              : JSON.stringify(block.content, null, 2);
-
-          // Attach result to the last tool call
-          if (toolCalls.length > 0) {
-            toolCalls[toolCalls.length - 1].result = block.content;
-          }
-
-          transcriptLines.push(`**Tool Result** (truncated):`);
-          transcriptLines.push("```");
-          transcriptLines.push(resultText.slice(0, 2000) + (resultText.length > 2000 ? "\n..." : ""));
-          transcriptLines.push("```");
+          transcriptLines.push(message.result);
           transcriptLines.push("");
         }
       }
     }
+
+    // Streaming loop above handles all message processing
   } catch (err) {
     endPhase();
     console.error("\nERROR during campaign:", err.message);

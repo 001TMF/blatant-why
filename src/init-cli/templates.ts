@@ -127,12 +127,16 @@ export async function generateSettingsJson(
   > = {};
 
   if (fs.existsSync(serversPath)) {
-    const files = fs.readdirSync(serversPath).filter((f) => f.endsWith(".py"));
+    // Scan subdirectories for server.py (e.g. mcp_servers/pdb/server.py)
+    const dirs = fs.readdirSync(serversPath, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && !d.name.startsWith("_"));
 
-    for (const file of files) {
-      const name = path.basename(file, ".py");
-      const serverKey = `by-${name}`;
-      const scriptPath = path.join(mcpServerDir, file);
+    for (const dir of dirs) {
+      const serverPy = path.join(serversPath, dir.name, "server.py");
+      if (!fs.existsSync(serverPy)) continue;
+
+      const serverKey = `by-${dir.name.replace(/_/g, "-")}`;
+      const scriptPath = path.join(mcpServerDir, dir.name, "server.py");
 
       mcpServers[serverKey] = {
         command: "uv",

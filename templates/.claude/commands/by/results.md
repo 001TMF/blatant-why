@@ -20,6 +20,7 @@ Model lookup for this command:
 | Agent | quality | balanced | budget |
 |-------|---------|----------|--------|
 | by-verifier | opus | sonnet | sonnet |
+| by-diversity | sonnet | sonnet | haiku |
 
 ### Step 1: Resolve campaign
 
@@ -46,9 +47,22 @@ Delegate to a **by-verifier** agent (model per profile table above):
 >
 > Return a validation report with any flags or warnings.
 
+### Step 3b: Spawn by-diversity agent
+
+Delegate to a **by-diversity** agent (model per profile table above) in parallel with the verifier:
+
+> Analyze the diversity of screened candidates in `{campaign_dir}/screening/results.json`.
+> Perform:
+> - Sequence clustering at 80%, 90%, 95% identity thresholds
+> - Pareto front analysis (ipSAE vs ipTM)
+> - Scaffold balance check
+> - Recommend a maximally diverse panel from the top candidates
+>
+> Return a diversity report with cluster counts, redundancy rates, and a diverse panel recommendation.
+
 ### Step 4: Review verification
 
-Check the verifier's output. If critical issues are found, warn the user
+Check the verifier's and diversity agent's output. If critical issues are found, warn the user
 before displaying results.
 
 ### Step 5: Render results table
@@ -70,5 +84,6 @@ Columns: Rank, Design ID, ipSAE, ipTM, pLDDT, p_bind, Liabilities, Status.
 Below the table, show:
 - Total designs: X passed, Y warned, Z failed
 - Score ranges (min/max/mean for ipSAE, ipTM, pLDDT)
-- Diversity: number of unique sequence clusters
-- Recommendation: top N designs for lab submission
+- Diversity: sequence clusters, redundancy rate, scaffold balance (from by-diversity agent)
+- Recommendation: diverse panel of top N designs for lab submission (from by-diversity agent)
+- Pareto front summary: designs on ipSAE vs ipTM Pareto front

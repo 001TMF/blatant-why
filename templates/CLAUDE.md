@@ -304,6 +304,9 @@ For complex campaigns, deploy specialized agent teams. Each agent has scoped MCP
 | by-plan-checker | Campaign plan review: fold validation, cost, parameters | cloud_submit_job, adaptyv_* |
 | by-environment | Discover tools, GPU, SSH, API keys. Write environment.json | adaptyv_* |
 | by-lab | Adaptyv Bio submission (triple-gated) | cloud_submit_job |
+| by-evaluator | Deep structural evaluation: refolding, interface quality, confidence decomposition, aggregation risk | adaptyv_* |
+| by-visualization | Generate PyMOL/ChimeraX session scripts for structural visualization | cloud_*, adaptyv_* |
+| by-diversity | Sequence/structural clustering, Pareto fronts, scaffold balance, diverse panel selection | cloud_*, adaptyv_* |
 
 ### Model Profiles
 
@@ -320,6 +323,9 @@ Agents resolve model at spawn time based on the active profile in `.by/config.js
 | by-plan-checker | sonnet | sonnet | haiku |
 | by-environment | sonnet | sonnet | haiku |
 | by-lab | opus | opus | sonnet |
+| by-evaluator | opus | sonnet | sonnet |
+| by-visualization | sonnet | sonnet | haiku |
+| by-diversity | sonnet | sonnet | haiku |
 
 ## Slash Commands
 

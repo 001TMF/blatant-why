@@ -1,5 +1,8 @@
 import React from "react";
 import { Text } from "ink";
+// Note: MarkdownText uses raw ANSI codes for inline highlighting.
+// Theme hex values are referenced via constants below for consistency.
+// Primary: #448AFF (blue), Accent: #FFAB40 (amber), Teal: #26C6DA
 
 // eslint-disable-next-line no-control-regex
 const ANSI_RE = /\u001b\[[0-9;]*m/g;
@@ -57,7 +60,7 @@ function highlightCode(code: string, lang: string): string {
   const supported = ["yaml", "json", "python", "py", "bash", "sh"];
   if (!supported.includes(lang)) {
     // Default: just green
-    return "\x1b[38;2;102;187;106m" + code + "\x1b[0m";
+    return "\x1b[38;2;255;171;64m" + code + "\x1b[0m";
   }
 
   const lines = code.split("\n");
@@ -67,7 +70,7 @@ function highlightCode(code: string, lang: string): string {
     // Strings in accent color (#66BB6A)
     result = result.replace(
       /(["'])(?:(?=(\\?))\2.)*?\1/g,
-      "\x1b[38;2;102;187;106m$&\x1b[38;2;120;144;156m",
+      "\x1b[38;2;255;171;64m$&\x1b[38;2;120;144;156m",
     );
 
     // Numbers in cyan (#80DEEA)
@@ -80,24 +83,24 @@ function highlightCode(code: string, lang: string): string {
     if (lang === "python" || lang === "py") {
       result = result.replace(
         /\b(def|class|import|from|return|if|else|elif|for|while|with|as|in|not|and|or|True|False|None|try|except|finally|raise|yield|async|await)\b/g,
-        "\x1b[38;2;76;175;80m$1\x1b[38;2;120;144;156m",
+        "\x1b[38;2;68;138;255m$1\x1b[38;2;120;144;156m",
       );
     } else if (lang === "bash" || lang === "sh") {
       result = result.replace(
         /\b(if|then|else|fi|for|do|done|while|case|esac|function|export|source|echo|cd|ls|grep|sed|awk)\b/g,
-        "\x1b[38;2;76;175;80m$1\x1b[38;2;120;144;156m",
+        "\x1b[38;2;68;138;255m$1\x1b[38;2;120;144;156m",
       );
     } else if (lang === "yaml") {
       // YAML keys (word followed by colon)
       result = result.replace(
         /^(\s*)([\w.-]+)(:)/gm,
-        "$1\x1b[38;2;76;175;80m$2\x1b[38;2;120;144;156m$3",
+        "$1\x1b[38;2;68;138;255m$2\x1b[38;2;120;144;156m$3",
       );
     } else if (lang === "json") {
       // JSON keys
       result = result.replace(
         /"([^"]+)"\s*:/g,
-        "\x1b[38;2;76;175;80m\"$1\"\x1b[38;2;120;144;156m:",
+        "\x1b[38;2;68;138;255m\"$1\"\x1b[38;2;120;144;156m:",
       );
     }
 
@@ -187,7 +190,7 @@ export function MarkdownText({ children, width }: MarkdownTextProps) {
 
           if (isFirstDataRow) {
             // Header row — bold accent
-            lines.push("\x1b[1;38;2;102;187;106m" + line + "\x1b[0m");
+            lines.push("\x1b[1;38;2;255;171;64m" + line + "\x1b[0m");
             isFirstDataRow = false;
           } else {
             lines.push(line);
@@ -199,10 +202,10 @@ export function MarkdownText({ children, width }: MarkdownTextProps) {
     );
 
     // List items: - text or * text
-    text = text.replace(/^[\s]*[-*] (.+)$/gm, "  \x1b[38;2;76;175;80m\u25CF\x1b[0m $1");
+    text = text.replace(/^[\s]*[-*] (.+)$/gm, "  \x1b[38;2;68;138;255m\u25CF\x1b[0m $1");
 
     // Numbered list items
-    text = text.replace(/^[\s]*(\d+)\. (.+)$/gm, "  \x1b[38;2;76;175;80m$1.\x1b[0m $2");
+    text = text.replace(/^[\s]*(\d+)\. (.+)$/gm, "  \x1b[38;2;68;138;255m$1.\x1b[0m $2");
 
     // Width-aware wrapping
     if (width && width > 0) {

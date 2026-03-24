@@ -86,6 +86,10 @@ export function handleSlashCommand(input: string): SlashCommandResult {
     return { handled: true, local: "show_team" };
   }
 
+  if (trimmed === "/campaign" || trimmed.startsWith("/campaign ")) {
+    return { handled: true, local: "show_campaign" };
+  }
+
   if (trimmed === "/resume") {
     return { handled: true, local: "resume_campaign" };
   }
@@ -110,7 +114,7 @@ export function handleSlashCommand(input: string): SlashCommandResult {
     return { handled: true, local: "view_structure" };
   }
 
-  // /status, /results, /screen, /watch, /load, /campaign, /pareto are handled by the agent
+  // /status, /results, /screen, /watch, /load, /plan, /pareto are handled by the agent
   // Note: /watch is intercepted in app.tsx before this function is called
   return { handled: false };
 }

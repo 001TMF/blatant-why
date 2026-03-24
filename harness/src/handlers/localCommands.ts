@@ -490,6 +490,117 @@ export function handleLocalCommand(
     }
   }
 
+  if (localCommand === "show_campaign") {
+    // Check for an active campaign
+    const activePath = resolve(projectDir, ".proteus", "active-campaign.json");
+    if (!existsSync(activePath)) {
+      // No active campaign — check campaigns/ for any existing ones
+      const campaigns = listCampaigns(projectDir);
+      if (campaigns.length > 0) {
+        const lines = [
+          "No active campaign.",
+          "",
+          "  Previous campaigns found:",
+          "",
+          ...campaigns.slice(0, 5).flatMap((c, i) => formatCampaignDetail(c, i + 1)),
+          "",
+          "  Use /resume to load one, or describe what you want to design to start fresh.",
+        ];
+        return {
+          handled: true,
+          messages: [
+            { type: "user", text: trimmed },
+            { type: "assistant", text: lines.join("\n") },
+          ],
+        };
+      }
+      return {
+        handled: true,
+        messages: [
+          { type: "user", text: trimmed },
+          { type: "assistant", text: "No active campaign. Describe what you want to design to start one." },
+        ],
+      };
+    }
+
+    // Active campaign exists — show detailed status
+    try {
+      const active = JSON.parse(readFileSync(activePath, "utf-8"));
+      const dir = active.campaignDir;
+      if (!dir) {
+        return {
+          handled: true,
+          messages: [
+            { type: "user", text: trimmed },
+            { type: "assistant", text: "Active campaign reference found but campaign directory is missing." },
+          ],
+        };
+      }
+
+      const logPath = resolve(dir, "campaign_log.json");
+      if (!existsSync(logPath)) {
+        return {
+          handled: true,
+          messages: [
+            { type: "user", text: trimmed },
+            { type: "assistant", text: `Campaign directory: ${dir}\nCampaign log not found yet. The campaign may still be initializing.` },
+          ],
+        };
+      }
+
+      const log = JSON.parse(readFileSync(logPath, "utf-8")) as CampaignLog;
+      const targetName = log.target?.name ?? "Unknown target";
+      const pdbId = log.target?.pdb_id ?? "";
+      const status = log.status ?? "unknown";
+      const roundCount = log.rounds?.length ?? 0;
+      const currentRound = roundCount > 0 ? log.rounds[roundCount - 1] : null;
+      const cost = estimateCampaignCost(log);
+      const nextAction = inferNextAction(log);
+
+      const lines: string[] = [
+        "Campaign Status",
+        "",
+        `  Campaign     ${log.campaign_id}`,
+        `  Target       ${targetName}${pdbId ? ` (${pdbId})` : ""}`,
+        `  Status       ${status}`,
+        `  Round        ${roundCount > 0 ? `${roundCount}` : "none"}`,
+        `  Cost         ${cost}`,
+      ];
+
+      if (currentRound) {
+        const totalGenerated = currentRound.runs.reduce((s, r) => s + (r.designs_generated || 0), 0);
+        const totalPassed = currentRound.runs.reduce((s, r) => s + (r.designs_passed || 0), 0);
+        lines.push(`  Generated    ${totalGenerated.toLocaleString()}`);
+        lines.push(`  Passed       ${totalPassed.toLocaleString()}`);
+
+        const topIpsae = Math.max(0, ...currentRound.runs.map(r => r.top_ipsae || 0));
+        const topIptm = Math.max(0, ...currentRound.runs.map(r => r.top_iptm || 0));
+        if (topIpsae > 0) lines.push(`  Top ipSAE    ${topIpsae.toFixed(2)}`);
+        if (topIptm > 0) lines.push(`  Top ipTM     ${topIptm.toFixed(2)}`);
+      }
+
+      lines.push("");
+      lines.push(`  Next: ${nextAction}`);
+
+      return {
+        handled: true,
+        messages: [
+          { type: "user", text: trimmed },
+          { type: "assistant", text: lines.join("\n") },
+        ],
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return {
+        handled: true,
+        messages: [
+          { type: "user", text: trimmed },
+          { type: "error", text: `Failed to read campaign status: ${msg}` },
+        ],
+      };
+    }
+  }
+
   if (localCommand === "view_structure") {
     return {
       handled: true,

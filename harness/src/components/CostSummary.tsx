@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
+import { theme } from "../theme.js";
 
 interface CostEntry {
   source: string;
@@ -21,23 +22,23 @@ export function CostSummary({ costs, total }: CostSummaryProps) {
 
   return (
     <Box flexDirection="column">
-      <Text color="#66BB6A" bold>{"  Cost Breakdown"}</Text>
+      <Text color={theme.hex.accent} bold>{"  Cost Breakdown"}</Text>
       <Text>{""}</Text>
 
       {costs.map((entry, i) => (
         <Box key={i}>
           <Text>{"  "}</Text>
           <Text>{entry.source.padEnd(maxSourceLen)}</Text>
-          <Text color="#A0A0A0">{formatDollars(entry.amount).padStart(12)}</Text>
+          <Text color={theme.hex.body}>{formatDollars(entry.amount).padStart(12)}</Text>
         </Box>
       ))}
 
-      <Text dimColor>{"  " + "─".repeat(dividerLen)}</Text>
+      <Text dimColor>{"  " + "\u2500".repeat(dividerLen)}</Text>
 
       <Box>
         <Text>{"  "}</Text>
         <Text bold>{"Total".padEnd(maxSourceLen)}</Text>
-        <Text color="#66BB6A" bold>{formatDollars(total).padStart(12)}</Text>
+        <Text color={theme.hex.accent} bold>{formatDollars(total).padStart(12)}</Text>
       </Box>
     </Box>
   );

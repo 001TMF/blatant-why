@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
+import { theme } from "../theme.js";
 
 interface LabApprovalProps {
   campaignName: string;
@@ -53,18 +54,18 @@ export function LabApproval({
   return (
     <Box flexDirection="column">
       <Text>{""}</Text>
-      <Text color="#FFC107" bold>{"  ⚠ LAB SUBMISSION APPROVAL"}</Text>
+      <Text color={theme.hex.warning} bold>{"  \u26A0 LAB SUBMISSION APPROVAL"}</Text>
       <Text>{""}</Text>
-      <Text color="#FF5252" bold>
+      <Text color={theme.hex.error} bold>
         {"  WARNING: This will submit designs to Adaptyv Bio"}
       </Text>
-      <Text color="#FF5252" bold>
+      <Text color={theme.hex.error} bold>
         {"  for PHYSICAL LAB TESTING."}
       </Text>
       <Text>{""}</Text>
       <Text>
         <Text dimColor>{"  Campaign:    "}</Text>
-        <Text color="#80DEEA">{campaignName}</Text>
+        <Text color={theme.hex.tealBright}>{campaignName}</Text>
       </Text>
       <Text>
         <Text dimColor>{"  Candidates:  "}</Text>
@@ -72,7 +73,7 @@ export function LabApproval({
       </Text>
       <Text>
         <Text dimColor>{"  Est. Cost:   "}</Text>
-        <Text color="#FFC107">{costFormatted}</Text>
+        <Text color={theme.hex.warning}>{costFormatted}</Text>
       </Text>
       <Text>
         <Text dimColor>{"  Turnaround:  "}</Text>
@@ -81,9 +82,9 @@ export function LabApproval({
       <Text>{""}</Text>
       <Text dimColor>{"  Type CONFIRM to proceed, or CANCEL to abort:"}</Text>
       <Text>
-        <Text color="#4CAF50">{"  > "}</Text>
+        <Text color={theme.hex.primary}>{"  > "}</Text>
         <Text>{inputBuffer}</Text>
-        <Text color="#4CAF50">{"█"}</Text>
+        <Text color={theme.hex.primary}>{"\u2588"}</Text>
       </Text>
     </Box>
   );

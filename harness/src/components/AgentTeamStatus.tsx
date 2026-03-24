@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
+import { theme } from "../theme.js";
 
 export interface AgentStatus {
   name: string;
@@ -15,7 +16,7 @@ interface AgentTeamStatusProps {
 }
 
 function formatElapsed(ms?: number): string {
-  if (ms == null) return "—";
+  if (ms == null) return "\u2014";
   const totalSec = Math.floor(ms / 1000);
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
@@ -26,14 +27,14 @@ function formatElapsed(ms?: number): string {
 function statusIcon(status: AgentStatus["status"]): { symbol: string; color: string } {
   switch (status) {
     case "complete":
-      return { symbol: "✓", color: "#4CAF50" };
+      return { symbol: "\u2713", color: theme.hex.success };
     case "running":
-      return { symbol: "●", color: "#FFC107" };
+      return { symbol: "\u25CF", color: theme.hex.warning };
     case "error":
-      return { symbol: "✗", color: "#FF5252" };
+      return { symbol: "\u2717", color: theme.hex.error };
     case "idle":
     default:
-      return { symbol: "○", color: "#78909C" };
+      return { symbol: "\u25CB", color: "#78909C" };
   }
 }
 
@@ -41,17 +42,17 @@ export function AgentTeamStatus({ agents, campaignPhase, totalCostUsd }: AgentTe
   return (
     <Box flexDirection="column">
       <Text>
-        <Text color="#66BB6A" bold>Campaign Phase: </Text>
-        <Text color="#80DEEA" bold>{campaignPhase.toUpperCase()}</Text>
+        <Text color={theme.hex.accent} bold>Campaign Phase: </Text>
+        <Text color={theme.hex.tealBright} bold>{campaignPhase.toUpperCase()}</Text>
       </Text>
       <Text>{""}</Text>
 
       {/* Header row */}
       <Text>
         <Text dimColor>{"  "}</Text>
-        <Text color="#A0A0A0" bold>{"Agent".padEnd(16)}</Text>
-        <Text color="#A0A0A0" bold>{"Status".padEnd(14)}</Text>
-        <Text color="#A0A0A0" bold>{"Elapsed"}</Text>
+        <Text color={theme.hex.body} bold>{"Agent".padEnd(16)}</Text>
+        <Text color={theme.hex.body} bold>{"Status".padEnd(14)}</Text>
+        <Text color={theme.hex.body} bold>{"Elapsed"}</Text>
       </Text>
 
       {/* Agent rows */}
@@ -70,7 +71,7 @@ export function AgentTeamStatus({ agents, campaignPhase, totalCostUsd }: AgentTe
       <Text>{""}</Text>
       <Text>
         <Text dimColor>{"  Running cost: "}</Text>
-        <Text color="#66BB6A">${totalCostUsd.toFixed(2)}</Text>
+        <Text color={theme.hex.accent}>${totalCostUsd.toFixed(2)}</Text>
       </Text>
     </Box>
   );

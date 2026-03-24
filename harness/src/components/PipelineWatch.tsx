@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text } from "ink";
 import { pollRunStatus, getStageNames, getToolNames, formatElapsed, RunManifest, RunStatus } from "../watchRun.js";
+import { theme } from "../theme.js";
 
 interface PipelineWatchProps {
   manifest: RunManifest;
@@ -41,10 +42,10 @@ export function PipelineWatch({ manifest, onComplete }: PipelineWatchProps) {
 
   return (
     <Box flexDirection="column">
-      <Text color="#66BB6A" bold>Watching run {truncId}</Text>
+      <Text color={theme.hex.accent} bold>Watching run {truncId}</Text>
       <Text dimColor>  Press Ctrl+C to stop</Text>
       <Text>{""}</Text>
-      <Text>Design Run: <Text color="#80DEEA">{truncId}</Text></Text>
+      <Text>Design Run: <Text color={theme.hex.tealBright}>{truncId}</Text></Text>
       <Text>{""}</Text>
       {stageNames.map((name, i) => {
         const stageNum = i + 1;
@@ -52,13 +53,13 @@ export function PipelineWatch({ manifest, onComplete }: PipelineWatchProps) {
         let color: string;
 
         if (stageNum < status.stage || status.complete) {
-          symbol = "✓";
-          color = "#4CAF50";
+          symbol = "\u2713";
+          color = theme.hex.success;
         } else if (stageNum === status.stage && !status.complete) {
-          symbol = "●";
-          color = "#FFC107";
+          symbol = "\u25CF";
+          color = theme.hex.warning;
         } else {
-          symbol = "○";
+          symbol = "\u25CB";
           color = "#78909C";
         }
 
@@ -74,7 +75,7 @@ export function PipelineWatch({ manifest, onComplete }: PipelineWatchProps) {
       })}
       <Text>{""}</Text>
       <Text>
-        <Text color="#66BB6A">Progress: </Text>
+        <Text color={theme.hex.accent}>Progress: </Text>
         <Text>{status.designsComplete}/{status.designsTotal} designs</Text>
         <Text dimColor> | Elapsed: {formatElapsed(status.elapsed)}</Text>
       </Text>
@@ -82,17 +83,17 @@ export function PipelineWatch({ manifest, onComplete }: PipelineWatchProps) {
       <Text>
         <Text>Status: </Text>
         {status.complete ? (
-          <Text color="#4CAF50">complete</Text>
+          <Text color={theme.hex.success}>{"\u2713"} complete</Text>
         ) : status.error ? (
-          <Text color="#FF5252">error</Text>
+          <Text color={theme.hex.error}>{"\u2717"} error</Text>
         ) : (
-          <Text color="#66BB6A">running</Text>
+          <Text color={theme.hex.teal}>{"\u25CF"} running</Text>
         )}
       </Text>
       {status.complete && (
         <>
           <Text>{""}</Text>
-          <Text color="#4CAF50">✓ Design run completed!</Text>
+          <Text color={theme.hex.success}>{"\u2713"} Design run completed!</Text>
           <Text>Use /results or ask me to show the designs.</Text>
         </>
       )}

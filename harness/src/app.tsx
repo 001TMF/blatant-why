@@ -142,8 +142,8 @@ function MessageComponent({ message }: { message: Message }) {
     case "user":
       return (
         <Text>
-          <Text color="#4CAF50">{"  ◆ "}</Text>
-          <Text color="#A0A0A0">{message.text}</Text>
+          <Text color={theme.hex.primary}>{"  \u25B8 "}</Text>
+          <Text color={theme.hex.body}>{message.text}</Text>
         </Text>
       );
     case "assistant":
@@ -163,8 +163,8 @@ function MessageComponent({ message }: { message: Message }) {
     case "error":
       return (
         <Box>
-          <Text color="#FF5252" bold>{"  ✗ "}</Text>
-          <Text color="#FF5252">{message.text}</Text>
+          <Text color={theme.hex.error} bold>{"  \u2717 "}</Text>
+          <Text color={theme.hex.error}>{message.text}</Text>
         </Box>
       );
   }
@@ -189,18 +189,16 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
   const { width: termWidth } = useTerminalSize();
   const campaign = useCampaignState(configRef.projectDir);
 
+  // Track session resume info (rendered as dim line below banner, not as a message)
+  const [resumeInfo, setResumeInfo] = useState<string | null>(null);
+
   // Check for previous session on startup
   useEffect(() => {
     const lastSession = loadLastSession(configRef.projectDir);
     if (lastSession) {
       setSessionId(lastSession.sessionId);
-      setCompletedMessages((prev) => [
-        ...prev,
-        {
-          type: "assistant",
-          text: `Resumed previous session from ${new Date(lastSession.timestamp).toLocaleString()}.${lastSession.campaignDir ? ` Campaign: ${basename(lastSession.campaignDir)}` : ""}\nType /resume to switch campaigns or start fresh.`,
-        },
-      ]);
+      const campaignLabel = lastSession.campaignDir ? ` | Campaign: ${basename(lastSession.campaignDir)}` : "";
+      setResumeInfo(`Resumed session from ${new Date(lastSession.timestamp).toLocaleString()}${campaignLabel}`);
     }
   }, [configRef.projectDir]);
 
@@ -547,6 +545,23 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
       {/* Banner — rendered once at top */}
       <Text>{""}</Text>
       <Text>{renderBanner(modeConfig.displayName)}</Text>
+
+      {/* Campaign status line (shown when a campaign is active) */}
+      {campaign.isActive && campaign.state && (
+        <Text dimColor>
+          {"  "}Campaign: {(campaign.state as Record<string, unknown>).campaign_id as string ?? "unknown"}
+          {" | "}Status: {campaign.phase}
+          {(campaign.state as Record<string, unknown>).rounds
+            ? ` | Round ${((campaign.state as Record<string, unknown>).rounds as unknown[]).length}`
+            : ""}
+        </Text>
+      )}
+
+      {/* Session resume info (dim, below banner) */}
+      {resumeInfo && (
+        <Text dimColor>{"  "}{resumeInfo}</Text>
+      )}
+
       <Text dimColor>{"  " + "─".repeat(Math.max(termWidth - 4, 20))}</Text>
       <Text>{""}</Text>
 
@@ -664,27 +679,31 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
         <Box flexDirection="column" marginLeft={2}>
           {completions.map((cmd, i) => (
             <Box key={i}>
-              <Text color="#4CAF50">{cmd.name}</Text>
+              <Text color={theme.hex.primary}>{cmd.name}</Text>
               <Text dimColor>{" " + cmd.description}</Text>
             </Box>
           ))}
         </Box>
       )}
 
-      {/* Status line */}
+      {/* Status bar separator */}
+      <Text dimColor>{"  " + "\u2500".repeat(Math.max(termWidth - 4, 20))}</Text>
+
+      {/* Status bar */}
       <Box>
         <Text dimColor>
           {"  "}
-          {mode === "vhh" ? "VHH" : mode === "scfv" ? "scFv" : "De Novo"} mode
-          {activeRun ? ` | Run: ${activeRun.runId.substring(0, 8)}...` : ""}
-          {loading ? " | Esc to interrupt | Ctrl+C to cancel" : " | Ctrl+C+C to exit"}
+          {mode === "vhh" ? "VHH" : mode === "scfv" ? "scFv" : "De Novo"}
+          {campaign.isActive ? ` | ${(campaign.state as Record<string, unknown>)?.campaign_id ?? "campaign"}` : ""}
+          {activeRun ? ` | Run: ${activeRun.runId.substring(0, 8)}` : ""}
+          {loading ? " | Esc to interrupt" : " | Ctrl+C+C to exit"}
         </Text>
       </Box>
 
       {/* Input prompt */}
-      <Box marginTop={1}>
+      <Box marginTop={0}>
         <Text>
-          {theme.primary("\u25C6 ")}
+          {theme.primary("\u25B8 ")}
           {theme.primaryBold(modeConfig.displayName)}
           {theme.primary(" > ")}
         </Text>

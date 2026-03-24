@@ -1,0 +1,198 @@
+[
+  {
+    "testNum": 1,
+    "label": "Simple beginner question",
+    "prompt": "I have a protein called PD-L1 and I want to make something that binds to it. What should I do?",
+    "status": "PASS",
+    "toolCalls": [
+      "TodoWrite",
+      "TodoWrite",
+      "Task",
+      "mcp__uniprot__uniprot_search",
+      "mcp__uniprot__uniprot_fetch_protein",
+      "mcp__uniprot__uniprot_get_domains",
+      "mcp__pdb__pdb_search",
+      "TodoWrite",
+      "mcp__pdb__pdb_fetch_structure",
+      "mcp__pdb__pdb_fetch_structure",
+      "mcp__pdb__pdb_fetch_structure",
+      "mcp__pdb__pdb_get_chains",
+      "mcp__pdb__pdb_get_chains",
+      "mcp__pdb__pdb_get_chains",
+      "TodoWrite",
+      "mcp__sabdab__sabdab_search_by_antigen",
+      "mcp__sabdab__sabdab_search_by_antigen",
+      "mcp__sabdab__sabdab_search_by_antigen",
+      "mcp__sabdab__sabdab_search_antibodies",
+      "TodoWrite",
+      "mcp__sabdab__sabdab_get_structure",
+      "mcp__sabdab__sabdab_cdr_sequences",
+      "mcp__sabdab__sabdab_get_structure",
+      "mcp__sabdab__sabdab_cdr_sequences",
+      "mcp__sabdab__sabdab_get_structure",
+      "mcp__sabdab__sabdab_cdr_sequences",
+      "mcp__pdb__pdb_interface_residues",
+      "mcp__pdb__pdb_interface_residues",
+      "mcp__pdb__pdb_interface_residues",
+      "TodoWrite",
+      "TodoWrite",
+      "mcp__proteus-campaign__campaign_create",
+      "mcp__proteus-campaign__campaign_get_cost_estimate",
+      "TodoWrite"
+    ],
+    "mcpServersUsed": [
+      "uniprot",
+      "pdb",
+      "sabdab",
+      "proteus-campaign"
+    ],
+    "resultText": "## Campaign Summary: PD-L1 Nanobody Design\n\nI've successfully set up your PD-L1 binder design campaign! Here's what we have:\n\n### Target Analysis Complete ✅\n- **Target**: Human PD-L1 (Programmed Death Ligand 1)\n- **Approach**: Nanobody design targeting the PD-1 binding interface\n- **Key binding hotspots**: Tyr56, Glu58, Met115, Ser117, Tyr123\n- **Templates identified**: Multiple high-affinity nanobodies from structural database\n\n### Campaign Created ✅\n- **Campaign ID**: `pd-l1-225745c3`\n- **Tool**: BoltzGen (nanobody-anything protocol)\n- **Tier**: Standard (balanced cost/performance)\n\n### Cost Estimate ✅\n- **Design compute**: 5.0 GPU hours\n- **Screening compute**: 1.67 GPU hours  \n- **Cloud cost**: $16.67 (using Tamarind Bio free tier)\n- **Lab testing**: $3,500 (if you choose to synthesize top candidates)\n- **Total estimated cost**: $3,516.67\n\n### Campaign Parameters\n- **5,000 designs** will be generated\n- **Top 50 candidates** will be selected after screening\n- **Provider**: Tamarind Bio (free tier, no local GPU required)\n\n**Next Steps Options:**\n1. **Proceed with design** - I'll deploy the design agent team to start generating nanobodies\n2. **Adjust parameters** - Modify number of designs, budget, or approach\n3. **Review strategy** - Discuss alternative design approaches or targets\n\nWould you like me to proceed with launching the design phase, or would you prefer to adjust any campaign parameters first?",
+    "allText": "I'll help you design a protein binder targeting PD-L1. Let me create a todo list and then delegate to the appropriate agent teams to get started.\nLet me start by deploying a Research Agent to analyze PD-L1 as a target and gather the necessary data for campaign planning.\nExcellent! The Research Agent has provided comprehensive target analysis. Now let me mark that task complete and create a campaign with cost estimates.\nNow let me create a campaign targeting PD-L1 with the recommended nanobody approach:\nGreat! Campaign created. Let me get the cost estimate for this campaign:\nPerfect! Now let me mark the campaign creation complete and move to the design phase:\n## Campaign Summary: PD-L1 Nanobody Design\n\nI've successfully set up your PD-L1 binder design campaign! Here's what we have:\n\n### Target Analysis Complete ✅\n- **Target**: Human PD-L1 (Programmed Death Ligand 1)\n- **Approach**: Nanobody design targeting the PD-1 binding interface\n- **Key binding hotspots**: Tyr56, Glu58, Met115, Ser117, Tyr123\n- **Templates identified**: Multiple high-affinity nanobodies from structural database\n\n### Campaign Created ✅\n- **Campaign ID**: `pd-l1-225745c3`\n- **Tool**: BoltzGen (nanobody-anything protocol)\n- **Tier**: Standard (balanced cost/performance)\n\n### Cost Estimate ✅\n- **Design compute**: 5.0 GPU hours\n- **Screening compute**: 1.67 GPU hours  \n- **Cloud cost**: $16.67 (using Tamarind Bio free tier)\n- **Lab testing**: $3,500 (if you choose to synthesize top candidates)\n- **Total estimated cost**: $3,516.67\n\n### Campaign Parameters\n- **5,000 designs** will be generated\n- **Top 50 candidates** will be selected after screening\n- **Provider**: Tamarind Bio (free tier, no local GPU required)\n\n**Next Steps Options:**\n1. **Proceed with design** - I'll deploy the design agent team to start generating nanobodies\n2. **Adjust parameters** - Modify number of designs, budget, or approach\n3. **Review strategy** - Discuss alternative design approaches or targets\n\nWould you like me to proceed with launching the design phase, or would you prefer to adjust any campaign parameters first?\n",
+    "errors": [],
+    "elapsed": 215628,
+    "numTurns": 21,
+    "costUsd": 0.7088903999999997,
+    "criteriaResults": {
+      "responds without errors": true,
+      "mentions PD-L1": true,
+      "explains options (nanobody/antibody/binder)": true,
+      "suggests next steps": true,
+      "beginner-friendly tone (no raw jargon overload)": true,
+      "uses research MCP tools (not just text)": true
+    }
+  },
+  {
+    "testNum": 2,
+    "label": "Expert with exact parameters",
+    "prompt": "Design 20K VHH nanobodies against TNF-alpha residues 75-97 using caplacizumab scaffold, alpha 0.01, on Tamarind",
+    "status": "PARTIAL",
+    "toolCalls": [
+      "TodoWrite",
+      "TodoWrite",
+      "mcp__uniprot__uniprot_search",
+      "mcp__uniprot__uniprot_fetch_protein",
+      "mcp__pdb__pdb_search",
+      "mcp__pdb__pdb_search",
+      "TodoWrite",
+      "mcp__sabdab__sabdab_search_antibodies",
+      "mcp__proteus-campaign__campaign_create",
+      "TodoWrite",
+      "Task",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "WebSearch",
+      "WebSearch",
+      "WebSearch",
+      "WebSearch",
+      "WebSearch",
+      "WebSearch",
+      "WebSearch"
+    ],
+    "mcpServersUsed": [
+      "uniprot",
+      "pdb",
+      "sabdab",
+      "proteus-campaign"
+    ],
+    "resultText": "",
+    "allText": "I'll orchestrate a VHH nanobody design campaign against TNF-alpha targeting residues 75-97 using the caplacizumab scaffold. Let me break this down into the proper campaign workflow with agent teams.\nLet me start by analyzing TNF-alpha and the target epitope to understand what we're designing against.\nNow let me search for existing TNF-alpha structures to understand the target epitope at residues 75-97:\nLet me search more specifically for human TNF-alpha structures:\nLet me search for caplacizumab structures to understand the scaffold we'll be using:\nPerfect! Now let me create the campaign with the specified parameters. I'll set up the campaign structure and configuration:\nNow let me deploy the Research Agent team for comprehensive target analysis:\n",
+    "errors": [],
+    "elapsed": 300019,
+    "numTurns": 0,
+    "costUsd": 0,
+    "criteriaResults": {
+      "responds without errors": true,
+      "recognizes VHH/nanobody modality": true,
+      "mentions TNF-alpha": true,
+      "presents campaign plan or parameters": true,
+      "references caplacizumab scaffold": true,
+      "mentions alpha or sampling parameter": true,
+      "mentions Tamarind as compute provider": false
+    }
+  },
+  {
+    "testNum": 3,
+    "label": "Liability screening with VHH sequence",
+    "prompt": "Screen this VHH for liabilities: EVQLVESGGGLVQPGGSLRLSCAASGFTFSNYAMSWVRQAPGKGLEWVSAISGSGGSTYYADSVKGRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAKDRVGATGAFDIWGQGTLVTVSS",
+    "status": "PASS",
+    "toolCalls": [
+      "mcp__proteus-screening__screen_liabilities"
+    ],
+    "mcpServersUsed": [
+      "proteus-screening"
+    ],
+    "resultText": "This VHH has **9 liability sites**:\n\n**Medium Risk (6 sites):**\n- **Deamidation hotspots**: N73-S, N83-S, N76-T \n- **Aspartate isomerization**: D61-S\n- **Methionine oxidation**: M33, M82\n\n**Low Risk (3 sites):**\n- **Tryptophan oxidation**: W35, W46, W109\n\nThe sequence shows moderate liability burden with multiple deamidation sites and methionine residues that could impact stability during manufacturing and storage.",
+    "allText": "I'll screen this VHH sequence for liabilities using the Proteus screening tools.\nThis VHH has **9 liability sites**:\n\n**Medium Risk (6 sites):**\n- **Deamidation hotspots**: N73-S, N83-S, N76-T \n- **Aspartate isomerization**: D61-S\n- **Methionine oxidation**: M33, M82\n\n**Low Risk (3 sites):**\n- **Tryptophan oxidation**: W35, W46, W109\n\nThe sequence shows moderate liability burden with multiple deamidation sites and methionine residues that could impact stability during manufacturing and storage.\n",
+    "errors": [],
+    "elapsed": 12595,
+    "numTurns": 4,
+    "costUsd": 0.14079270000000002,
+    "criteriaResults": {
+      "responds without errors": true,
+      "mentions liability or screening": true,
+      "identifies specific motifs (NG, NS, DG, or deamidation)": true,
+      "calls screening tool or analyzes sequence directly": true,
+      "provides actionable result (sites/concerns/consider/engineering)": true
+    }
+  },
+  {
+    "testNum": 4,
+    "label": "Research EGFR target",
+    "prompt": "Research EGFR as a target for antibody design. Check PDB and UniProt.",
+    "status": "FAIL",
+    "toolCalls": [
+      "TodoWrite",
+      "TodoWrite",
+      "mcp__pdb__pdb_search",
+      "mcp__uniprot__uniprot_search",
+      "mcp__sabdab__sabdab_search_by_antigen",
+      "TodoWrite",
+      "mcp__uniprot__uniprot_fetch_protein",
+      "mcp__uniprot__uniprot_get_domains",
+      "mcp__pdb__pdb_fetch_structure",
+      "mcp__pdb__pdb_fetch_structure",
+      "mcp__pdb__pdb_get_chains"
+    ],
+    "mcpServersUsed": [
+      "pdb",
+      "uniprot",
+      "sabdab"
+    ],
+    "resultText": "",
+    "allText": "I'll research EGFR as a target for antibody design by analyzing structural and functional data from PDB and UniProt databases.\nNow let me get more detailed structural information about some key EGFR structures and analyze specific domains:\n",
+    "errors": [
+      "Result error: error_max_turns"
+    ],
+    "elapsed": 33165,
+    "numTurns": 10,
+    "costUsd": 0.22038015000000002,
+    "criteriaResults": {
+      "responds without errors": false,
+      "mentions EGFR": true,
+      "calls PDB or UniProt tool": true,
+      "does NOT rely solely on WebSearch": true,
+      "provides scientific data (structures, function, or domains)": true,
+      "mentions specific PDB IDs or UniProt accession": false
+    }
+  },
+  {
+    "testNum": 5,
+    "label": "/help command (local TUI — SDK passthrough)",
+    "prompt": "/help",
+    "status": "PASS",
+    "toolCalls": [],
+    "mcpServersUsed": [],
+    "resultText": "",
+    "allText": "",
+    "errors": [],
+    "elapsed": 4180,
+    "numTurns": 1,
+    "costUsd": 0,
+    "criteriaResults": {
+      "SDK does not crash on /help": true,
+      "returns quickly (< 30s)": true,
+      "no expensive tool calls": true
+    }
+  }
+]

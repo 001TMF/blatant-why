@@ -73,6 +73,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         maxTurns: options.maxTurns,
         appendSystemPrompt: options.appendSystemPrompt,
         abortController: controller,
+        resume: sessionId ?? undefined,
       };
 
       // Run the stream in a microtask
@@ -103,7 +104,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         }
       })();
     },
-    [loading, options],
+    [loading, options, sessionId],
   );
 
   const handleEvent = useCallback((event: StreamEvent) => {
@@ -152,30 +153,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           ),
         );
         setActiveTool(null);
-        break;
-      }
-
-      case "assistant_message": {
-        // Full assistant message from SDK — extract text content
-        const blocks = event.data.message.content;
-        const textParts: string[] = [];
-        for (const block of blocks) {
-          if (block.type === "text") {
-            textParts.push(block.text);
-          }
-        }
-        if (textParts.length > 0) {
-          // Replace streaming text with finalized content
-          streamTextRef.current = "";
-          setStreamingText("");
-          const assistantMsg: MessageData = {
-            id: nextId(),
-            role: "assistant",
-            content: textParts.join("\n"),
-            timestamp: Date.now(),
-          };
-          setMessages((prev) => [...prev, assistantMsg]);
-        }
         break;
       }
 

@@ -36,6 +36,8 @@ export interface AgentConfig {
   appendSystemPrompt?: string;
   /** Abort handle */
   abortController?: AbortController;
+  /** Session ID to resume multi-turn conversation */
+  resume?: string;
 }
 
 /** Discriminated union of events yielded by streamQuery */
@@ -156,6 +158,14 @@ Before any compute-intensive work:
 3. Wait for user approval before submitting compute jobs
 4. Never bypass the plan-then-execute pattern
 
+## Fold Validation (required before design)
+
+Before designing binders against a target, verify computational fold quality:
+1. Run Protenix on the target structure to check it folds correctly in silico
+2. If using a cropped epitope region, verify the crop maintains its fold (ipTM > 0.7, pLDDT > 70)
+3. If fold quality is poor, warn the user and suggest using the full structure or a different epitope region
+4. Include fold validation results in the campaign plan
+
 ## Modality Detection (automatic)
 
 Detect from user language:
@@ -204,6 +214,7 @@ export async function* streamQuery(
     abortController: config.abortController,
     model: config.model,
     includePartialMessages: true,
+    resume: config.resume,
   };
 
   const stream = query({ prompt, options });

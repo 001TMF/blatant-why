@@ -251,6 +251,34 @@ function renderTable(token: Tokens.Table, width: number): string {
   return lines.join("\n") + "\n\n";
 }
 
+function truncateAnsi(str: string, maxWidth: number): string {
+  if (maxWidth <= 0) return "";
+  let visible = 0;
+  let i = 0;
+  while (i < str.length && visible < maxWidth) {
+    // Skip ANSI escape sequences
+    if (str[i] === "\x1b" && str[i + 1] === "[") {
+      const end = str.indexOf("m", i);
+      if (end !== -1) {
+        i = end + 1;
+        continue;
+      }
+    }
+    visible++;
+    i++;
+  }
+  // Collect any trailing ANSI reset sequences
+  let tail = "";
+  while (i < str.length && str[i] === "\x1b") {
+    const end = str.indexOf("m", i);
+    if (end !== -1) {
+      tail += str.slice(i, end + 1);
+      i = end + 1;
+    } else break;
+  }
+  return str.slice(0, i - (visible > maxWidth ? 1 : 0)) + tail;
+}
+
 function padCell(
   styledText: string,
   rawText: string,
@@ -258,6 +286,12 @@ function padCell(
   align: "center" | "left" | "right" | null,
 ): string {
   const textLen = stripAnsi(rawText).length;
+
+  if (textLen > width) {
+    const truncated = truncateAnsi(styledText, width - 1);
+    return truncated + "\u2026"; // ellipsis
+  }
+
   const pad = Math.max(0, width - textLen);
 
   // Auto-detect numbers for right alignment

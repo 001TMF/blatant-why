@@ -53,10 +53,20 @@ const { unmount, waitUntilExit } = render(
   { exitOnCtrlC: false },
 );
 
-// Signal handling
+// Signal handling — double Ctrl+C to exit (like Claude Code)
+let lastCtrlCTime = 0;
+
 process.on("SIGINT", () => {
-  unmount();
-  process.exit(0);
+  const now = Date.now();
+  if (now - lastCtrlCTime < 2000) {
+    // Second Ctrl+C within 2 seconds — exit
+    unmount();
+    process.exit(0);
+  }
+
+  lastCtrlCTime = now;
+  // Show hint to user (use stderr to avoid breaking Ink rendering)
+  process.stderr.write("\n  Press Ctrl+C again to exit\n\n");
 });
 process.on("SIGTERM", () => {
   unmount();

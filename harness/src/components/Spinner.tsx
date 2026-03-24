@@ -1,26 +1,45 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Text } from "ink";
-import { theme } from "../theme.js";
+import { theme } from "../lib/theme.js";
+import { nextThinkingWord } from "../lib/thinkingWords.js";
 
-const SPINNER_FRAMES = ["\u280B", "\u2819", "\u2839", "\u2838", "\u283C", "\u2834", "\u2826", "\u2827", "\u2807", "\u280F"];
+const BRAILLE = ["\u2807", "\u2838", "\u2834", "\u2826", "\u2816", "\u280B"];
 
-interface SpinnerProps {
+export interface SpinnerProps {
+  /** Override the label (default: rotating thinking words) */
   label?: string;
 }
 
-export function Spinner({ label = "Thinking" }: SpinnerProps) {
-  const [frame, setFrame] = React.useState(0);
+/**
+ * Braille spinner with rotating thinking words.
+ * Cycles through frames at ~100ms and words every ~3s.
+ */
+export function Spinner({ label }: SpinnerProps) {
+  const [frame, setFrame] = useState(0);
+  const [word, setWord] = useState(() => label ?? nextThinkingWord());
 
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setInterval(() => {
-      setFrame((prev) => (prev + 1) % SPINNER_FRAMES.length);
-    }, 80);
+      setFrame((f) => (f + 1) % BRAILLE.length);
+    }, 100);
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (label) {
+      setWord(label);
+      return;
+    }
+    const timer = setInterval(() => {
+      setWord(nextThinkingWord());
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [label]);
+
   return (
-    <Text color={theme.hex.primary}>
-      {SPINNER_FRAMES[frame]} {label}...
+    <Text>
+      <Text color={theme.hex.primary}>{BRAILLE[frame]} </Text>
+      <Text color={theme.hex.dim}>{word}...</Text>
     </Text>
   );
 }

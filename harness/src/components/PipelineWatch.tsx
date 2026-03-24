@@ -1,102 +1,123 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text } from "ink";
-import { pollRunStatus, getStageNames, getToolNames, formatElapsed, RunManifest, RunStatus } from "../watchRun.js";
-import { theme } from "../theme.js";
+import { theme, ICONS } from "../lib/theme.js";
+import {
+  pollRunStatus,
+  formatElapsed,
+} from "../lib/watchRun.js";
+import type { RunManifest, StageInfo } from "../lib/watchRun.js";
 
-interface PipelineWatchProps {
+export interface PipelineWatchProps {
   manifest: RunManifest;
-  onComplete: () => void;
+  pollIntervalMs?: number;
 }
 
-export function PipelineWatch({ manifest, onComplete }: PipelineWatchProps) {
-  const [status, setStatus] = useState<RunStatus>({
-    stage: 1,
-    stageName: "Design",
-    stagesTotal: 5,
-    designsComplete: 0,
-    designsTotal: manifest.total,
-    elapsed: 0,
-    complete: false,
-    error: false,
-  });
+/**
+ * Live pipeline progress with stages.
+ * Polls the run directory and re-renders stage indicators.
+ */
+export function PipelineWatch({
+  manifest: initialManifest,
+  pollIntervalMs = 3000,
+}: PipelineWatchProps) {
+  const [manifest, setManifest] = useState(initialManifest);
 
   useEffect(() => {
-    // Poll immediately
-    const update = () => {
-      const newStatus = pollRunStatus(manifest);
-      setStatus(newStatus);
-      if (newStatus.complete) {
-        onComplete();
-      }
-    };
-    update();
-
-    // Then poll every 2 seconds
-    const timer = setInterval(update, 2000);
+    const timer = setInterval(() => {
+      const updated = pollRunStatus(manifest);
+      setManifest(updated);
+    }, pollIntervalMs);
     return () => clearInterval(timer);
-  }, [manifest, onComplete]);
+  }, [manifest, pollIntervalMs]);
 
-  const stageNames = getStageNames(manifest.tool);
-  const toolNames = getToolNames(manifest.tool);
-  const truncId = manifest.runId.substring(0, 15) + "...";
+  const allComplete = manifest.stages.every((s) => s.status === "complete");
 
   return (
-    <Box flexDirection="column">
-      <Text color={theme.hex.accent} bold>Watching run {truncId}</Text>
-      <Text dimColor>  Press Ctrl+C to stop</Text>
-      <Text>{""}</Text>
-      <Text>Design Run: <Text color={theme.hex.primary}>{truncId}</Text></Text>
-      <Text>{""}</Text>
-      {stageNames.map((name, i) => {
-        const stageNum = i + 1;
-        let symbol: string;
-        let color: string;
+    <Box flexDirection="column" marginBottom={1}>
+      <Box marginBottom={1}>
+        <Text color={theme.hex.primary} bold>
+          Pipeline: {manifest.runId.substring(0, 8)}
+        </Text>
+        <Text color={theme.hex.dim}>
+          {" "}({manifest.tool} via {manifest.provider})
+        </Text>
+      </Box>
 
-        if (stageNum < status.stage || status.complete) {
-          symbol = "\u2714";
-          color = theme.hex.success;
-        } else if (stageNum === status.stage && !status.complete) {
-          symbol = "\u25CF";
-          color = theme.hex.primary;
-        } else {
-          symbol = "\u25CB";
-          color = theme.hex.dim;
-        }
+      {manifest.stages.map((stage) => (
+        <StageRow key={stage.id} stage={stage} />
+      ))}
 
-        return (
-          <Box key={i}>
-            <Text color={color}>{`  ${symbol} `}</Text>
-            <Text color={color} bold={stageNum === status.stage && !status.complete}>
-              {name.padEnd(28)}
-            </Text>
-            <Text dimColor>{toolNames[i] ?? ""}</Text>
-          </Box>
-        );
-      })}
-      <Text>{""}</Text>
-      <Text>
-        <Text color={theme.hex.accent}>Progress: </Text>
-        <Text>{status.designsComplete}/{status.designsTotal} designs</Text>
-        <Text dimColor> | Elapsed: {formatElapsed(status.elapsed)}</Text>
-      </Text>
-      <Text>{""}</Text>
-      <Text>
-        <Text>Status: </Text>
-        {status.complete ? (
-          <Text color={theme.hex.success}>{"\u2714"} complete</Text>
-        ) : status.error ? (
-          <Text color={theme.hex.error}>{"\u2716"} error</Text>
-        ) : (
-          <Text color={theme.hex.primary}>{"\u25CF"} running</Text>
-        )}
-      </Text>
-      {status.complete && (
-        <>
-          <Text>{""}</Text>
-          <Text color={theme.hex.success}>{"\u2714"} Design run completed!</Text>
-          <Text>Use /results or ask me to show the designs.</Text>
-        </>
-      )}
+      <Box marginTop={1}>
+        <Text color={theme.hex.dim}>
+          {manifest.designsGenerated}/{manifest.totalDesigns} designs
+          {" "}{ICONS.separator}{" "}
+          {formatElapsed(manifest.elapsedMs)} elapsed
+          {manifest.estimatedRemainingMs != null && !allComplete ? (
+            ` ${ICONS.separator} ~${formatElapsed(manifest.estimatedRemainingMs)} remaining`
+          ) : null}
+        </Text>
+      </Box>
     </Box>
   );
+}
+
+function StageRow({ stage }: { stage: StageInfo }) {
+  const icon = stageIcon(stage.status);
+  const iconColor = stageColor(stage.status);
+  const progressStr =
+    stage.progress != null && stage.status === "running"
+      ? ` (${Math.round(stage.progress * 100)}%)`
+      : "";
+  const msgStr = stage.message ? ` — ${stage.message}` : "";
+
+  return (
+    <Box>
+      <Text>
+        <Text color={iconColor}>  {icon} </Text>
+        <Text
+          color={
+            stage.status === "complete"
+              ? theme.hex.dim
+              : stage.status === "running"
+                ? theme.hex.body
+                : theme.hex.dim
+          }
+        >
+          {stage.label}
+        </Text>
+        <Text color={theme.hex.dim}>
+          {progressStr}
+          {msgStr}
+        </Text>
+      </Text>
+    </Box>
+  );
+}
+
+function stageIcon(status: StageInfo["status"]): string {
+  switch (status) {
+    case "complete":
+      return ICONS.success;
+    case "running":
+      return ICONS.running;
+    case "failed":
+      return ICONS.error;
+    case "pending":
+    default:
+      return ICONS.pending;
+  }
+}
+
+function stageColor(status: StageInfo["status"]): string {
+  switch (status) {
+    case "complete":
+      return theme.hex.success;
+    case "running":
+      return theme.hex.primary;
+    case "failed":
+      return theme.hex.error;
+    case "pending":
+    default:
+      return theme.hex.dim;
+  }
 }

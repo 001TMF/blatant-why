@@ -21,13 +21,15 @@ An autonomous antibody design agent that connects the Anthropic API, BoltzGen, T
 
 ## Why?
 
-Because this morning we watched a $50M company announce an "autonomous AI agent for drug design" that wraps open-source structure prediction models in an LLM agent and calls it a breakthrough.
+Because this morning someone announced an "autonomous AI agent for drug design" that wraps open-source structure prediction models in an LLM agent and calls it a breakthrough.
 
 When your "proprietary scoring engine" is open-source structure prediction with a wrapper, and your "autonomous design platform" is an LLM calling APIs that anyone can call -- maybe the revolution isn't what you're selling.
 
-We think the antibody discovery community deserves to know: **the agentic orchestration layer is not the hard part.** The models are open. The APIs are available. A good engineer can wire this together in a week.
+The antibody discovery community deserves to know: **the agentic orchestration layer is not the hard part.** The models are open. The APIs are available. A good engineer can wire this together in a week.
 
-So we did. And we're giving it away.
+So someone did. And gave it away.
+
+**Stop paying for wrappers. Start asking what's underneath.**
 
 ---
 
@@ -47,26 +49,173 @@ That's it. `by-design init` generates everything Claude Code needs -- MCP server
 
 ## What's Inside
 
-- **10 MCP servers** -- PDB, UniProt, SAbDab, screening, cloud compute, knowledge, campaign, research, Adaptyv Bio, local compute
-- **12 agents** -- research, design, screening, evaluation, visualization, diversity, campaign, knowledge, verifier, plan-checker, environment, lab
-- **15 skills** -- BoltzGen, Protenix, PXDesign, scoring, screening, epitope analysis, campaign management, and more
-- **8 slash commands** -- `/by:load`, `/by:screen`, `/by:results`, `/by:watch`, `/by:status`, `/by:approve-lab`, `/by:set-profile`, `/by:setup`
+- **11 MCP servers** -- biological databases, cloud compute, screening, campaign management, knowledge
+- **16 agents** -- specialized sub-agents for research, design, screening, evaluation, and lab integration
+- **15 skills** -- BoltzGen, Protenix, PXDesign, scoring, screening, epitope analysis, campaign management
+- **8 slash commands** -- campaign control from the Claude Code prompt
 - **ChromaDB learning system** -- semantic memory that improves with every campaign
 - **Tamarind Bio cloud compute** -- free tier, 200+ structural biology models, no GPU required
 
+<details>
+<summary><strong>MCP Servers (11)</strong></summary>
+
+| Server | Role |
+|--------|------|
+| `pdb` | Protein Data Bank queries |
+| `uniprot` | UniProt protein annotation |
+| `sabdab` | Structural Antibody Database |
+| `by-screening` | Screening battery orchestration |
+| `tamarind` | Tamarind Bio cloud compute |
+| `levitate` | Levitate Bio RFAntibody pipeline |
+| `adaptyv` | Adaptyv Bio lab submission (gated) |
+| `by-campaign` | Campaign state management |
+| `by-research` | Literature and target research |
+| `by-local` | Local GPU compute dispatch |
+| `by-knowledge` | ChromaDB semantic memory |
+
+</details>
+
+<details>
+<summary><strong>Agents (16)</strong></summary>
+
+| Agent | Role |
+|-------|------|
+| `by-research` | Target analysis, literature review, prior art |
+| `by-design` | Generate designs via cloud or local pipelines |
+| `by-screening` | Score, filter, rank candidates |
+| `by-evaluator` | Structural evaluation and quality assessment |
+| `by-visualization` | Structure and results visualization |
+| `by-diversity` | Sequence and structural diversity selection |
+| `by-campaign` | Campaign lifecycle orchestration |
+| `by-knowledge` | Learning system and semantic memory |
+| `by-verifier` | Output verification and sanity checks |
+| `by-plan-checker` | Campaign plan validation |
+| `by-environment` | Environment setup and dependency checks |
+| `by-lab` | Adaptyv Bio lab submission (triple-gated) |
+| `by-epitope` | Epitope analysis and mapping |
+| `by-humanization` | Antibody humanization engineering |
+| `by-liability-engineer` | Sequence liability detection and fixes |
+| `by-formatter` | Output formatting and reporting |
+
+</details>
+
+<details>
+<summary><strong>Skills (15)</strong></summary>
+
+| Skill | Description |
+|-------|-------------|
+| `boltzgen` | BoltzGen antibody/nanobody generation |
+| `protenix` | Protenix structure prediction |
+| `pxdesign` | PXDesign de novo binder design |
+| `proteus-scoring` | ipSAE + p_bind composite scoring |
+| `proteus-screening` | Full screening battery |
+| `proteus-epitope-analysis` | Epitope mapping and analysis |
+| `proteus-campaign-manager` | Campaign state and lifecycle |
+| `proteus-campaign-optimizer` | Active learning and iteration |
+| `proteus-design-workflow` | End-to-end design pipeline |
+| `proteus-research` | Target research and literature |
+| `proteus-knowledge` | Semantic memory operations |
+| `proteus-database` | Local results database |
+| `proteus-failure-diagnosis` | Pipeline failure analysis |
+| `proteus-hypothesis-debate` | Multi-agent hypothesis evaluation |
+| `skill-creator` | Meta-skill for creating new skills |
+
+</details>
+
+<details>
+<summary><strong>Slash Commands (8)</strong></summary>
+
+| Command | Action |
+|---------|--------|
+| `/by:load` | Load a campaign from file |
+| `/by:screen` | Run screening battery on designs |
+| `/by:results` | Display campaign results table |
+| `/by:watch` | Live-watch running compute jobs |
+| `/by:status` | Campaign status dashboard |
+| `/by:approve-lab` | Approve Adaptyv Bio submission (gated) |
+| `/by:set-profile` | Switch compute profile |
+| `/by:setup` | Initialize environment and dependencies |
+
+</details>
+
 ---
 
-## The Actual Hard Problems
+## Architecture
 
-Blatant-Why is a wrapper. We know it's a wrapper. That's the point.
+```mermaid
+graph TB
+    User([fa:fa-user User]) -->|prompt| Claude[Claude Code + CLAUDE.md]
 
-Here's what it doesn't solve -- and what the team behind it ([Lyceum](https://lyceum.bio) / [Phytovenomics](https://phytovenomics.com)) is actually working on:
+    Claude -->|delegates| Agents[16 Specialized Agents]
+    Claude -->|invokes| Skills[15 Skills]
+    Claude -->|slash cmds| Commands[8 Commands]
 
-- **Proprietary scoring models** that go beyond open-source structure prediction -- trained on experimental binding data that doesn't exist in the PDB
-- **Closing the wet lab loop** with real experimental validation, not just computational confidence scores
-- **Generating training datasets** from high-throughput screening that feed back into better models
+    Agents --> MCP[11 MCP Servers]
+    Skills --> MCP
 
-Blatant-Why is our way of saying: **stop paying for wrappers. Start asking what's underneath.**
+    subgraph Data Sources
+        PDB[(PDB)]
+        UniProt[(UniProt)]
+        SAbDab[(SAbDab)]
+    end
+
+    subgraph Compute
+        Tamarind[Tamarind Bio<br/>Free Cloud]
+        Levitate[Levitate Bio<br/>RFAntibody]
+        LocalGPU[Local GPU<br/>Optional]
+    end
+
+    subgraph Models
+        BoltzGen[BoltzGen<br/>Ab/Nb Design]
+        Protenix[Protenix v1<br/>Structure Prediction]
+        PXDesign[PXDesign<br/>Binder Design]
+    end
+
+    subgraph Screening
+        ipSAE[ipSAE Scoring]
+        Liabilities[Liability Scan]
+        Developability[Developability]
+        Diversity[Diversity Selection]
+    end
+
+    subgraph Lab
+        Adaptyv[Adaptyv Bio<br/>Triple-Gated]
+    end
+
+    MCP --> Data Sources
+    MCP --> Compute
+    Compute --> Models
+    MCP --> Screening
+    MCP --> Lab
+
+    ChromaDB[(ChromaDB<br/>Learning System)] <--> MCP
+```
+
+<details>
+<summary><strong>Model Profiles</strong></summary>
+
+| Model | Type | Parameters | What It Does |
+|-------|------|-----------|--------------|
+| **Protenix v1** | Structure prediction | 368M | AlphaFold3-class folding (protein, nucleic acid, ligand) |
+| **PXDesign** | De novo binder design | -- | 17-82% hit rates on published benchmarks |
+| **BoltzGen** | Antibody/nanobody design | -- | Boltzmann generator + Protenix confidence scoring |
+
+</details>
+
+<details>
+<summary><strong>Learning System</strong></summary>
+
+Every campaign writes results to a ChromaDB vector store. The knowledge MCP server provides semantic search over past campaigns, so the system learns which design strategies work for which target classes.
+
+Stored per campaign:
+- Target metadata and research context
+- Design parameters and compute profiles
+- Screening results and composite scores
+- Success/failure annotations
+
+Over time, the agent develops institutional memory about what works.
+
+</details>
 
 ---
 
@@ -82,7 +231,3 @@ Blatant-Why is our way of saying: **stop paying for wrappers. Start asking what'
 ## License
 
 [MIT](LICENSE)
-
----
-
-Full technical documentation: [docs/](docs/)

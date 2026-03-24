@@ -140,7 +140,7 @@ export async function runInit(options: InitOptions): Promise<void> {
 
   // Step 3: Generate settings.json
   console.log("Generating .claude/settings.json...");
-  const serverCount = await generateSettingsJson(targetDir, "mcp_servers");
+  const serverCount = await generateSettingsJson(targetDir, ".claude/mcp_servers");
   console.log(`  ${serverCount} MCP server(s) registered`);
   console.log("");
 
@@ -158,7 +158,7 @@ export async function runInit(options: InitOptions): Promise<void> {
   mkdirSync(join(targetDir, ".by", "campaigns"), { recursive: true });
 
   // Step 7: Verify MCP servers
-  const mcpDir = join(targetDir, "mcp_servers");
+  const mcpDir = join(targetDir, ".claude/mcp_servers");
   if (existsSync(mcpDir)) {
     console.log("Verifying MCP servers...");
     const { passed, failed } = verifyMcpServers(mcpDir);
@@ -178,7 +178,7 @@ export async function runInit(options: InitOptions): Promise<void> {
   console.log("  .claude/commands/     Slash commands");
   console.log("  .claude/hooks/        Hook scripts");
   console.log("  .claude/scripts/      Hook shell scripts");
-  console.log("  mcp_servers/          MCP server scripts");
+  console.log("  .claude/mcp_servers/  MCP server scripts");
   console.log("  .by/campaigns/        Campaign data");
   console.log("");
   console.log("Next steps:");

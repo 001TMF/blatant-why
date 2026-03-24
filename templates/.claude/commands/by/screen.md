@@ -43,7 +43,7 @@ Delegate to a **by-screening** agent (model per profile table above) with instru
 > Apply these filters in order:
 >
 > **Structure quality**: ipTM > 0.5, pLDDT > 70, RMSD < 3.5A
-> **Custom scores**: ipSAE (compute via `src/proteus_ab/pipeline/scoring.py`), p_bind threshold
+> **Custom scores**: ipSAE (compute via `score_ipsae` screening MCP tool), p_bind threshold
 > **Liability scan**: NG/NS deamidation, DG isomerization, Met oxidation, free Cys, NXS/T glycosylation
 > **Developability**: TAP guidelines, net charge, hydrophobic fraction, CDR length limits
 > **Composition**: AA fractions, hydrophobic patch detection (DBSCAN)

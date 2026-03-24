@@ -51,15 +51,24 @@ Show the complete model assignment table for the selected profile:
 ```
 Model Profile: {selected}
 
-Agent                 quality     balanced    budget
---------------------  ----------  ----------  ----------
-by-research      opus        sonnet      sonnet
-by-design        opus        sonnet      haiku
-by-screening     opus        sonnet      haiku
-by-verifier      opus        sonnet      sonnet
-by-lab           opus        opus        sonnet
-by-environment   sonnet      sonnet      haiku
-by-monitor       sonnet      haiku       haiku
+Agent                      quality     balanced    budget
+-------------------------  ----------  ----------  ----------
+by-research                opus        sonnet      sonnet
+by-design                  opus        sonnet      sonnet
+by-screening               sonnet      sonnet      haiku
+by-campaign                opus        opus        sonnet
+by-knowledge               sonnet      haiku       haiku
+by-verifier                sonnet      sonnet      sonnet
+by-plan-checker            sonnet      sonnet      haiku
+by-environment             sonnet      sonnet      haiku
+by-lab                     opus        opus        sonnet
+by-evaluator               opus        sonnet      sonnet
+by-visualization           sonnet      sonnet      haiku
+by-diversity               sonnet      sonnet      haiku
+by-epitope                 opus        sonnet      sonnet
+by-humanization            opus        sonnet      haiku
+by-liability-engineer      sonnet      sonnet      haiku
+by-formatter               sonnet      haiku       haiku
 ```
 
 Highlight the active column.

@@ -1,39 +1,29 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Blatant-Why" width="700">
+  <img src="assets/banner_compressed.png" alt="BY Design" width="700">
 </p>
-<p align="center"><sub>Full-resolution banner: <a href="assets/">assets/</a></sub></p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/001TMF/blatant-why/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
-  <img src="https://img.shields.io/badge/Claude_Code_SDK-0.2-blueviolet" alt="Claude Code SDK">
-  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white" alt="Python 3.11+">
-  <img src="https://img.shields.io/badge/uv-package%20manager-DE5FE9?logo=uv&logoColor=white" alt="uv">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
+  <a href="https://github.com/001TMF/blatant-why/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt="PRs Welcome"></a>
+  <img src="https://img.shields.io/badge/Claude_Code_SDK-0.2-blueviolet?style=flat-square" alt="Claude Code SDK">
+  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/uv-package%20manager-DE5FE9?style=flat-square&logo=uv&logoColor=white" alt="uv">
+  <img src="https://img.shields.io/badge/npm-package-CB3837?style=flat-square&logo=npm&logoColor=white" alt="npm">
 </p>
 
-An autonomous antibody design agent that connects the Claude Code SDK, BoltzGen, Tamarind Bio, and Adaptyv Bio into a single pipeline. Give it a target. Get lab-ready nanobody candidates. No platform fee.
+<h3 align="center">Production-ready protein design orchestration for Claude Code</h3>
+
+<p align="center">
+Deploy 16 specialized agents, 11 MCP servers, and 15 skills to design protein binders, antibodies, and nanobodies from a single prompt. Cloud compute included. No GPU required.
+</p>
 
 ---
 
 <p align="center">
-  <img src="assets/time_comparison.png" alt="Time comparison: traditional vs. agentic antibody design" width="500">
+  <img src="assets/by_timesaver.jpg" alt="Time comparison: traditional vs. agentic antibody design" width="500">
 </p>
 <p align="center"><sub>Source: trust us bro</sub></p>
 <p align="center"><sub>(Interactive version: <a href="assets/blatant_why_time_parody_v4.html">assets/blatant_why_time_parody_v4.html</a>)</sub></p>
-
----
-
-## Why?
-
-Because this morning someone announced an "autonomous AI agent for drug design" that wraps open-source structure prediction models in an LLM agent and calls it a breakthrough.
-
-When your "proprietary scoring engine" is open-source structure prediction with a wrapper, and your "autonomous design platform" is an LLM calling APIs that anyone can call -- maybe the revolution isn't what you're selling.
-
-The antibody discovery community deserves to know: **the agentic orchestration layer is not the hard part.** The models are open. The APIs are available. A good engineer can wire this together in a week.
-
-So someone did. And gave it away.
-
-**Stop paying for wrappers. Start asking what's underneath.**
 
 ---
 
@@ -45,13 +35,21 @@ claude
 > "Design VHH nanobodies against PD-L1"
 ```
 
-That's it. `by-design init` generates everything Claude Code needs -- MCP servers, agents, skills, commands, hooks, and a CLAUDE.md personality file. Open Claude Code in the same directory and you have a protein design workstation.
+That is it. `by-design init` generates everything Claude Code needs -- MCP servers, agents, skills, commands, hooks, and a CLAUDE.md personality file. Open Claude Code in the same directory and you have a protein design workstation.
 
 **Prerequisites:** [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [uv](https://docs.astral.sh/uv/), Python >= 3.11, Node.js >= 18.
 
 ---
 
-## What's Inside
+## What It Does
+
+Give it a target protein. It researches the target across PDB, UniProt, and SAbDab. It plans a design campaign. It submits compute jobs to Tamarind Bio (free tier, no GPU). It screens every design for structural quality, sequence liabilities, and developability. It ranks candidates by composite score. You get a table of lab-ready binders.
+
+The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor lock-in.
+
+---
+
+## What Is Inside
 
 - **11 MCP servers** -- biological databases, cloud compute, screening, campaign management, knowledge
 - **16 agents** -- specialized sub-agents for research, design, screening, evaluation, and lab integration
@@ -173,7 +171,7 @@ by-design/
 │   └── mcp_servers/         #   MCP server templates
 ├── tests/                   # Test suite
 ├── CLAUDE.md                # Agent personality & orchestration rules
-├── package.json             # Node.js package (Claude Agent SDK)
+├── package.json             # Node.js package (Claude Code SDK)
 ├── pyproject.toml           # Python package (uv)
 └── README.md
 ```
@@ -185,8 +183,8 @@ by-design/
 ## Architecture
 
 ```mermaid
-graph TB
-    User([fa:fa-user User]) -->|prompt| Claude[Claude Code + CLAUDE.md]
+flowchart TB
+    User([User]) -->|prompt| Claude[Claude Code + CLAUDE.md]
 
     Claude -->|delegates| Agents[16 Specialized Agents]
     Claude -->|invokes| Skills[15 Skills]
@@ -195,42 +193,42 @@ graph TB
     Agents --> MCP[11 MCP Servers]
     Skills --> MCP
 
-    subgraph Data Sources
+    subgraph Data["Data Sources"]
         PDB[(PDB)]
         UniProt[(UniProt)]
         SAbDab[(SAbDab)]
     end
 
-    subgraph Compute
-        Tamarind[Tamarind Bio<br/>Free Cloud]
-        Levitate[Levitate Bio<br/>RFAntibody]
-        LocalGPU[Local GPU<br/>Optional]
+    subgraph Compute["Compute"]
+        Tamarind["Tamarind Bio -- Free Cloud"]
+        Levitate["Levitate Bio -- RFAntibody"]
+        LocalGPU["Local GPU -- Optional"]
     end
 
-    subgraph Models
-        BoltzGen[BoltzGen<br/>Ab/Nb Design]
-        Protenix[Protenix v1<br/>Structure Prediction]
-        PXDesign[PXDesign<br/>Binder Design]
+    subgraph Models["Models"]
+        BoltzGen["BoltzGen -- Ab/Nb Design"]
+        Protenix["Protenix v1 -- Structure Prediction"]
+        PXDesign["PXDesign -- Binder Design"]
     end
 
-    subgraph Screening
-        ipSAE[ipSAE Scoring]
-        Liabilities[Liability Scan]
-        Developability[Developability]
-        Diversity[Diversity Selection]
+    subgraph Screening["Screening"]
+        ipSAE["ipSAE Scoring"]
+        Liabilities["Liability Scan"]
+        Developability["Developability"]
+        Diversity["Diversity Selection"]
     end
 
-    subgraph Lab
-        Adaptyv[Adaptyv Bio<br/>Triple-Gated]
+    subgraph Lab["Lab"]
+        Adaptyv["Adaptyv Bio -- Triple-Gated"]
     end
 
-    MCP --> Data Sources
+    MCP --> Data
     MCP --> Compute
     Compute --> Models
     MCP --> Screening
     MCP --> Lab
 
-    ChromaDB[(ChromaDB<br/>Learning System)] <--> MCP
+    ChromaDB[(ChromaDB -- Learning System)] <--> MCP
 ```
 
 <details>
@@ -268,7 +266,7 @@ Over time, the agent develops institutional memory about what works.
 - [Hannes Stark](https://github.com/jostorge/boltzgen) and the MIT team for BoltzGen
 - [Deniz Kavi](https://tamarind.bio) and Sherry Liu at Tamarind Bio
 - [Julian Englert](https://www.adaptyvbio.com) at Adaptyv Bio
-- The [Anthropic Claude](https://docs.anthropic.com/en/docs/claude-code) team
+- The [Claude Code](https://docs.anthropic.com/en/docs/claude-code) team
 
 ---
 

@@ -3,27 +3,1118 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #   "mcp>=1.0.0",
+#   "numpy>=1.24",
 # ]
 # ///
 """Screening MCP Server — protein sequence screening and scoring tools for BY agent.
 
-Wraps the Phase 1 screening (liabilities, developability) and scoring (ipSAE)
-modules into MCP tools for the BY harness.
+Self-contained: all screening logic is inlined. No proteus_cli dependency.
 """
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
+import math
+import re
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("by-screening")
 
 
+# ===========================================================================
+# Inlined screening logic (replaces proteus_cli.screening.*)
+# ===========================================================================
+
+
 # ---------------------------------------------------------------------------
-# Helpers
+# Liability scanning  (replaces proteus_cli.screening.liabilities)
 # ---------------------------------------------------------------------------
+
+@dataclass
+class Liability:
+    """A single detected sequence liability."""
+    type: str
+    position: int
+    motif: str
+    severity: str  # "high", "medium", "low"
+    description: str
+
+
+_DEAMIDATION_MOTIFS = [
+    (re.compile(r"N[GS]"), "high",   "Asn deamidation hotspot (N{m})"),
+    (re.compile(r"N[T]"),  "medium", "Asn deamidation (NT)"),
+    (re.compile(r"N[A]"),  "low",    "Asn deamidation (NA, low risk)"),
+]
+
+_ISOMERIZATION_MOTIFS = [
+    (re.compile(r"D[GS]"), "high",   "Asp isomerization hotspot (D{m})"),
+    (re.compile(r"D[T]"),  "medium", "Asp isomerization (DT)"),
+]
+
+_GLYCOSYLATION_RE = re.compile(r"N(?=[^P][ST])")  # NX[ST] where X != P
+
+
+def _scan_liabilities(sequence: str) -> list[Liability]:
+    """Scan a protein sequence for PTM liabilities."""
+    seq = sequence.upper()
+    liabilities: list[Liability] = []
+
+    # Deamidation
+    for pattern, severity, desc_tmpl in _DEAMIDATION_MOTIFS:
+        for m in pattern.finditer(seq):
+            liabilities.append(Liability(
+                type="deamidation",
+                position=m.start() + 1,  # 1-indexed
+                motif=m.group(),
+                severity=severity,
+                description=desc_tmpl.replace("{m}", m.group()),
+            ))
+
+    # Isomerization
+    for pattern, severity, desc_tmpl in _ISOMERIZATION_MOTIFS:
+        for m in pattern.finditer(seq):
+            liabilities.append(Liability(
+                type="isomerization",
+                position=m.start() + 1,
+                motif=m.group(),
+                severity=severity,
+                description=desc_tmpl.replace("{m}", m.group()),
+            ))
+
+    # Met oxidation
+    for i, aa in enumerate(seq):
+        if aa == "M":
+            liabilities.append(Liability(
+                type="oxidation",
+                position=i + 1,
+                motif="M",
+                severity="medium",
+                description="Methionine oxidation risk",
+            ))
+
+    # Free Cys
+    cys_positions = [i for i, aa in enumerate(seq) if aa == "C"]
+    # If odd number of Cys, at least one is unpaired; flag all for review
+    if len(cys_positions) % 2 != 0:
+        for pos in cys_positions:
+            liabilities.append(Liability(
+                type="free_cysteine",
+                position=pos + 1,
+                motif="C",
+                severity="high",
+                description="Potentially unpaired cysteine (odd total Cys count)",
+            ))
+
+    # N-linked glycosylation NX[ST] where X != P
+    for m in _GLYCOSYLATION_RE.finditer(seq):
+        liabilities.append(Liability(
+            type="glycosylation",
+            position=m.start() + 1,
+            motif=seq[m.start():m.start() + 3],
+            severity="medium",
+            description=f"N-linked glycosylation motif ({seq[m.start():m.start()+3]})",
+        ))
+
+    # Sort by position
+    liabilities.sort(key=lambda l: l.position)
+    return liabilities
+
+
+# ---------------------------------------------------------------------------
+# Net charge  (replaces proteus_cli.screening.liabilities.compute_net_charge)
+# ---------------------------------------------------------------------------
+
+# Standard pKa values
+_PKA = {
+    "D": 3.65,   # Asp
+    "E": 4.25,   # Glu
+    "H": 6.00,   # His
+    "C": 8.18,   # Cys (free)
+    "Y": 10.07,  # Tyr
+    "K": 10.54,  # Lys
+    "R": 12.48,  # Arg
+}
+_PKA_NTERM = 9.69
+_PKA_CTERM = 2.34
+
+
+def _compute_net_charge(sequence: str, ph: float = 7.4) -> float:
+    """Estimate net charge using Henderson-Hasselbalch."""
+    seq = sequence.upper()
+    charge = 0.0
+
+    # N-terminal amino group (positive when protonated)
+    charge += 1.0 / (1.0 + 10 ** (ph - _PKA_NTERM))
+    # C-terminal carboxyl group (negative when deprotonated)
+    charge -= 1.0 / (1.0 + 10 ** (_PKA_CTERM - ph))
+
+    for aa in seq:
+        if aa in ("D", "E"):
+            # Acidic: negative when deprotonated
+            charge -= 1.0 / (1.0 + 10 ** (_PKA[aa] - ph))
+        elif aa in ("C", "Y"):
+            # Weakly acidic side chains
+            charge -= 1.0 / (1.0 + 10 ** (_PKA[aa] - ph))
+        elif aa in ("K", "R", "H"):
+            # Basic: positive when protonated
+            charge += 1.0 / (1.0 + 10 ** (ph - _PKA[aa]))
+
+    return charge
+
+
+# ---------------------------------------------------------------------------
+# Developability assessment  (replaces proteus_cli.screening.developability)
+# ---------------------------------------------------------------------------
+
+_HYDROPHOBIC = set("AVILFWMP")
+
+
+@dataclass
+class DevelopabilityReport:
+    """Developability assessment result."""
+    overall_risk: str  # "low", "medium", "high"
+    hydrophobic_fraction: float
+    proline_fraction: float
+    glycine_fraction: float
+    net_charge: float
+    total_cdr_length: int
+    liability_count: int
+    flags: list[str] = field(default_factory=list)
+
+
+def _assess_developability(
+    sequence: str,
+    cdr_regions: list[tuple[int, int]] | None = None,
+    liabilities: list[Liability] | None = None,
+) -> DevelopabilityReport:
+    """TAP-inspired developability assessment."""
+    seq = sequence.upper()
+    n = len(seq)
+    if n == 0:
+        return DevelopabilityReport(
+            overall_risk="high", hydrophobic_fraction=0, proline_fraction=0,
+            glycine_fraction=0, net_charge=0, total_cdr_length=0,
+            liability_count=0, flags=["Empty sequence"],
+        )
+
+    hydro_frac = sum(1 for aa in seq if aa in _HYDROPHOBIC) / n
+    pro_frac = seq.count("P") / n
+    gly_frac = seq.count("G") / n
+    charge = _compute_net_charge(seq)
+
+    total_cdr = 0
+    if cdr_regions:
+        for start, end in cdr_regions:
+            total_cdr += max(0, end - start)
+
+    liab_count = len(liabilities) if liabilities is not None else len(_scan_liabilities(seq))
+
+    flags: list[str] = []
+    risk_score = 0
+
+    if hydro_frac > 0.55:
+        flags.append(f"High hydrophobic fraction: {hydro_frac:.2%}")
+        risk_score += 2
+    elif hydro_frac > 0.45:
+        flags.append(f"Elevated hydrophobic fraction: {hydro_frac:.2%}")
+        risk_score += 1
+
+    if abs(charge) > 10:
+        flags.append(f"Extreme net charge: {charge:.1f}")
+        risk_score += 2
+    elif abs(charge) > 6:
+        flags.append(f"High net charge: {charge:.1f}")
+        risk_score += 1
+
+    if total_cdr > 0:
+        # CDR length checks (typical for VHH: CDR3 ~12-18aa)
+        if cdr_regions:
+            for i, (start, end) in enumerate(cdr_regions):
+                cdr_len = end - start
+                if cdr_len > 25:
+                    flags.append(f"CDR{i+1} unusually long: {cdr_len}aa")
+                    risk_score += 1
+                elif cdr_len < 3:
+                    flags.append(f"CDR{i+1} unusually short: {cdr_len}aa")
+                    risk_score += 1
+
+    if liab_count > 5:
+        flags.append(f"High liability count: {liab_count}")
+        risk_score += 2
+    elif liab_count > 3:
+        flags.append(f"Moderate liability count: {liab_count}")
+        risk_score += 1
+
+    if pro_frac > 0.12:
+        flags.append(f"High proline fraction: {pro_frac:.2%}")
+        risk_score += 1
+
+    if gly_frac > 0.15:
+        flags.append(f"High glycine fraction: {gly_frac:.2%}")
+        risk_score += 1
+
+    if risk_score >= 4:
+        overall = "high"
+    elif risk_score >= 2:
+        overall = "medium"
+    else:
+        overall = "low"
+
+    return DevelopabilityReport(
+        overall_risk=overall,
+        hydrophobic_fraction=round(hydro_frac, 4),
+        proline_fraction=round(pro_frac, 4),
+        glycine_fraction=round(gly_frac, 4),
+        net_charge=round(charge, 4),
+        total_cdr_length=total_cdr,
+        liability_count=liab_count,
+        flags=flags,
+    )
+
+
+# ---------------------------------------------------------------------------
+# ipSAE scoring  (replaces proteus_cli.scoring.ipsae)
+# ---------------------------------------------------------------------------
+
+def _ipsae_d0(n0: int) -> float:
+    """Compute d0 normalization factor for ipSAE."""
+    clamped = max(n0, 19)
+    return 1.24 * (clamped - 15) ** (1.0 / 3.0) - 1.8
+
+
+def _compute_ipsae(
+    pae_matrix,  # numpy 2D array
+    design_indices: list[int],
+    target_indices: list[int],
+    pae_cutoff: float = 10.0,
+) -> dict[str, float]:
+    """Compute directional ipSAE scores from a PAE matrix.
+
+    Args:
+        pae_matrix: (N, N) numpy array of predicted aligned errors.
+        design_indices: Row/col indices for design chain residues.
+        target_indices: Row/col indices for target chain residues.
+        pae_cutoff: PAE threshold (default 10.0 for Protenix/AF3).
+
+    Returns:
+        Dict with design_to_target_ipsae, target_to_design_ipsae, design_ipsae_min.
+    """
+    import numpy as np
+
+    d_idx = np.array(design_indices)
+    t_idx = np.array(target_indices)
+
+    # Design-to-target: rows=design, cols=target
+    dt_block = pae_matrix[np.ix_(d_idx, t_idx)]
+    # Target-to-design: rows=target, cols=design
+    td_block = pae_matrix[np.ix_(t_idx, d_idx)]
+
+    def _score_block(block: "np.ndarray", n_aligned: int) -> float:
+        if n_aligned < 1:
+            return 0.0
+        d0 = _ipsae_d0(n_aligned)
+        if d0 <= 0:
+            return 0.0
+        # For each row, find contacts below cutoff and compute TM-like sum
+        contact_mask = block < pae_cutoff
+        total = 0.0
+        n_rows = block.shape[0]
+        for i in range(n_rows):
+            row_contacts = block[i][contact_mask[i]]
+            if len(row_contacts) > 0:
+                total += np.sum(1.0 / (1.0 + (row_contacts / d0) ** 2))
+        # Normalize by number of aligned residues (columns)
+        n_cols = block.shape[1]
+        if n_cols == 0:
+            return 0.0
+        score = total / (n_rows * n_cols)
+        return float(min(score, 1.0))
+
+    dt_score = _score_block(dt_block, len(target_indices))
+    td_score = _score_block(td_block, len(design_indices))
+
+    return {
+        "design_to_target_ipsae": round(dt_score, 4),
+        "target_to_design_ipsae": round(td_score, 4),
+        "design_ipsae_min": round(min(dt_score, td_score), 4),
+    }
+
+
+def _interpret_ipsae(score: float) -> str:
+    """Human-readable interpretation of an ipSAE score."""
+    if score > 0.8:
+        return "Excellent binding interface (ipSAE > 0.8)"
+    elif score > 0.5:
+        return "Good binding interface (ipSAE > 0.5)"
+    elif score > 0.3:
+        return "Moderate — may need refinement (ipSAE 0.3-0.5)"
+    elif score > 0.1:
+        return "Weak — likely poor binding (ipSAE 0.1-0.3)"
+    else:
+        return "Very poor — consider redesign (ipSAE < 0.1)"
+
+
+def _score_npz(
+    npz_path: Path,
+    design_chain_ids: list[int],
+    target_chain_ids: list[int],
+    pae_cutoff: float = 10.0,
+) -> dict[str, float]:
+    """Score ipSAE from a Protenix NPZ file."""
+    import numpy as np
+
+    data = np.load(str(npz_path))
+    if "pae" not in data:
+        raise ValueError(f"NPZ file missing 'pae' key. Available keys: {list(data.keys())}")
+
+    pae = data["pae"]
+    if pae.ndim == 3:
+        # Multi-model: use the first model
+        pae = pae[0]
+
+    # Build index arrays from chain IDs
+    if "asym_id" in data:
+        asym = data["asym_id"]
+        if asym.ndim > 1:
+            asym = asym[0]
+        design_idx = [i for i, a in enumerate(asym) if int(a) in design_chain_ids]
+        target_idx = [i for i, a in enumerate(asym) if int(a) in target_chain_ids]
+    else:
+        raise ValueError("NPZ file missing 'asym_id' key needed to map chain IDs to residue indices.")
+
+    return _compute_ipsae(pae, design_idx, target_idx, pae_cutoff)
+
+
+def _score_multi_seed(
+    npz_paths: list[str],
+    design_chain_ids: list[int] | None,
+    target_chain_ids: list[int] | None,
+    design_chain: str = "A",
+    target_chain: str = "B",
+    pae_cutoff: float = 10.0,
+    aggregation: str = "best",
+) -> dict[str, Any]:
+    """Score ipSAE across multiple seed outputs."""
+    import numpy as np
+
+    per_seed: list[dict] = []
+
+    for idx, path_str in enumerate(npz_paths):
+        p = Path(path_str)
+        if not p.exists():
+            per_seed.append({"seed_idx": idx, "file": path_str, "error": "File not found"})
+            continue
+
+        try:
+            if p.suffix == ".json":
+                # Confidence JSON format
+                raw = json.loads(p.read_text())
+                pae = np.array(raw.get("pae", raw.get("predicted_aligned_error", [])))
+                if pae.ndim == 0 or pae.size == 0:
+                    per_seed.append({"seed_idx": idx, "error": "No PAE data in JSON"})
+                    continue
+
+                # JSON uses chain letters — build indices
+                chain_ids = raw.get("chain_ids", raw.get("chain_id", []))
+                if not chain_ids:
+                    per_seed.append({"seed_idx": idx, "error": "No chain IDs in JSON"})
+                    continue
+                d_idx = [i for i, c in enumerate(chain_ids) if c == design_chain]
+                t_idx = [i for i, c in enumerate(chain_ids) if c == target_chain]
+
+                scores = _compute_ipsae(pae, d_idx, t_idx, pae_cutoff)
+            else:
+                # NPZ format
+                if design_chain_ids is None or target_chain_ids is None:
+                    per_seed.append({"seed_idx": idx, "error": "NPZ requires design/target chain IDs"})
+                    continue
+                scores = _score_npz(p, design_chain_ids, target_chain_ids, pae_cutoff)
+
+            scores["seed_idx"] = idx
+            scores["file"] = str(p)
+            per_seed.append(scores)
+
+        except Exception as exc:
+            per_seed.append({"seed_idx": idx, "file": path_str, "error": str(exc)})
+
+    # Filter successful scores
+    valid = [s for s in per_seed if "design_ipsae_min" in s]
+    if not valid:
+        return {"error": "No valid seed scores computed", "per_seed": per_seed}
+
+    mins = [s["design_ipsae_min"] for s in valid]
+    mean_val = float(np.mean(mins))
+    std_val = float(np.std(mins))
+
+    if aggregation == "mean":
+        best = min(valid, key=lambda s: abs(s["design_ipsae_min"] - mean_val))
+    elif aggregation == "median":
+        median_val = float(np.median(mins))
+        best = min(valid, key=lambda s: abs(s["design_ipsae_min"] - median_val))
+    else:  # "best"
+        best = max(valid, key=lambda s: s["design_ipsae_min"])
+
+    return {
+        "best_seed_idx": best["seed_idx"],
+        "best_ipsae_min": best["design_ipsae_min"],
+        "best_file": best.get("file", ""),
+        "mean_ipsae_min": round(mean_val, 4),
+        "std_ipsae_min": round(std_val, 4),
+        "num_seeds": len(valid),
+        "num_failed": len(per_seed) - len(valid),
+        "aggregation": aggregation,
+        "per_seed": per_seed,
+    }
+
+
+def _score_multi_seed_dir(
+    npz_dir: str,
+    design_chain_ids: list[int] | None,
+    target_chain_ids: list[int] | None,
+    design_chain: str = "A",
+    target_chain: str = "B",
+    pae_cutoff: float = 10.0,
+    aggregation: str = "best",
+) -> dict[str, Any]:
+    """Score ipSAE for all NPZ/JSON files in a directory."""
+    d = Path(npz_dir)
+    if not d.is_dir():
+        return {"error": f"Not a directory: {npz_dir}"}
+
+    files = sorted(
+        list(d.glob("*.npz")) + list(d.glob("*confidence*.json"))
+    )
+    if not files:
+        return {"error": f"No NPZ or confidence JSON files found in {npz_dir}"}
+
+    return _score_multi_seed(
+        [str(f) for f in files],
+        design_chain_ids, target_chain_ids,
+        design_chain, target_chain, pae_cutoff, aggregation,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Diversity analysis  (replaces proteus_cli.screening.diversity)
+# ---------------------------------------------------------------------------
+
+def _pairwise_identity(seq1: str, seq2: str) -> float:
+    """Compute pairwise sequence identity (matching positions / min length)."""
+    s1, s2 = seq1.upper(), seq2.upper()
+    min_len = min(len(s1), len(s2))
+    if min_len == 0:
+        return 0.0
+    matches = sum(1 for a, b in zip(s1, s2) if a == b)
+    return matches / min_len
+
+
+def _diversity_report(
+    sequences: list[dict],
+    identity_threshold: float = 0.9,
+) -> dict[str, Any]:
+    """Analyze sequence diversity by single-linkage clustering."""
+    seqs = [s["sequence"].upper() for s in sequences]
+    n = len(seqs)
+    if n == 0:
+        return {"num_sequences": 0, "num_clusters": 0, "diversity_ratio": 0}
+
+    # Build pairwise identity matrix and cluster
+    # Simple single-linkage clustering
+    cluster_id = list(range(n))
+
+    total_identity = 0.0
+    num_pairs = 0
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            ident = _pairwise_identity(seqs[i], seqs[j])
+            total_identity += ident
+            num_pairs += 1
+            if ident >= identity_threshold:
+                # Merge clusters
+                old_id = cluster_id[j]
+                new_id = cluster_id[i]
+                for k in range(n):
+                    if cluster_id[k] == old_id:
+                        cluster_id[k] = new_id
+
+    num_clusters = len(set(cluster_id))
+    avg_identity = total_identity / num_pairs if num_pairs > 0 else 0.0
+
+    # Cluster sizes
+    from collections import Counter
+    cluster_sizes = Counter(cluster_id)
+    largest = max(cluster_sizes.values()) if cluster_sizes else 0
+    singletons = sum(1 for v in cluster_sizes.values() if v == 1)
+
+    diversity_ratio = num_clusters / n if n > 0 else 0.0
+    redundancy_warning = diversity_ratio < 0.3
+
+    return {
+        "num_sequences": n,
+        "num_clusters": num_clusters,
+        "diversity_ratio": round(diversity_ratio, 4),
+        "avg_pairwise_identity": round(avg_identity, 4),
+        "largest_cluster_size": largest,
+        "singleton_clusters": singletons,
+        "redundancy_warning": redundancy_warning,
+    }
+
+
+def _format_diversity(report: dict) -> str:
+    """Format diversity report as text."""
+    lines = [
+        f"Sequences: {report['num_sequences']}",
+        f"Clusters:  {report['num_clusters']}",
+        f"Diversity: {report['diversity_ratio']:.1%}",
+        f"Avg identity: {report['avg_pairwise_identity']:.1%}",
+        f"Largest cluster: {report['largest_cluster_size']}",
+        f"Singletons: {report['singleton_clusters']}",
+    ]
+    if report.get("redundancy_warning"):
+        lines.append("WARNING: Low diversity — consider broadening search parameters")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Failure diagnosis  (replaces proteus_cli.screening.diagnosis)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class FeatureAnalysis:
+    feature_name: str
+    test_type: str
+    statistic: float
+    p_value: float
+    effect_size: float
+    passed_mean: float
+    failed_mean: float
+    interpretation: str
+
+
+@dataclass
+class DiagnosisReport:
+    total_designs: int
+    passed: int
+    failed: int
+    pass_rate: float
+    discriminating_features: list[FeatureAnalysis]
+    summary: str
+    recommendations: list[str]
+
+
+def _diagnose_failures(
+    designs: list[dict],
+    pass_key: str = "status",
+    pass_value: str = "PASS",
+) -> DiagnosisReport:
+    """Diagnose why designs fail screening using simple statistics."""
+    passed = [d for d in designs if d.get(pass_key) == pass_value]
+    failed = [d for d in designs if d.get(pass_key) != pass_value]
+
+    total = len(designs)
+    n_pass = len(passed)
+    n_fail = len(failed)
+    rate = n_pass / total if total > 0 else 0.0
+
+    # Identify numeric features
+    numeric_keys: set[str] = set()
+    for d in designs:
+        for k, v in d.items():
+            if isinstance(v, (int, float)) and k != pass_key:
+                numeric_keys.add(k)
+
+    features: list[FeatureAnalysis] = []
+
+    for key in sorted(numeric_keys):
+        p_vals = [d[key] for d in passed if key in d and isinstance(d[key], (int, float))]
+        f_vals = [d[key] for d in failed if key in d and isinstance(d[key], (int, float))]
+
+        if len(p_vals) < 2 or len(f_vals) < 2:
+            continue
+
+        p_mean = sum(p_vals) / len(p_vals)
+        f_mean = sum(f_vals) / len(f_vals)
+
+        # Cohen's d as effect size
+        p_var = sum((x - p_mean) ** 2 for x in p_vals) / (len(p_vals) - 1)
+        f_var = sum((x - f_mean) ** 2 for x in f_vals) / (len(f_vals) - 1)
+        pooled_std = math.sqrt((p_var + f_var) / 2) if (p_var + f_var) > 0 else 1.0
+        effect = abs(p_mean - f_mean) / pooled_std
+
+        # Simple Mann-Whitney U approximation using rank-sum
+        combined = [(v, "p") for v in p_vals] + [(v, "f") for v in f_vals]
+        combined.sort(key=lambda x: x[0])
+        rank_sum_p = sum(i + 1 for i, (_, g) in enumerate(combined) if g == "p")
+        n1, n2 = len(p_vals), len(f_vals)
+        u = rank_sum_p - n1 * (n1 + 1) / 2
+        # Normal approximation for p-value
+        mu = n1 * n2 / 2
+        sigma = math.sqrt(n1 * n2 * (n1 + n2 + 1) / 12) if (n1 + n2 + 1) > 0 else 1.0
+        z = (u - mu) / sigma if sigma > 0 else 0.0
+        # Two-tailed p-value approximation
+        p_value = min(1.0, 2.0 * (1.0 - 0.5 * (1.0 + math.erf(abs(z) / math.sqrt(2)))))
+
+        if effect > 0.5:
+            interp = f"{key}: large difference (passed mean={p_mean:.3f} vs failed mean={f_mean:.3f})"
+        elif effect > 0.2:
+            interp = f"{key}: moderate difference"
+        else:
+            interp = f"{key}: small difference"
+
+        features.append(FeatureAnalysis(
+            feature_name=key,
+            test_type="Mann-Whitney U (approximation)",
+            statistic=round(u, 4),
+            p_value=round(p_value, 6),
+            effect_size=round(effect, 4),
+            passed_mean=round(p_mean, 4),
+            failed_mean=round(f_mean, 4),
+            interpretation=interp,
+        ))
+
+    features.sort(key=lambda f: f.p_value)
+
+    # Generate recommendations
+    recs: list[str] = []
+    for feat in features[:3]:
+        if feat.effect_size > 0.5:
+            if feat.passed_mean > feat.failed_mean:
+                recs.append(f"Increase {feat.feature_name} threshold (passed designs have higher values)")
+            else:
+                recs.append(f"Reduce {feat.feature_name} threshold (passed designs have lower values)")
+
+    if rate < 0.1:
+        recs.append("Consider relaxing screening thresholds — pass rate is very low")
+    if n_fail > 0 and not recs:
+        recs.append("No strong discriminating features found — failures may be stochastic")
+
+    summary = (
+        f"Pass rate: {rate:.1%} ({n_pass}/{total}). "
+        f"Top discriminating feature: {features[0].feature_name if features else 'none'}"
+    )
+
+    return DiagnosisReport(
+        total_designs=total,
+        passed=n_pass,
+        failed=n_fail,
+        pass_rate=rate,
+        discriminating_features=features,
+        summary=summary,
+        recommendations=recs,
+    )
+
+
+def _format_diagnosis(diag: DiagnosisReport) -> str:
+    """Format diagnosis report as text."""
+    lines = [
+        f"Pass rate: {diag.pass_rate:.1%} ({diag.passed}/{diag.total_designs})",
+        "",
+        "Discriminating features:",
+    ]
+    for f in diag.discriminating_features[:5]:
+        lines.append(f"  {f.feature_name}: effect={f.effect_size:.2f}, p={f.p_value:.4f}")
+    lines.append("")
+    lines.append("Recommendations:")
+    for r in diag.recommendations:
+        lines.append(f"  - {r}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Pareto front  (replaces proteus_cli.screening.pareto)
+# ---------------------------------------------------------------------------
+
+def _is_dominated(a: dict, b: dict, objectives: list[tuple[str, str]]) -> bool:
+    """Check if design 'a' is dominated by design 'b'."""
+    dominated = True
+    strictly_worse = False
+    for metric, direction in objectives:
+        va = a.get(metric, 0)
+        vb = b.get(metric, 0)
+        if direction == "maximize":
+            if va > vb:
+                dominated = False
+            if vb > va:
+                strictly_worse = True
+        else:  # minimize
+            if va < vb:
+                dominated = False
+            if vb < va:
+                strictly_worse = True
+    return dominated and strictly_worse
+
+
+def _pareto_front(
+    designs: list[dict],
+    objectives: list[tuple[str, str]] | None = None,
+) -> list[dict]:
+    """Extract Pareto-optimal designs."""
+    if objectives is None:
+        objectives = [
+            ("ipsae_min", "maximize"),
+            ("iptm", "maximize"),
+            ("liabilities", "minimize"),
+        ]
+
+    front: list[dict] = []
+    for i, d in enumerate(designs):
+        is_dom = False
+        for j, other in enumerate(designs):
+            if i != j and _is_dominated(d, other, objectives):
+                is_dom = True
+                break
+        if not is_dom:
+            d_copy = dict(d)
+            d_copy["pareto_rank"] = 1
+            front.append(d_copy)
+
+    # Sort by first objective
+    if objectives:
+        first_metric, first_dir = objectives[0]
+        front.sort(
+            key=lambda x: x.get(first_metric, 0),
+            reverse=(first_dir == "maximize"),
+        )
+
+    return front
+
+
+def _format_pareto(front: list[dict], objectives: list[tuple[str, str]] | None = None) -> str:
+    """Format Pareto front as text table."""
+    if objectives is None:
+        objectives = [
+            ("ipsae_min", "maximize"),
+            ("iptm", "maximize"),
+            ("liabilities", "minimize"),
+        ]
+    metrics = [o[0] for o in objectives]
+    header = "Name\t" + "\t".join(metrics)
+    lines = [header, "-" * len(header) * 2]
+    for d in front:
+        name = d.get("design_name", d.get("name", "?"))
+        vals = "\t".join(f"{d.get(m, 'N/A')}" for m in metrics)
+        lines.append(f"{name}\t{vals}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Sequence alignment  (replaces proteus_cli.screening.alignment)
+# Minimal implementation without BioPython dependency
+# ---------------------------------------------------------------------------
+
+def _pairwise_align(seq1: str, seq2: str) -> dict:
+    """Simple pairwise alignment using Needleman-Wunsch-like identity."""
+    s1, s2 = seq1.upper(), seq2.upper()
+    min_len = min(len(s1), len(s2))
+    max_len = max(len(s1), len(s2))
+    matches = sum(1 for a, b in zip(s1, s2) if a == b) if min_len > 0 else 0
+    identity = matches / max_len if max_len > 0 else 0.0
+
+    return {
+        "mode": "pairwise",
+        "length_1": len(s1),
+        "length_2": len(s2),
+        "matches": matches,
+        "identity": round(identity, 4),
+        "aligned_1": s1[:min_len],
+        "aligned_2": s2[:min_len],
+    }
+
+
+def _cdr_align(sequences: list[dict], cdr_key: str = "cdr3_sequence") -> dict:
+    """Compute CDR3 pairwise identity matrix."""
+    cdrs = [s.get(cdr_key, "").upper() for s in sequences]
+    names = [s.get("name", s.get("design_name", f"seq_{i}")) for i, s in enumerate(sequences)]
+    n = len(cdrs)
+    matrix: list[list[float]] = [[0.0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                matrix[i][j] = 1.0
+            elif i < j:
+                ident = _pairwise_identity(cdrs[i], cdrs[j])
+                matrix[i][j] = round(ident, 4)
+                matrix[j][i] = round(ident, 4)
+    return {
+        "mode": "cdr",
+        "names": names,
+        "identity_matrix": matrix,
+        "num_sequences": n,
+    }
+
+
+def _multiple_align(sequences: list[dict], key: str = "sequence") -> dict:
+    """Star alignment from centroid — simplified consensus."""
+    seqs = [s.get(key, "").upper() for s in sequences]
+    names = [s.get("name", s.get("design_name", f"seq_{i}")) for i, s in enumerate(sequences)]
+
+    if not seqs:
+        return {"mode": "multiple", "consensus": "", "num_sequences": 0}
+
+    # Find centroid (sequence with highest avg identity to all others)
+    best_avg = -1.0
+    centroid_idx = 0
+    for i, s1 in enumerate(seqs):
+        avg = sum(_pairwise_identity(s1, s2) for j, s2 in enumerate(seqs) if i != j)
+        if avg > best_avg:
+            best_avg = avg
+            centroid_idx = i
+
+    # Build consensus from centroid
+    centroid = seqs[centroid_idx]
+    consensus = list(centroid)
+    for i, pos_aa in enumerate(centroid):
+        counts: dict[str, int] = {}
+        for seq in seqs:
+            if i < len(seq):
+                aa = seq[i]
+                counts[aa] = counts.get(aa, 0) + 1
+        if counts:
+            consensus[i] = max(counts, key=lambda x: counts[x])
+
+    return {
+        "mode": "multiple",
+        "centroid": names[centroid_idx],
+        "consensus": "".join(consensus),
+        "num_sequences": len(seqs),
+        "names": names,
+    }
+
+
+def _format_alignment(result: dict) -> str:
+    """Format alignment result as text."""
+    mode = result.get("mode", "")
+    if mode == "pairwise":
+        return (
+            f"Identity: {result['identity']:.1%} ({result['matches']} matches)\n"
+            f"Seq1 ({result['length_1']}aa): {result['aligned_1'][:60]}...\n"
+            f"Seq2 ({result['length_2']}aa): {result['aligned_2'][:60]}..."
+        )
+    elif mode == "cdr":
+        lines = [f"CDR3 identity matrix ({result['num_sequences']} sequences):"]
+        names = result["names"]
+        matrix = result["identity_matrix"]
+        header = "     " + "  ".join(f"{n[:5]:>5}" for n in names)
+        lines.append(header)
+        for i, row in enumerate(matrix):
+            line = f"{names[i][:5]:>5} " + "  ".join(f"{v:5.2f}" for v in row)
+            lines.append(line)
+        return "\n".join(lines)
+    elif mode == "multiple":
+        return (
+            f"Centroid: {result.get('centroid', '?')}\n"
+            f"Consensus: {result['consensus'][:60]}...\n"
+            f"Sequences: {result['num_sequences']}"
+        )
+    return json.dumps(result)
+
+
+# ---------------------------------------------------------------------------
+# Cross-validation  (replaces proteus_cli.screening.cross_validation)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CrossValidationResult:
+    name: str
+    status: str  # "consensus", "divergent", "rejected"
+    confidence: str
+    iptm_delta: float
+    ipsae_agreement: bool
+    predictor_1_iptm: float
+    predictor_2_iptm: float
+    predictor_1_ipsae: float
+    predictor_2_ipsae: float
+
+
+def _cross_validate_designs(
+    designs: list[dict],
+    predictor_1_key: str = "boltzgen",
+    predictor_2_key: str = "protenix",
+) -> list[CrossValidationResult]:
+    """Cross-validate designs using dual predictor scores."""
+    results: list[CrossValidationResult] = []
+
+    for d in designs:
+        name = d.get("name", d.get("design_name", "?"))
+        p1_iptm = d.get(f"{predictor_1_key}_iptm", 0.0)
+        p2_iptm = d.get(f"{predictor_2_key}_iptm", 0.0)
+        p1_ipsae = d.get(f"{predictor_1_key}_ipsae", 0.0)
+        p2_ipsae = d.get(f"{predictor_2_key}_ipsae", 0.0)
+
+        delta = abs(p1_iptm - p2_iptm)
+        both_ipsae_ok = p1_ipsae > 0.3 and p2_ipsae > 0.3
+        both_ipsae_bad = p1_ipsae < 0.1 and p2_ipsae < 0.1
+
+        if delta > 0.5 or both_ipsae_bad:
+            status = "rejected"
+            confidence = "low"
+        elif delta < 0.3 and both_ipsae_ok:
+            status = "consensus"
+            confidence = "high"
+        else:
+            status = "divergent"
+            confidence = "medium"
+
+        results.append(CrossValidationResult(
+            name=name,
+            status=status,
+            confidence=confidence,
+            iptm_delta=round(delta, 4),
+            ipsae_agreement=both_ipsae_ok,
+            predictor_1_iptm=p1_iptm,
+            predictor_2_iptm=p2_iptm,
+            predictor_1_ipsae=p1_ipsae,
+            predictor_2_ipsae=p2_ipsae,
+        ))
+
+    return results
+
+
+def _format_cross_validation(results: list[CrossValidationResult]) -> str:
+    """Format cross-validation results as text."""
+    lines = ["Name\tStatus\tConfidence\tipTM Delta\tipSAE Agreement"]
+    for r in results:
+        lines.append(f"{r.name}\t{r.status}\t{r.confidence}\t{r.iptm_delta:.3f}\t{r.ipsae_agreement}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Shape complementarity  (replaces proteus_cli.screening.shape_complementarity)
+# Simplified: requires BioPython if called, with graceful fallback
+# ---------------------------------------------------------------------------
+
+def _compute_interface_metrics(
+    structure_path: str,
+    design_chains: list[str],
+    target_chains: list[str],
+    contact_distance: float = 8.0,
+) -> dict:
+    """Compute interface contact metrics from a PDB/CIF file.
+
+    Falls back gracefully if BioPython is not installed.
+    """
+    try:
+        from Bio.PDB import PDBParser, MMCIFParser, NeighborSearch
+    except ImportError:
+        return {
+            "error": (
+                "BioPython not installed. Install with: pip install biopython. "
+                "Shape complementarity scoring requires BioPython for structure parsing."
+            )
+        }
+
+    p = Path(structure_path)
+    if p.suffix.lower() in (".cif", ".mmcif"):
+        parser = MMCIFParser(QUIET=True)
+    else:
+        parser = PDBParser(QUIET=True)
+
+    structure = parser.get_structure("s", str(p))
+    model = structure[0]
+
+    design_atoms = []
+    target_atoms = []
+
+    for chain in model:
+        cid = chain.id
+        for residue in chain:
+            for atom in residue:
+                if cid in design_chains:
+                    design_atoms.append(atom)
+                elif cid in target_chains:
+                    target_atoms.append(atom)
+
+    if not design_atoms or not target_atoms:
+        return {"error": "No atoms found for specified chains"}
+
+    ns = NeighborSearch(target_atoms)
+
+    interface_design_residues: set = set()
+    interface_target_residues: set = set()
+    contact_count = 0
+
+    for atom in design_atoms:
+        neighbors = ns.search(atom.get_vector().get_array(), contact_distance, "A")
+        if neighbors:
+            contact_count += len(neighbors)
+            res = atom.get_parent()
+            interface_design_residues.add((res.get_parent().id, res.id[1]))
+            for nb in neighbors:
+                tres = nb.get_parent()
+                interface_target_residues.add((tres.get_parent().id, tres.id[1]))
+
+    total_if_res = len(interface_design_residues) + len(interface_target_residues)
+    density = contact_count / total_if_res if total_if_res > 0 else 0.0
+
+    return {
+        "interface_contacts": contact_count,
+        "interface_residues_design": len(interface_design_residues),
+        "interface_residues_target": len(interface_target_residues),
+        "total_interface_residues": total_if_res,
+        "contact_density": round(density, 2),
+        "design_chains": design_chains,
+        "target_chains": target_chains,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Naturalness scoring  (replaces proteus_cli.screening.naturalness)
+# Falls back gracefully when ablang2 is not available
+# ---------------------------------------------------------------------------
+
+def _score_naturalness(sequence: str, chain_type: str = "heavy") -> dict:
+    """Score antibody naturalness using AbLang2 PLL."""
+    try:
+        import ablang2
+    except ImportError:
+        return {
+            "naturalness_score": None,
+            "chain_type": chain_type,
+            "interpretation": "AbLang2 not installed — cannot compute naturalness score",
+            "source": "unavailable",
+            "install_hint": "pip install ablang2",
+            "tamarind_alternative": (
+                "Use Tamarind Bio cloud API for naturalness scoring: "
+                "cloud_submit_job(tool='ablang2', ...)"
+            ),
+        }
+
+    try:
+        model = ablang2.pretrained(chain_type)
+        pll = model.pseudo_log_likelihood(sequence)
+        score = float(pll)
+
+        if score > -2:
+            interp = "Highly natural sequence"
+        elif score > -3:
+            interp = "Natural sequence"
+        elif score > -5:
+            interp = "Moderately natural"
+        else:
+            interp = "Low naturalness — may benefit from humanization"
+
+        return {
+            "naturalness_score": round(score, 4),
+            "chain_type": chain_type,
+            "interpretation": interp,
+            "source": "ablang2_local",
+        }
+    except Exception as exc:
+        return {
+            "naturalness_score": None,
+            "chain_type": chain_type,
+            "interpretation": f"AbLang2 scoring failed: {exc}",
+            "source": "error",
+        }
+
+
+# ===========================================================================
+# MCP Tool definitions
+# ===========================================================================
 
 
 def _error(msg: str) -> str:
@@ -55,9 +1146,7 @@ async def screen_liabilities(sequence: str) -> str:
         return _error("Sequence must not be empty.")
 
     try:
-        from proteus_cli.screening.liabilities import scan_liabilities as _scan
-
-        liabilities = _scan(sequence.strip().upper())
+        liabilities = _scan_liabilities(sequence.strip().upper())
         return json.dumps([asdict(l) for l in liabilities], indent=2)
     except Exception as exc:
         return _error(f"Liability scan failed: {exc}")
@@ -94,14 +1183,11 @@ async def screen_developability(
         return _error("Sequence must not be empty.")
 
     try:
-        from proteus_cli.screening.developability import assess_developability
-
-        # Convert list-of-lists to list-of-tuples as expected by the module.
         cdr_tuples = None
         if cdr_regions is not None:
             cdr_tuples = [(r[0], r[1]) for r in cdr_regions]
 
-        report = assess_developability(
+        report = _assess_developability(
             sequence.strip().upper(),
             cdr_regions=cdr_tuples,
         )
@@ -133,9 +1219,7 @@ async def screen_net_charge(sequence: str, ph: float = 7.4) -> str:
         return _error("Sequence must not be empty.")
 
     try:
-        from proteus_cli.screening.liabilities import compute_net_charge
-
-        charge = compute_net_charge(sequence.strip().upper(), ph=ph)
+        charge = _compute_net_charge(sequence.strip().upper(), ph=ph)
         return json.dumps({"net_charge": round(charge, 4), "ph": ph}, indent=2)
     except Exception as exc:
         return _error(f"Net charge calculation failed: {exc}")
@@ -175,10 +1259,8 @@ async def score_ipsae(
         return _error(f"NPZ file not found: {npz_path}")
 
     try:
-        from proteus_cli.scoring.ipsae import score_npz, interpret_ipsae
-
-        scores = score_npz(npz, design_chain_ids, target_chain_ids)
-        scores["interpretation"] = interpret_ipsae(scores["design_ipsae_min"])
+        scores = _score_npz(npz, design_chain_ids, target_chain_ids)
+        scores["interpretation"] = _interpret_ipsae(scores["design_ipsae_min"])
         return json.dumps(scores, indent=2)
     except Exception as exc:
         return _error(f"ipSAE scoring failed: {exc}")
@@ -232,25 +1314,19 @@ async def score_ipsae_multi_seed(
         return _error("Provide either npz_paths (list) or npz_dir (directory).")
 
     try:
-        from proteus_cli.scoring.ipsae import (
-            score_multi_seed,
-            score_multi_seed_dir,
-            interpret_ipsae,
-        )
-
         if npz_dir:
-            result = score_multi_seed_dir(
+            result = _score_multi_seed_dir(
                 npz_dir, design_chain_ids, target_chain_ids,
                 design_chain, target_chain, pae_cutoff, aggregation,
             )
         else:
-            result = score_multi_seed(
+            result = _score_multi_seed(
                 npz_paths, design_chain_ids, target_chain_ids,
                 design_chain, target_chain, pae_cutoff, aggregation,
             )
 
         if "error" not in result:
-            result["interpretation"] = interpret_ipsae(result["best_ipsae_min"])
+            result["interpretation"] = _interpret_ipsae(result["best_ipsae_min"])
 
         return json.dumps(result, indent=2)
     except Exception as exc:
@@ -299,18 +1375,14 @@ async def screen_composite(
         return _error("Sequence must not be empty.")
 
     try:
-        from proteus_cli.screening.liabilities import scan_liabilities as _scan
-        from proteus_cli.screening.developability import assess_developability
-        from proteus_cli.scoring.ipsae import interpret_ipsae
-
         seq = sequence.strip().upper()
 
         # Liability scan
-        liabilities = _scan(seq)
+        liabilities = _scan_liabilities(seq)
         liabilities_json = [asdict(l) for l in liabilities]
 
         # Developability
-        report = assess_developability(seq, liabilities=liabilities)
+        report = _assess_developability(seq, liabilities=liabilities)
         dev_json = asdict(report)
 
         # Score interpretation
@@ -359,7 +1431,7 @@ async def screen_composite(
 
         if ipsae is not None:
             scores["ipsae"] = ipsae
-            interpretation["ipsae"] = interpret_ipsae(ipsae)
+            interpretation["ipsae"] = _interpret_ipsae(ipsae)
 
         # Composite pass/fail
         passes = True
@@ -416,8 +1488,6 @@ async def interpret_scores(
         return _error("At least one score must be provided.")
 
     try:
-        from proteus_cli.scoring.ipsae import interpret_ipsae
-
         result: dict = {}
 
         if iptm is not None:
@@ -434,7 +1504,7 @@ async def interpret_scores(
         if ipsae is not None:
             result["ipsae"] = {
                 "value": ipsae,
-                "interpretation": interpret_ipsae(ipsae),
+                "interpretation": _interpret_ipsae(ipsae),
             }
 
         if plddt is not None:
@@ -504,14 +1574,9 @@ async def screen_diversity(
             )
 
     try:
-        from proteus_cli.screening.diversity import (
-            diversity_report,
-            format_diversity,
-        )
-
-        report = diversity_report(sequences, identity_threshold=identity_threshold)
+        report = _diversity_report(sequences, identity_threshold=identity_threshold)
         report["threshold"] = int(identity_threshold * 100)
-        report["formatted"] = format_diversity(report)
+        report["formatted"] = _format_diversity(report)
         return json.dumps(report, indent=2)
     except Exception as exc:
         return _error(f"Diversity analysis failed: {exc}")
@@ -561,12 +1626,7 @@ async def screen_diagnose_failures(
         return _error("scores_json must be a JSON array.")
 
     try:
-        from proteus_cli.screening.diagnosis import (
-            diagnose_failures,
-            format_diagnosis,
-        )
-
-        diag = diagnose_failures(
+        diag = _diagnose_failures(
             designs, pass_key=pass_key, pass_value=pass_value
         )
         result = {
@@ -589,7 +1649,7 @@ async def screen_diagnose_failures(
             ],
             "summary": diag.summary,
             "recommendations": diag.recommendations,
-            "formatted": format_diagnosis(diag),
+            "formatted": _format_diagnosis(diag),
         }
         return json.dumps(result, indent=2)
     except Exception as exc:
@@ -647,10 +1707,8 @@ async def screen_pareto_front(
             return _error(f"Invalid objectives JSON: {exc}")
 
     try:
-        from proteus_cli.screening.pareto import pareto_front, format_pareto
-
-        front = pareto_front(designs, objectives=objectives)
-        formatted = format_pareto(front, objectives=objectives)
+        front = _pareto_front(designs, objectives=objectives)
+        formatted = _format_pareto(front, objectives=objectives)
         return json.dumps(
             {
                 "pareto_front": front,
@@ -687,8 +1745,6 @@ async def screen_align_sequences(
     - **multiple**: Star alignment from centroid — returns consensus
       sequence and MSA.
 
-    Uses BioPython PairwiseAligner (global mode) under the hood.
-
     Args:
         sequences_json: JSON array of objects. Each object must have a
             sequence field (configurable via *key*). For ``cdr`` mode,
@@ -718,28 +1774,21 @@ async def screen_align_sequences(
         return _error(f"Invalid mode '{mode}'. Must be one of: {', '.join(valid_modes)}")
 
     try:
-        from proteus_cli.screening.alignment import (
-            pairwise_align,
-            cdr_align,
-            multiple_align,
-            format_alignment,
-        )
-
         if mode == "pairwise":
             if len(sequences) != 2:
                 return _error(
                     f"Pairwise mode requires exactly 2 sequences, got {len(sequences)}."
                 )
-            result = pairwise_align(
+            result = _pairwise_align(
                 sequences[0].get(key, ""),
                 sequences[1].get(key, ""),
             )
         elif mode == "cdr":
-            result = cdr_align(sequences, cdr_key=cdr_key)
+            result = _cdr_align(sequences, cdr_key=cdr_key)
         else:
-            result = multiple_align(sequences, key=key)
+            result = _multiple_align(sequences, key=key)
 
-        result["formatted"] = format_alignment(result)
+        result["formatted"] = _format_alignment(result)
         return json.dumps(result, indent=2)
     except Exception as exc:
         return _error(f"Sequence alignment failed: {exc}")
@@ -788,18 +1837,13 @@ async def screen_cross_validate(
         return _error("designs_json must be a JSON array.")
 
     try:
-        from proteus_cli.screening.cross_validation import (
-            cross_validate_designs,
-            format_cross_validation,
-        )
-
-        results = cross_validate_designs(
+        results = _cross_validate_designs(
             designs,
             predictor_1_key=predictor_1,
             predictor_2_key=predictor_2,
         )
         results_json = [asdict(r) for r in results]
-        formatted = format_cross_validation(results)
+        formatted = _format_cross_validation(results)
 
         consensus = sum(1 for r in results if r.status == "consensus")
         divergent = sum(1 for r in results if r.status == "divergent")
@@ -866,11 +1910,7 @@ async def screen_shape_complementarity(
         return _error(f"Structure file not found: {structure_path}")
 
     try:
-        from proteus_cli.screening.shape_complementarity import (
-            compute_interface_metrics,
-        )
-
-        result = compute_interface_metrics(
+        result = _compute_interface_metrics(
             structure_path=str(p),
             design_chains=design_chains,
             target_chains=target_chains,
@@ -925,9 +1965,7 @@ async def screen_naturalness(
         )
 
     try:
-        from proteus_cli.screening.naturalness import score_naturalness
-
-        result = score_naturalness(sequence.strip().upper(), chain_type=chain_type)
+        result = _score_naturalness(sequence.strip().upper(), chain_type=chain_type)
         return json.dumps(result, indent=2)
     except Exception as exc:
         return _error(f"Naturalness scoring failed: {exc}")

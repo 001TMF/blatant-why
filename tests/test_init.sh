@@ -46,12 +46,12 @@ check ".claude/scripts/statusline.js"
 check ".claude/scripts/safety-gate.js"
 check ".claude/scripts/campaign-tracker.js"
 
-# MCP servers (at least some)
-check "mcp_servers/pdb/server.py"
-check "mcp_servers/uniprot/server.py"
-check "mcp_servers/screening/server.py"
-check "mcp_servers/knowledge/server.py"
-check "mcp_servers/cloud/server.py"
+# MCP servers (inside .claude/)
+check ".claude/mcp_servers/pdb/server.py"
+check ".claude/mcp_servers/uniprot/server.py"
+check ".claude/mcp_servers/screening/server.py"
+check ".claude/mcp_servers/knowledge/server.py"
+check ".claude/mcp_servers/cloud/server.py"
 
 # Skills (spot check)
 check ".claude/skills/boltzgen/SKILL.md"

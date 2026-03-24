@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 """Adaptyv Bio MCP Server — Lab submission tools with triple-layer safety gate.
 
 This is the MOST SECURITY-SENSITIVE component of the Proteus agent.

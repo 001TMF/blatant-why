@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 """Tamarind Bio MCP Server — default compute provider for open-source users.
 
 Endpoints verified by live API testing (2026-03-23).

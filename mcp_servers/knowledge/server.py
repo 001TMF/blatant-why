@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 """Proteus Knowledge Graph MCP Server — persistent structured memory across campaigns."""
 from __future__ import annotations
 

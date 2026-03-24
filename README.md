@@ -584,15 +584,19 @@ proteus/
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/campaign-plan.png" alt="Campaign planning with target research and epitope analysis" width="700">
+  <img src="docs/screenshots/research.png" alt="Target research with tool activity panel showing UniProt, PDB, and SAbDab queries" width="700">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/results-table.png" alt="Ranked results table with ipSAE, ipTM, pLDDT, RMSD scores" width="700">
+  <img src="docs/screenshots/campaign-plan.png" alt="Campaign plan with target info, design parameters, screening gates, and cost estimate" width="700">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/cost-breakdown.png" alt="Campaign cost breakdown by compute and lab testing" width="700">
+  <img src="docs/screenshots/results-table.png" alt="Ranked results table with ipSAE, ipTM, pLDDT scores and pass/fail status" width="700">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/lab-approval.png" alt="Triple-gated lab submission approval with confirmation code" width="700">
 </p>
 
 ## Contributing

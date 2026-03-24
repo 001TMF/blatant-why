@@ -13,28 +13,31 @@ const TITLE_LINES = [
 ];
 
 function getForename(): string {
+  // Try GECOS field first (has real name: "Tristan Farmer" → "Tristan")
+  try {
+    const { execSync } = require("child_process");
+    const gecos = execSync(`getent passwd ${userInfo().username}`, { encoding: "utf-8", timeout: 1000 })
+      .split(":")[4]?.split(",")[0]?.trim();
+    if (gecos && gecos.includes(" ")) {
+      return gecos.split(" ")[0]; // First name from "Tristan Farmer"
+    }
+    if (gecos) return gecos;
+  } catch { /* fallback below */ }
+
   const username = userInfo().username;
-  // Handle common patterns: "tristanfarmer" -> "Tristan", "tristan.farmer" -> "Tristan", "tristan_farmer" -> "Tristan"
-  let forename = username;
   // Split on dots, underscores, hyphens
   if (/[._-]/.test(username)) {
-    forename = username.split(/[._-]/)[0];
-  } else {
-    // Try to detect camelCase boundary (e.g., "tristanFarmer")
-    const camelMatch = username.match(/^[a-z]+/);
-    if (camelMatch) {
-      // Check if the remaining part starts with uppercase (camelCase) or is all lowercase (single word or concatenated)
-      const rest = username.slice(camelMatch[0].length);
-      if (rest && /^[A-Z]/.test(rest)) {
-        forename = camelMatch[0];
-      } else {
-        // All lowercase concatenated — heuristic: common first names are 3-8 chars
-        // Try to find a reasonable split point by checking if first 3-8 chars form a name
-        forename = username; // fallback to full username
-      }
-    }
+    const part = username.split(/[._-]/)[0];
+    return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
   }
-  return forename.charAt(0).toUpperCase() + forename.slice(1).toLowerCase();
+  // CamelCase: "tristanFarmer" → "tristan"
+  const camelMatch = username.match(/^([a-z]+)[A-Z]/);
+  if (camelMatch) {
+    const part = camelMatch[1];
+    return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+  }
+  // Fallback: capitalize first letter of full username
+  return username.charAt(0).toUpperCase() + username.slice(1);
 }
 
 export function renderBanner(mode: string, termWidth: number = 120): string {

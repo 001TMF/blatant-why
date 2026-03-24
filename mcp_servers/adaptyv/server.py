@@ -392,20 +392,18 @@ async def adaptyv_confirm_submission(
     # Layer 3: Clean up expired entries
     _cleanup_expired()
 
-    # Layer 1+3: Check confirmation code exists
-    if confirmation_code not in _pending:
-        _log(f"confirm_submission REJECTED: invalid code {confirmation_code}")
+    # Layer 1+3: Pop atomically — if two concurrent calls race, only one gets the entry
+    pending = _pending.pop(confirmation_code, None)
+    if pending is None:
+        _log(f"confirm_submission REJECTED: invalid or already-used code {confirmation_code}")
         return _error(
-            "Invalid confirmation code. "
+            "Invalid or already-used confirmation code. "
             "Run adaptyv_prepare_submission first."
         )
-
-    pending = _pending[confirmation_code]
 
     # Layer 3: Check if code expired (belt-and-suspenders; cleanup above
     # should have caught it, but check explicitly)
     if pending.expired:
-        del _pending[confirmation_code]
         _log(f"confirm_submission REJECTED: expired code {confirmation_code}")
         return _error(
             "Confirmation code expired (5-minute window). "
@@ -472,9 +470,6 @@ async def adaptyv_confirm_submission(
     except Exception as exc:
         _log(f"confirm_submission UNEXPECTED ERROR: {exc}")
         return _error(f"Unexpected error during submission: {exc}")
-
-    # Remove from pending AFTER successful submission
-    del _pending[confirmation_code]
 
     submitted_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 

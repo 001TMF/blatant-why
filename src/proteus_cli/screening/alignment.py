@@ -295,6 +295,8 @@ def format_alignment(result: dict) -> str:
         return "\n".join(lines)
 
     # Multiple alignment (MSA)
+    if result.get("type") == "msa" and not result.get("labels"):
+        return "  No sequences to align."
     if "msa" in result and "labels" in result:
         lines.append("  Multiple Sequence Alignment (Star)")
         lines.append(f"  Sequences        {result['n']}")

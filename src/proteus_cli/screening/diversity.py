@@ -107,6 +107,9 @@ def format_diversity(report: dict) -> str:
     Returns:
         Multi-line formatted string for terminal display.
     """
+    if report.get("num_sequences", 0) == 0:
+        return "  Diversity Analysis\n  No sequences to analyze."
+
     lines = [
         "  Diversity Analysis",
         f"  Sequences          {report['num_sequences']}",

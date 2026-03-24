@@ -10,8 +10,11 @@ def is_dominated(a: dict, b: dict, objectives: list[tuple[str, str]]) -> bool:
     dominated = True
     strictly_better = False
     for metric, direction in objectives:
-        va = a.get(metric, 0)
-        vb = b.get(metric, 0)
+        # Skip comparisons where either design is missing the metric
+        if metric not in a or metric not in b:
+            continue
+        va = a[metric]
+        vb = b[metric]
         if direction == "maximize":
             if vb < va:
                 dominated = False

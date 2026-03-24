@@ -204,9 +204,13 @@ async def tamarind_upload_file(file_path: str) -> str:
     if err:
         return err
 
+    ALLOWED_EXTENSIONS = {'.pdb', '.cif', '.mmcif', '.fasta', '.fa', '.faa', '.yaml', '.yml', '.json', '.csv'}
+
     p = Path(file_path).resolve()
     if not p.exists():
         return json.dumps(_error(f"File not found: {p}"))
+    if p.suffix.lower() not in ALLOWED_EXTENSIONS:
+        return json.dumps(_error(f"File type '{p.suffix}' not allowed. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"))
     if p.stat().st_size > MAX_FILE_UPLOAD_SIZE:
         return json.dumps(
             _error(

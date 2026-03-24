@@ -24,7 +24,7 @@ def compute_interface_metrics(
 
     # Parse structure
     p = Path(structure_path)
-    if p.suffix == ".cif":
+    if p.suffix in ('.cif', '.mmcif'):
         parser = MMCIFParser(QUIET=True)
     else:
         parser = PDBParser(QUIET=True)

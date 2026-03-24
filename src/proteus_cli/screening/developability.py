@@ -26,6 +26,18 @@ def assess_developability(
     liabilities: list | None = None,
 ) -> DevelopabilityReport:
     """Run TAP-inspired developability assessment."""
+    if not sequence:
+        return DevelopabilityReport(
+            total_cdr_length=0,
+            net_charge=0.0,
+            liability_count=0,
+            hydrophobic_fraction=0.0,
+            proline_fraction=0.0,
+            glycine_fraction=0.0,
+            overall_risk="low",
+            flags=["Empty sequence provided"],
+        )
+
     from proteus_cli.screening.liabilities import scan_liabilities, compute_net_charge
 
     if liabilities is None:

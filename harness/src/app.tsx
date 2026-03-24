@@ -149,13 +149,19 @@ export function App({ projectDir, forename }: AppProps) {
     ? humanizeToolName(agent.activeTool.toolName)
     : undefined;
 
+  // Prepend banner as first static message (renders once, never re-renders)
+  const bannerMsg: MessageData = {
+    id: "banner",
+    role: "banner" as MessageData["role"],
+    content: forename,
+    timestamp: 0,
+  };
+  const staticMessages: MessageData[] = [bannerMsg, ...allMessages];
+
   return (
     <Box flexDirection="column">
-      {/* Banner (rendered once at top) */}
-      <Banner forename={forename} />
-
-      {/* Completed messages — scroll naturally via <Static> */}
-      <MessageList messages={allMessages} />
+      {/* Completed messages (including banner) — scroll naturally via <Static> */}
+      <MessageList messages={staticMessages} />
 
       {/* Dynamic section — re-renders freely */}
       {agent.streamingText && <StreamingText text={agent.streamingText} />}

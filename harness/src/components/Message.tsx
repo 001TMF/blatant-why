@@ -2,6 +2,7 @@ import React from "react";
 import { Box, Text } from "ink";
 import { theme, ICONS } from "../lib/theme.js";
 import { Markdown } from "./Markdown.js";
+import { Banner } from "./Banner.js";
 
 export type MessageRole =
   | "user"
@@ -51,7 +52,7 @@ export function Message({ message }: { message: MessageData }) {
     case "system":
       return <SystemMessage content={message.content} />;
     case "banner":
-      return <SystemMessage content={message.content} />;
+      return <Banner forename={message.content} />;
     default:
       return null;
   }

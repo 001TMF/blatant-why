@@ -3,7 +3,7 @@
 /**
  * BY Demo Runner — VHH Nanobody Design Against RBX1
  *
- * Runs the full BY campaign pipeline headlessly via the Claude Code SDK,
+ * Runs the full BY campaign pipeline headlessly via the Claude Agent SDK,
  * captures all output and tool calls, and writes them to demo/output/
  * for post-production into a 45-second video.
  *
@@ -11,12 +11,12 @@
  *   node demo/run_demo.mjs
  *
  * Requires:
- *   - @anthropic-ai/claude-code SDK
+ *   - @anthropic-ai/claude-agent-sdk
  *   - .env with TAMARIND_API_KEY
  *   - MCP servers in .claude/settings.json
  */
 
-import { query } from "@anthropic-ai/claude-code";
+import { query } from "@anthropic-ai/claude-agent-sdk";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -174,11 +174,19 @@ async function main() {
   let lastDetectedPhase = "research";
 
   try {
-    // Run the query via Claude Code SDK
+    // Run the query via Claude Agent SDK
+    const abortController = createTimeoutController(600_000);
+    const cwd = PROJECT_ROOT;
     const result = await query({
       prompt,
       options: {
+        cwd,
         maxTurns: 30,
+        permissionMode: "bypassPermissions",
+        mcpServers,
+        abortController,
+        systemPrompt: { type: "preset", preset: "claude_code" },
+        settingSources: ["user", "project", "local"],
         allowedTools: [
           "mcp__pdb__*",
           "mcp__uniprot__*",
@@ -191,11 +199,7 @@ async function main() {
           "mcp__by-local__*",
           "mcp__by-knowledge__*",
         ],
-        mcpServers,
-        cwd: PROJECT_ROOT,
-        permissionMode: "bypassPermissions",
       },
-      abortController: createTimeoutController(600_000),
     });
 
     endPhase();

@@ -5,7 +5,7 @@
 
 
 'use strict';
-const { readFileSync, existsSync } = require('fs');
+const { readFileSync, existsSync, readdirSync } = require('fs');
 const { resolve, dirname } = require('path');
 
 // ---------------------------------------------------------------------------
@@ -58,10 +58,28 @@ function run() {
     return;
   }
 
-  const approvalPath = resolve(root, '.by', 'lab-approval.json');
+  // Check both global and campaign-specific approval paths
+  const globalApproval = resolve(root, '.by', 'lab-approval.json');
+  const campaignsDir = resolve(root, '.by', 'campaigns');
 
-  // Gate 2: lab-approval.json must exist
-  if (!existsSync(approvalPath)) {
+  // Find any valid approval file (global or per-campaign)
+  let approvalPath = null;
+  if (existsSync(globalApproval)) {
+    approvalPath = globalApproval;
+  } else if (existsSync(campaignsDir)) {
+    // Search campaign directories for lab/approval.json
+    const campaigns = readdirSync(campaignsDir).filter(d => {
+      const p = resolve(campaignsDir, d, 'lab', 'approval.json');
+      return existsSync(p);
+    });
+    if (campaigns.length > 0) {
+      // Use the most recent campaign approval
+      approvalPath = resolve(campaignsDir, campaigns[campaigns.length - 1], 'lab', 'approval.json');
+    }
+  }
+
+  // Gate 2: approval file must exist somewhere
+  if (!approvalPath) {
     block('Lab submission requires /by:approve-lab first. No approval file found.');
     return;
   }

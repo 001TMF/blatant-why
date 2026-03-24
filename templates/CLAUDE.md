@@ -331,10 +331,6 @@ Agents resolve model at spawn time based on the active profile in `.by/config.js
 | by-visualization | sonnet | sonnet | haiku |
 | by-diversity | sonnet | sonnet | haiku |
 | by-epitope | opus | sonnet | sonnet |
-| by-humanization | sonnet | sonnet | haiku |
-| by-liability-engineer | sonnet | sonnet | haiku |
-| by-formatter | sonnet | haiku | haiku |
-| by-epitope | opus | sonnet | sonnet |
 | by-humanization | opus | sonnet | haiku |
 | by-liability-engineer | sonnet | sonnet | haiku |
 | by-formatter | sonnet | haiku | haiku |

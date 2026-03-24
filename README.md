@@ -1,13 +1,17 @@
 <p align="center">
   <img src="assets/banner.png" alt="Blatant-Why" width="700">
 </p>
+<p align="center"><sub>Full-resolution banner: <a href="assets/">assets/</a></sub></p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://github.com/001TMF/blatant-why/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
+  <img src="https://img.shields.io/badge/Claude_Code_SDK-0.2-blueviolet" alt="Claude Code SDK">
+  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/uv-package%20manager-DE5FE9?logo=uv&logoColor=white" alt="uv">
 </p>
 
-An autonomous antibody design agent that connects the Anthropic API, BoltzGen, Tamarind Bio, and Adaptyv Bio into a single pipeline. Give it a target. Get lab-ready nanobody candidates. No platform fee.
+An autonomous antibody design agent that connects the Claude Code SDK, BoltzGen, Tamarind Bio, and Adaptyv Bio into a single pipeline. Give it a target. Get lab-ready nanobody candidates. No platform fee.
 
 ---
 
@@ -138,6 +142,44 @@ That's it. `by-design init` generates everything Claude Code needs -- MCP server
 
 </details>
 
+<details>
+<summary><strong>Repository Structure</strong></summary>
+
+```
+by-design/
+├── assets/                  # Banner, diagrams, screenshots
+├── campaigns/               # Campaign output directories
+├── demo/                    # Headless demo runner (Claude Agent SDK)
+├── docs/                    # Plans, specs, superpowers docs
+├── examples/                # Example campaign configs
+├── mcp_servers/             # 11 MCP server implementations
+│   ├── adaptyv/             #   Adaptyv Bio lab submission
+│   ├── campaign/            #   Campaign state management
+│   ├── cloud/               #   Cloud compute abstraction
+│   ├── knowledge/           #   ChromaDB semantic memory
+│   ├── levitate/            #   Levitate Bio RFAntibody
+│   ├── local_compute/       #   Local GPU dispatch
+│   ├── pdb/                 #   Protein Data Bank
+│   ├── research/            #   Literature & target research
+│   ├── sabdab/              #   Structural Antibody Database
+│   ├── screening/           #   Screening battery
+│   ├── tamarind/            #   Tamarind Bio cloud compute
+│   └── uniprot/             #   UniProt protein annotation
+├── src/                     # Source code
+│   ├── init-cli/            #   `npx by-design init` CLI
+│   ├── proteus_cli/         #   Python CLI (scoring, screening, campaign)
+├── templates/               # Templates deployed by init CLI
+│   ├── .claude/             #   Agents, commands, hooks, skills, settings
+│   └── mcp_servers/         #   MCP server templates
+├── tests/                   # Test suite
+├── CLAUDE.md                # Agent personality & orchestration rules
+├── package.json             # Node.js package (Claude Agent SDK)
+├── pyproject.toml           # Python package (uv)
+└── README.md
+```
+
+</details>
+
 ---
 
 ## Architecture
@@ -220,6 +262,8 @@ Over time, the agent develops institutional memory about what works.
 ---
 
 ## Credits
+
+**Built by** [Tristan Farmer](https://www.linkedin.com/in/tristan-farmer-973b7a17a/)
 
 - [Hannes Stark](https://github.com/jostorge/boltzgen) and the MIT team for BoltzGen
 - [Deniz Kavi](https://tamarind.bio) and Sherry Liu at Tamarind Bio

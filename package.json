@@ -9,7 +9,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.init.json",
     "dev": "tsx src/init-cli/index.ts",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "bash tests/test_init.sh && bash tests/test_config.sh"
   },
   "files": [
     "dist/",
@@ -18,9 +19,10 @@
     "LICENSE"
   ],
   "devDependencies": {
-    "typescript": "^5.3.0",
+    "@types/node": "^20.0.0",
     "tsx": "^4.0.0",
-    "@types/node": "^20.0.0"
+    "typescript": "^5.3.0",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.81"
   },
   "engines": {
     "node": ">=18.0.0"

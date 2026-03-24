@@ -1,0 +1,4 @@
+# Proteus
+.claude/settings.local.json
+.proteus/knowledge.db
+.proteus/environment.json

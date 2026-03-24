@@ -586,6 +586,25 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
           });
           return;
         }
+        if (cmdResult.local === "view_structure") {
+          // Extract file path from the command: /view <path>
+          const filePath = trimmed.replace(/^\/view\s*/, "").trim();
+          if (!filePath) {
+            setMessages(prev => [...prev, { type: "user", text: trimmed }, { type: "assistant", text: "Usage: /view <pdb_or_cif_file>" }]);
+            return;
+          }
+          // Import and launch
+          const { launchProteinView, isProteinViewAvailable } = await import("./proteinViewBridge.js");
+          if (!isProteinViewAvailable()) {
+            setMessages(prev => [...prev, { type: "user", text: trimmed }, { type: "assistant", text: "ProteinView not installed. Install from: https://github.com/001TMF/ProteinView" }]);
+            return;
+          }
+          // Handoff — Ink pauses, ProteinView takes over
+          launchProteinView(filePath);
+          // Ink resumes when ProteinView exits
+          setMessages(prev => [...prev, { type: "user", text: trimmed }, { type: "assistant", text: "Returned from ProteinView." }]);
+          return;
+        }
         if (cmdResult.local === "export_markdown" || cmdResult.local === "export_csv") {
           const logger = loggerRef.current;
           const isCsv = cmdResult.local === "export_csv";

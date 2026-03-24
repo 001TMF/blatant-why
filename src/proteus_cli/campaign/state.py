@@ -16,8 +16,9 @@ from .config import CampaignConfig
 # Valid campaign statuses and allowed transitions.
 VALID_TRANSITIONS: dict[str, list[str]] = {
     "draft": ["configured"],
-    "configured": ["debating", "designing"],
-    "debating": ["designing", "failed"],
+    "configured": ["debating", "planned", "designing"],
+    "debating": ["planned", "designing", "failed"],
+    "planned": ["designing", "failed"],  # plan approved, ready to execute
     "designing": ["screening", "failed"],
     "failed": ["draft", "closed"],
     "screening": ["ranked", "failed"],
@@ -66,6 +67,7 @@ class CampaignState:
     tool: str = ""
     protocol: str = ""
     status: str = "draft"
+    plan_approved: bool = False
     lab_approved: bool = False
     rounds: list[RoundState] = field(default_factory=list)
     costs: dict[str, Any] = field(default_factory=dict)

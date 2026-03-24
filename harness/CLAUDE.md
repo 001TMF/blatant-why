@@ -232,8 +232,21 @@ CRITICAL SAFETY: Lab submissions require /approve-lab in the TUI first.
 ## Research MCP Tools
 - proteus-research: research_search_prior_art, research_get_target_info, research_analyze_known_binders, research_find_similar_targets
 
+## Campaign Planning Mode
+
+Before ANY design computation:
+1. Research target (autonomous — no approval needed)
+2. Present structured campaign plan with parameters, gates, funnel, cost
+3. Wait for user approval (y/go/modify/n)
+4. Only execute after approval
+
+The agent MUST NOT call tamarind_submit_job, local_run_*, or ssh_run_*
+without an approved plan. Research tools (PDB, UniProt, SAbDab, PubMed)
+are freely available without approval.
+
 ## Campaign Commands
 - /campaign — Start or resume a design campaign
+- /plan — Show or modify the current campaign plan
 - /approve-lab — Approve lab submission (user must type CONFIRM)
 - /costs — Show campaign cost breakdown
 - /team — Show active agent team status

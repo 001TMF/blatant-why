@@ -9,7 +9,9 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "bin": {
     "proteus": "dist/index.js"
   },
@@ -26,6 +28,7 @@
     "chalk": "^5.3.0",
     "ink": "^5.0.0",
     "ink-text-input": "^6.0.0",
+    "marked": "^15.0.12",
     "react": "^18.2.0"
   },
   "devDependencies": {

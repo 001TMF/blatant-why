@@ -37,11 +37,21 @@ function getForename(): string {
   return forename.charAt(0).toUpperCase() + forename.slice(1).toLowerCase();
 }
 
-export function renderBanner(mode: string): string {
+export function renderBanner(mode: string, termWidth: number = 120): string {
+  const displayName = getForename();
+
+  // Narrow terminal: compact single-line banner
+  if (termWidth < 65) {
+    const compact = theme.primary("PROTEUS") + theme.dim(" \u2014 Biologics Design");
+    const greeting = theme.dim("Welcome, ") + theme.accent(displayName);
+    const modeLine = theme.dim("Mode: ") + theme.accent(mode);
+    return compact + "\n" + greeting + "  " + modeLine;
+  }
+
+  // Standard: full ASCII art banner
   const titleLines = TITLE_LINES.map((line) => "  " + theme.primary(line));
   const title = titleLines.join("\n");
 
-  const displayName = getForename();
   const subtitle = theme.dim("  AI-Powered Biologics Design Campaign Agent");
   const greeting = theme.dim("  Welcome back, ") + theme.accent(displayName) + theme.dim(". Ready to engineer proteins.");
   const modeLine = theme.dim("  Mode: ") + theme.accent(mode) + theme.dim("  (Shift+Tab to switch)");

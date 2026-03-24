@@ -54,7 +54,7 @@ export PROTEUS_FOLD_DIR=/path/to/Protenix
 ### Option B: Default Paths
 The default paths are configurable via environment variables. Example layout:
 ```
-/opt/proteus/   # or any directory you choose
+/opt/by/   # or any directory you choose
   boltzgen/      # BoltzGen (git clone https://github.com/HannesStark/boltzgen)
   PXDesign/         # PXDesign
   Protenix/         # Protenix
@@ -73,7 +73,7 @@ python -c "from proteus_cli.common import detect_local_tools; print(detect_local
 nvidia-smi
 
 # Verify individual tools
-proteus-ab --help    # BoltzGen (antibody/nanobody design)
+by-ab --help    # BoltzGen (antibody/nanobody design)
 pxdesign --help      # PXDesign (de novo protein binders)
 protenix --help      # Protenix (structure prediction)
 ```
@@ -95,10 +95,10 @@ BoltzGen, PXDesign, and Protenix may have conflicting Python dependency versions
    Set `TAMARIND_API_KEY` and run all tools via the cloud API. Free tier gives
    10 jobs/month — enough for preview campaigns.
 
-### The `proteus-design` Package
-The `proteus-design` PyPI package is the unified BoltzGen + Protenix pipeline
-(also called Proteus-AB). It bundles BoltzGen diffusion with Protenix refolding
-into a single `proteus-ab` CLI. If you install `proteus-design`, you get both
+### The `by-design` Package
+The `by-design` PyPI package is the unified BoltzGen + Protenix pipeline
+(also called BY-AB). It bundles BoltzGen diffusion with Protenix refolding
+into a single `by-ab` CLI. If you install `by-design`, you get both
 BoltzGen and Protenix in one environment.
 
 ## SSH Remote Setup
@@ -115,7 +115,7 @@ ssh -i ~/.ssh/id_rsa researcher@gpu-server.example.com "nvidia-smi"
 ```
 
 ### On the GPU Server
-Install BoltzGen/PXDesign/Protenix at `/opt/proteus/` (or set PROTEUS_SSH_TOOLS_PATH).
+Install BoltzGen/PXDesign/Protenix at `/opt/by/` (or set PROTEUS_SSH_TOOLS_PATH).
 
 ## GPU Memory Requirements
 

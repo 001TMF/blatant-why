@@ -1,67 +1,68 @@
-# Research Summary: HER2 Antibody Design Campaign
+# Research Summary: EGFR (Epidermal Growth Factor Receptor)
 
-**Domain:** Therapeutic antibody against HER2/ERBB2 receptor
-**Researched:** 2025-03-24
-**Overall confidence:** HIGH
+**Domain:** Cancer therapeutic antibody design
+**Researched:** 2026-03-24
+**Overall confidence:** MEDIUM
 
 ## Executive Summary
 
-HER2/ERBB2 is a well-validated, clinically proven therapeutic target with extensive structural characterization and multiple FDA-approved antibodies. The 185 kDa transmembrane receptor contains a 630-amino acid extracellular domain with four subdomains (I-IV), where domains II and IV represent the primary therapeutic epitopes. The clinical landscape is dominated by trastuzumab (domain IV binder) and pertuzumab (domain II binder), both using VH3/Vκ1 frameworks, with emerging biparatopic approaches showing enhanced efficacy.
+EGFR (UniProt P00533) is a well-characterized receptor tyrosine kinase that represents an established and validated target for antibody-based cancer therapeutics. The extensive structural and functional data available, combined with multiple approved therapeutic antibodies (cetuximab, panitumumab, necitumumab), provides a strong foundation for antibody design efforts. However, clinical resistance mechanisms are well-documented and must be considered in design strategies.
 
-The target presents excellent druggability with multiple non-overlapping epitopes, robust structural data (10+ PDB structures), and clear mechanisms of action. Key considerations include targeting membrane-localized receptor dimerization, avoiding resistance mechanisms through multi-epitope approaches, and leveraging the well-established ADC platform for enhanced therapeutic index.
+EGFR contains 1210 amino acids in its precursor form (1186 in mature protein) with a molecular weight of ~170 kDa. The extracellular domain (621 residues) comprises four subdomains (I-IV) with domains I and III forming the ligand-binding site. This target offers multiple epitopes for antibody development, with domain III being the primary site for current therapeutics.
 
-Recent 2025 advances show promising bispecific and nanobody approaches, with anbenitamab demonstrating breakthrough therapy designation for trastuzumab-resistant cancers. The domain presents manageable complexity with established manufacturing protocols and validated clinical pathways.
+The receptor's role in oncogenesis through activation of RAS-RAF-MEK-ERK, PI3K-AKT, PLCγ-PKC, and STAT pathways makes it an attractive target, but resistance mutations (particularly S468R) pose ongoing challenges for therapeutic development.
 
 ## Key Findings
 
-**Stack:** VH3/Vκ1 frameworks proven effective; Tamarind Bio provides HER2-specific models; established mammalian expression
-**Architecture:** Multi-domain extracellular target with distinct epitope regions; membrane dimerization interface critical
-**Critical pitfall:** Single-epitope targeting leads to resistance; must consider heterodimerization blocking mechanisms
+**Stack:** Structural biology tools (PDB analysis), therapeutic antibody databases (SAbDab/Thera-SAbDab), resistance profiling platforms
+**Architecture:** Domain-focused targeting (primarily domain III), with consideration for allosteric sites and resistance mutations
+**Critical pitfall:** Resistance mutations in binding epitopes, particularly S468R that confers cetuximab resistance
 
 ## Implications for Roadmap
 
 Based on research, suggested phase structure:
 
-1. **Target Analysis & Scaffold Selection** - VH3/Vκ1 frameworks, domain II/IV epitope mapping
-   - Addresses: Proven frameworks, established epitopes, structural characterization
-   - Avoids: Novel untested scaffolds, unexplored epitope regions
+1. **Target Analysis & Epitope Mapping** - rationale: Comprehensive understanding of EGFR structure and existing therapeutic binding sites
+   - Addresses: Structural analysis, epitope identification, resistance mutation profiling
+   - Avoids: Designing antibodies that target already-resistant epitopes
 
-2. **Multi-Epitope Design Strategy** - Biparatopic or dual-targeting approach
-   - Addresses: Resistance mechanisms, enhanced internalization, synergistic effects
-   - Avoids: Single-epitope vulnerability, limited efficacy ceiling
+2. **Initial Design & Screening** - rationale: Leverage structural knowledge for rational design
+   - Addresses: Novel epitope targeting, resistance-avoiding designs, initial diversity generation
+   - Avoids: Immediate optimization without understanding binding fundamentals
 
-3. **Format Optimization** - Full-length IgG vs nanobody vs ADC-ready formats
-   - Addresses: Clinical translatability, manufacturing, therapeutic modality selection
-   - Avoids: Manufacturing complexity, incompatible formats
+3. **Optimization & Resistance Profiling** - rationale: Address known resistance mechanisms upfront
+   - Addresses: Affinity optimization, cross-reactivity with resistance variants, mechanism validation
+   - Avoids: Late-stage discovery of resistance issues
 
-4. **Validation & Screening** - HER2+ cell lines, dimerization assays, internalization
-   - Addresses: Functional validation, mechanism of action, clinical translatability
-   - Avoids: Non-functional binders, poor internalization
+4. **Functional Validation** - rationale: Confirm therapeutic potential before expensive studies
+   - Addresses: Cell-based assays, pathway inhibition, ADCC activity validation
+   - Avoids: Proceeding to expensive studies without functional confirmation
 
 **Phase ordering rationale:**
-- Domain understanding before design prevents targeting resistance-prone epitopes
-- Multi-epitope strategy requires understanding of epitope relationships and mechanisms
-- Format selection depends on epitope and mechanism requirements
-- Validation must test both binding and functional outcomes
+- EGFR's well-established resistance patterns require early attention to resistance profiling
+- Extensive structural data enables rational design from the start
+- Multiple approved therapeutics provide clear functional benchmarks
 
 **Research flags for phases:**
-- Phase 1: Standard approach, well-characterized target
-- Phase 2: May need deeper research on biparatopic engineering
-- Phase 3: Standard formats, established manufacturing
-- Phase 4: Standard assays, established protocols
+- Phase 2: Standard epitope mapping approaches, unlikely to need research
+- Phase 3: May need deeper research on novel resistance mechanisms if discovered
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Multiple successful VH3/Vκ1 antibodies, proven frameworks |
-| Features | HIGH | Well-defined epitopes, established mechanisms, clinical validation |
-| Architecture | HIGH | Extensive structural data, multiple PDB structures available |
-| Pitfalls | HIGH | Well-documented resistance mechanisms, established avoidance strategies |
+| Stack | HIGH | Well-established structural biology and antibody tools |
+| Features | HIGH | Clear understanding of EGFR function and therapeutic requirements |
+| Architecture | MEDIUM | Domain targeting well-established, but allosteric approaches less clear |
+| Pitfalls | HIGH | Resistance mechanisms well-documented in literature |
 
 ## Gaps to Address
 
-- Specific biparatopic engineering strategies (addressable in Phase 2 research)
-- Novel epitope regions beyond domains II/IV (may not be necessary given clinical success)
-- Nanobody-specific considerations for membrane targets (addressable if nanobody format selected)
-- Manufacturing optimization for bispecific formats (standard industry knowledge)
+- Limited information on allosteric binding sites outside domain III
+- Recent antibody engineering approaches for resistance-avoiding designs
+- Optimal expression systems for EGFR domain production
+- Comparative analysis of different EGFR variants across cancer types
+
+## Ready for Roadmap
+
+Research complete. Comprehensive understanding of EGFR target characteristics, existing therapeutic landscape, and resistance mechanisms. Ready to proceed with antibody design campaign planning.

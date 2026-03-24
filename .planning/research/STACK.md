@@ -1,79 +1,73 @@
-# Technology Stack
+# Technology Stack for EGFR Antibody Design
 
-**Project:** HER2 Antibody Design Campaign
-**Researched:** 2025-03-24
+**Project:** EGFR Therapeutic Antibody Design
+**Researched:** 2026-03-24
 
 ## Recommended Stack
 
-### Core Framework
+### Structural Analysis Tools
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| VH3 Heavy Chain | Human germline | Primary scaffold | Proven success in trastuzumab/pertuzumab; excellent expression |
-| Vκ1 Light Chain | Human germline | Primary scaffold | Validated pairing with VH3; optimal production levels |
-| Tamarind Bio | Latest | Antibody design | 200+ models including HER2-specific; free tier available |
+| PDB | 2024+ | Crystal structures (1YY9, 5SX4, 6B3S) | Essential for epitope mapping and resistance analysis |
+| ChimeraX | Latest | Structure visualization | Superior for antibody-antigen complex analysis |
+| PyMOL | 2.5+ | Structure analysis | Standard for structural biology workflows |
 
-### Structural Analysis
+### Database Resources
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| PDB Structures | Current | Epitope mapping | 1N8Z (trastuzumab), 6OGE (dual complex), 7MN8 (heterodimer) |
-| AlphaFold | v3 | Structure prediction | High-confidence HER2 ECD structure available |
-| ChimeraX | Latest | Visualization | Industry standard for antibody-antigen analysis |
+| UniProt | 2024 | Protein sequence/annotation | P00533 provides comprehensive EGFR data |
+| SAbDab | Latest | Antibody structure database | Contains cetuximab, panitumumab structures |
+| Thera-SAbDab | Latest | Therapeutic antibody tracking | WHO-recognized therapeutics database |
 
-### Design Platform
+### Computational Design
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| Levitate Bio | Current | RFAntibody pipeline | Academic discount; specialized for antibody design |
-| Local GPU | Optional | Power users | If PROTEUS_FOLD_DIR configured |
+| Tamarind Bio | Latest | Antibody design platform | Free tier, 200+ models, EGFR-specific data |
+| AlphaFold | v3 | Protein structure prediction | High-confidence EGFR structure (AF_AFP00533F1) |
+| Levitate Bio | Latest | RFAntibody pipeline | Academic discounts for design generation |
 
-### Supporting Libraries
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| SAbDab | Current | Antibody database | Scaffold selection, sequence analysis |
-| PDB | Current | Structural data | Epitope mapping, binding analysis |
-| UniProt | Current | Sequence/annotation | HER2 functional domains, variants |
+### Expression & Production
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Mammalian cells | CHO/HEK293 | Antibody production | Gold standard for therapeutic antibodies |
+| E. coli | BL21(DE3) | EGFR domain expression | Established for domain III expression (literature) |
+| Baculovirus | Sf9 cells | Complex glycoproteins | Alternative for full-length EGFR |
+
+### Screening & Validation
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| SPR/BLI | Octet/Biacore | Binding kinetics | Standard for antibody characterization |
+| Flow cytometry | FACS | Cell surface binding | Essential for EGFR+ cell lines |
+| ELISA | Standard | Quantitative binding | High-throughput screening capability |
 
 ## Alternatives Considered
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| Heavy Chain | VH3 | VH1, VH4 | Lower success rate with HER2; production issues |
-| Light Chain | Vκ1 | Vλ, other Vκ | Suboptimal pairing; reduced expression levels |
-| Design Platform | Tamarind Bio | Local-only | Tamarind has HER2-specific training data |
-| Target Format | Full-length IgG | Nanobody-only | Clinical precedent favors IgG for HER2 |
-
-## Framework Rationale
-
-### VH3/Vκ1 Selection
-- **Trastuzumab precedent**: Uses VH3/Vκ1 framework with clinical success
-- **Pertuzumab validation**: Also VH3/Vκ1, confirming framework compatibility
-- **Production optimization**: Studies show highest expression levels with this pairing
-- **Germline compatibility**: Minimal immunogenicity risk with human germlines
-
-### Platform Selection
-- **Tamarind Bio primary**: Free tier, HER2-specific models, no GPU requirements
-- **Levitate Bio secondary**: Specialized RFAntibody pipeline for complex designs
-- **Local GPU optional**: For teams with existing computational infrastructure
+| Design Platform | Tamarind Bio | Local GPU | Resource intensive, requires expertise |
+| Expression | CHO cells | Yeast | Glycosylation differences affect function |
+| Validation | SPR | MST | Less standardized protocols |
 
 ## Installation
 
 ```bash
-# Core design platform access (cloud-based)
-# Tamarind Bio: Web interface, no local installation
-# Levitate Bio: Contact for academic access
-
-# Structural analysis tools
-pip install pymol-open-source
-# ChimeraX: Download from UCSF website
+# Core computational tools
+pip install biopython pymol-open-source
+conda install -c conda-forge mdanalysis
 
 # Database access
-# SAbDab: Web interface at opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab
-# PDB: Web interface at rcsb.org
-# UniProt: Web interface at uniprot.org
+pip install requests pandas
+# SAbDab/UniProt API access via web interfaces
+
+# Molecular visualization
+# ChimeraX: Download from UCSF
+# PyMOL: conda install -c schrodinger pymol
 ```
 
 ## Sources
 
-- VH/VL framework studies: Frontiers in Immunology 2018, 2020 (PMC5857972, PMC7700555)
-- Trastuzumab structure: PDB 1N8Z, Science Advances 2024 (adu9945)
-- Platform validation: Tamarind Bio documentation, Levitate Bio academic programs
-- Production optimization: Effect of VH-VL Families study (HIGH confidence)
+- UniProt P00533: https://www.uniprot.org/uniprotkb/P00533/entry
+- SAbDab: https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab
+- PDB structures: 1YY9 (cetuximab), 5SX4 (panitumumab), 6B3S (necitumumab)
+- Tamarind Bio platform documentation
+- Established mammalian expression protocols for therapeutics

@@ -1,0 +1,39 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/env-loader.js"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/statusline.js"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/scripts/campaign-tracker.js"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "mcp__by-adaptyv__adaptyv_confirm_submission",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/safety-gate.js"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,8 +1,8 @@
 {
-  "name": "proteus-agent",
+  "name": "by-agent",
   "version": "0.1.0",
-  "description": "Proteus protein design agent — conversational protein and antibody design with custom scoring",
-  "author": "Proteus",
+  "description": "BY (Blatant-Why) protein design agent — conversational protein and antibody design with custom scoring",
+  "author": "BY",
   "tools": {
     "protenix": {
       "description": "AF3-class structure prediction with Protenix v1",
@@ -27,22 +27,22 @@
     "pdb",
     "uniprot",
     "sabdab",
-    "proteus-screening",
+    "by-screening",
     "tamarind",
     "levitate",
     "adaptyv",
-    "proteus-campaign",
-    "proteus-research",
-    "proteus-local",
-    "proteus-knowledge"
+    "by-campaign",
+    "by-research",
+    "by-local",
+    "by-knowledge"
   ],
   "skills": [
-    "proteus-design-workflow",
-    "proteus-scoring",
-    "proteus-epitope-analysis",
-    "proteus-screening",
-    "proteus-campaign-manager",
-    "proteus-database",
+    "by-design-workflow",
+    "by-scoring",
+    "by-epitope-analysis",
+    "by-screening",
+    "by-campaign-manager",
+    "by-database",
     "protenix",
     "pxdesign",
     "boltzgen"

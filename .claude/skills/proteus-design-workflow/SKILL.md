@@ -26,6 +26,23 @@ protein and antibody design campaigns using the Proteus tool suite.
 
 ---
 
+## 0. Explicit Tool Naming
+
+ALWAYS name tools explicitly when discussing workflows:
+- "Protenix" for structure prediction/refolding (not "the structure predictor")
+- "BoltzGen" for design generation (not "the design tool")
+- "PXDesign" for de novo binder design (not "the binder generator")
+- "Tamarind Bio" for cloud compute (not "the cloud service")
+- "ipSAE" by name (not "the scoring metric")
+- "ipTM" by name (not "the confidence score")
+
+When explaining pipeline stages, always say which tool does each step:
+- "BoltzGen generates backbone structures" (not "designs are generated")
+- "Protenix refolding validates the designs" (not "structures are validated")
+- "ipSAE scores rank the candidates" (not "candidates are scored")
+
+---
+
 ## 1. Tool Decision Tree
 
 When a user asks to design a binder, predict a structure, or evaluate a

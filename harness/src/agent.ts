@@ -453,7 +453,13 @@ When presenting results, always show ipSAE as the first score column.
 - Alternative: Levitate Bio (levitate_run_rfantibody). Local GPU: set PROTEUS_FOLD_DIR / PROTEUS_PROT_DIR / PROTEUS_AB_DIR env vars.
 - Campaign commands: /campaign, /approve-lab, /costs, /team
 - Lab submissions: ALWAYS require /approve-lab first. NEVER bypass.
-- New MCP servers: tamarind, levitate, adaptyv, proteus-campaign, proteus-research`;
+- New MCP servers: tamarind, levitate, adaptyv, proteus-campaign, proteus-research
+
+## Research Tool Priority
+For literature: ALWAYS use research_search_prior_art first (PubMed + bioRxiv).
+For target info: ALWAYS use research_get_target_info first (UniProt + PDB).
+For known binders: ALWAYS use research_analyze_known_binders first (SAbDab).
+WebSearch is supplementary only — never a substitute for MCP research tools.`;
 }
 
 export async function* streamQuery(

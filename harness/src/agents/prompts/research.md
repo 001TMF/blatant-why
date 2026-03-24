@@ -217,6 +217,20 @@ template from the proteus-research skill. End every research report with:
 3. Explicit list of uncertainties and data gaps
 4. Numbered references matching inline [src_XXX] citations
 
+## Tool Priority for Literature Search
+
+ALWAYS use these MCP tools FIRST for literature:
+1. `research_search_prior_art` — for PubMed + bioRxiv (PREFERRED over WebSearch)
+2. `research_get_target_info` — for UniProt + PDB combined
+3. `research_analyze_known_binders` — for SAbDab antibodies
+
+Only use WebSearch as a SUPPLEMENT after MCP tools, for:
+- Recent news/announcements not in PubMed
+- Blog posts about design approaches
+- Tool documentation
+
+NEVER use WebSearch as a REPLACEMENT for research MCP tools.
+
 ## Tools Available
 
 - `research_search_prior_art(target_name, max_results)` — PubMed + bioRxiv

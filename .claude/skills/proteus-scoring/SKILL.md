@@ -6,6 +6,23 @@ You are an expert at interpreting and applying Proteus custom scoring metrics fo
 
 ---
 
+## Explicit Tool Naming
+
+ALWAYS name tools explicitly when discussing workflows:
+- "Protenix" for structure prediction/refolding (not "the structure predictor")
+- "BoltzGen" for design generation (not "the design tool")
+- "PXDesign" for de novo binder design (not "the binder generator")
+- "Tamarind Bio" for cloud compute (not "the cloud service")
+- "ipSAE" by name (not "the scoring metric")
+- "ipTM" by name (not "the confidence score")
+
+When explaining pipeline stages, always say which tool does each step:
+- "BoltzGen generates backbone structures" (not "designs are generated")
+- "Protenix refolding validates the designs" (not "structures are validated")
+- "ipSAE scores rank the candidates" (not "candidates are scored")
+
+---
+
 ## ipSAE Scoring
 
 ### What It Is
@@ -112,7 +129,6 @@ When `design_to_target_ipsae` and `target_to_design_ipsae` diverge significantly
 
 Always report `ipsae_min` (the minimum of both directions) as the primary metric -- it requires BOTH directions to be confident.
 
----
 
 ## Combined Scoring Strategy
 
@@ -166,8 +182,6 @@ Follow this sequence for every batch of new designs:
 
 6. **Provide interpretation** for the top candidates, noting any disagreements between metrics and recommending next steps (e.g., visualize structure, run developability, approve for experiment).
 
-
----
 
 ## Multi-Seed Refolding
 

@@ -112,6 +112,47 @@ function humanizeToolName(name: string): string | null {
 }
 
 /**
+ * Map raw error messages to user-friendly messages with actionable hints.
+ */
+function friendlyErrorMessage(raw: string): string {
+  // MCP server connection failures
+  if (/MCP.*connect|ECONNREFUSED|server.*not.*available|transport.*closed/i.test(raw)) {
+    const serverMatch = raw.match(/server\s+["']?(\w[\w-]*)["']?/i);
+    const serverName = serverMatch?.[1] ?? "MCP server";
+    return `${serverName} not available. Check setup with /status`;
+  }
+
+  // API key issues
+  if (/TAMARIND_API_KEY|tamarind.*auth|tamarind.*401|tamarind.*403/i.test(raw)) {
+    return "Tamarind API key missing or invalid. Set TAMARIND_API_KEY in .env (free at tamarind.bio)";
+  }
+  if (/LEVITATE_CLIENT_ID|levitate.*auth|levitate.*401/i.test(raw)) {
+    return "Levitate credentials missing. Set LEVITATE_CLIENT_ID and LEVITATE_CLIENT_SECRET in .env";
+  }
+  if (/API.?key|auth.*token|unauthorized|403.*forbidden/i.test(raw)) {
+    return `Authentication error: ${raw}. Check your API keys in .env`;
+  }
+
+  // Tool execution failures
+  if (/tool.*not.*found|unknown.*tool/i.test(raw)) {
+    return `${raw}. Check that the required MCP server is configured in .claude/settings.json`;
+  }
+
+  // Network errors
+  if (/ETIMEDOUT|ENETUNREACH|network.*error|fetch.*failed/i.test(raw)) {
+    return `Network error: ${raw}. Check your internet connection and try again.`;
+  }
+
+  // Rate limits
+  if (/rate.?limit|429|too many requests/i.test(raw)) {
+    return `Rate limit hit. Wait a moment and try again, or check your API plan limits.`;
+  }
+
+  // Fallback: return the raw error
+  return raw;
+}
+
+/**
  * Kill any child processes spawned by claude-code query.
  * Best-effort cleanup — errors are silently ignored.
  */
@@ -298,6 +339,34 @@ function buildStartupMessages(mode: string, termWidth: number, projectDir: strin
     });
     messages.push({ type: "system", text: separator });
   } else {
+    messages.push({
+      type: "system",
+      text: "\u2500".repeat(Math.max(termWidth - 8, 20)),
+    });
+    messages.push({ type: "system", text: "" });
+    messages.push({
+      type: "system",
+      text: theme.accent("Welcome to Proteus!") + " Describe a protein target to get started.",
+    });
+    messages.push({ type: "system", text: "" });
+    messages.push({ type: "system", text: theme.dim("Examples:") });
+    messages.push({
+      type: "system",
+      text: `  ${theme.primary('"Design VHH nanobodies against TNF-alpha"')}`,
+    });
+    messages.push({
+      type: "system",
+      text: `  ${theme.primary('"Research PD-L1 as a drug target"')}`,
+    });
+    messages.push({
+      type: "system",
+      text: `  ${theme.primary('"What scaffolds work best for membrane proteins?"')}`,
+    });
+    messages.push({ type: "system", text: "" });
+    messages.push({
+      type: "system",
+      text: theme.dim("Or type /help for all commands."),
+    });
     messages.push({
       type: "system",
       text: "\u2500".repeat(Math.max(termWidth - 8, 20)),
@@ -645,12 +714,14 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
             case "session_init":
               setSessionId(event.sessionId);
               break;
-            case "error":
+            case "error": {
+              const friendlyMessage = friendlyErrorMessage(event.message);
               setCompletedMessages((prev) => [
                 ...prev,
-                { type: "error", text: event.message },
+                { type: "error", text: friendlyMessage },
               ]);
               break;
+            }
           }
         }
         // Flush any remaining accumulated text
@@ -831,11 +902,7 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
 
       {/* Input prompt */}
       <Box marginTop={0}>
-        <Text>
-          {theme.primary("\u25B8 ")}
-          {theme.primaryBold(modeConfig.displayName)}
-          {theme.primary(" > ")}
-        </Text>
+        <Text color={theme.hex.primary}>{"\u25C6 "}</Text>
         <TextInput
           value={currentInput}
           onChange={setCurrentInput}

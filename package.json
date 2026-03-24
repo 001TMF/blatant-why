@@ -1,5 +1,5 @@
 {
-  "name": "by-design",
+  "name": "blatant-why",
   "version": "0.1.0",
   "description": "BY (Blatant-Why) protein design agent for Claude Code — multi-agent antibody & protein binder design with cloud compute and lab integration",
   "type": "module",
@@ -29,11 +29,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lyceum-phytovenomics/by-design.git"
+    "url": "https://github.com/001TMF/blatant-why.git"
   },
-  "homepage": "https://github.com/lyceum-phytovenomics/by-design#readme",
+  "homepage": "https://github.com/001TMF/blatant-why#readme",
   "bugs": {
-    "url": "https://github.com/lyceum-phytovenomics/by-design/issues"
+    "url": "https://github.com/001TMF/blatant-why/issues"
   },
   "author": "Lyceum (Phytovenomics)",
   "license": "MIT",

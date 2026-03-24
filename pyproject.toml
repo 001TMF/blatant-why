@@ -1,5 +1,5 @@
 [project]
-name = "by-agent"
+name = "blatant-why"
 version = "0.1.0"
 description = "BY (Blatant-Why) protein design agent - CLI wrappers, scoring, and screening"
 requires-python = ">=3.11"
@@ -21,6 +21,7 @@ ml = ["scikit-learn>=1.4"]
 screening = ["fair-esm>=2.0", "ablang2>=0.3"]
 
 [project.scripts]
+# Entry point uses proteus_cli module name (Python package convention, not branding)
 proteus = "proteus_cli.main:cli"
 
 [build-system]

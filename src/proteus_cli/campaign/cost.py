@@ -9,7 +9,6 @@ from .config import CampaignConfig
 # GPU hourly rates by provider (USD).
 HOURLY_RATES: dict[str, float] = {
     "tamarind": 2.50,
-    "levitate": 3.20,
     "local": 0.0,
 }
 

@@ -50,7 +50,7 @@ Use status indicators:
 Display below the pipeline:
 - **Designs generated**: X / Y target
 - **Designs screened**: X / Y
-- **Current provider**: Tamarind / Levitate / Local
+- **Current provider**: Tamarind / Local
 - **Elapsed time**: from state.json start timestamp
 - **Estimated remaining**: based on throughput rate
 

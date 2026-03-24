@@ -14,7 +14,6 @@
 - **Timeline**: 4 weeks total (1 week computational, 3 weeks lab synthesis)
 - **Budget**: $3,517 USD (Tamarind Bio + Adaptyv standard) or $5,517 USD (premium package)
 - **Personnel**: Campaign orchestrator + automated agent teams
-- **Compute**: Tamarind Bio free tier (recommended) with Levitate Bio backup
 
 ### Expected Deliverables
 1. 10-15 validated VHH sequences with comprehensive scoring
@@ -143,7 +142,6 @@
 
 **Design Generation**:
 - **Primary**: BoltzGen via Tamarind Bio (antibody-specific models)
-- **Backup**: Levitate Bio RFAntibody pipeline
 - **Local**: Local GPU setup if cloud providers unavailable
 
 **Structure Prediction**:
@@ -218,7 +216,6 @@
 **Scenario 1: Additional Design Round Required**
 - **Trigger**: <5 candidates pass screening
 - **Cost Impact**: +$8-15 computational, +$1,000-2,000 lab
-- **Contingency**: Levitate Bio backup provider ready
 
 **Scenario 2: Enhanced Lab Package Required**
 - **Trigger**: >30% expression failures
@@ -233,7 +230,6 @@
 ### Timeline Dependencies and Critical Path
 
 **Critical Path**: Design Generation → Screening → Lab Synthesis
-- **Dependency 1**: Tamarind Bio availability (backup: Levitate Bio)
 - **Dependency 2**: Adaptyv Bio capacity (3-week lead time)
 - **Dependency 3**: Manual lab approval process (potential delay)
 
@@ -254,12 +250,7 @@
 - **Capabilities**: BoltzGen + Protenix pipeline, nanobody-specific models
 - **Risk**: Provider availability, quota limitations
 
-**Secondary Choice: Levitate Bio**
-- **Cost**: $532-910 with academic discount
-- **Advantages**: RFAntibody specialization, integrated pipeline, high success rate
-- **Use Case**: Backup if Tamarind unavailable, premium accuracy requirements
-
-**Tertiary Choice: Local GPU**
+**Secondary Choice: Local GPU**
 - **Setup Cost**: $2,000-2,500 (one-time)
 - **Ongoing**: $364 per campaign
 - **Advantages**: Full control, unlimited designs, no data transfer
@@ -281,7 +272,6 @@ Lab Synthesis (Adaptyv Premium):  $5,500 (99.7%)
 
 **Academic/High-Volume: $4,032-4,410 Total**
 ```
-Computational (Levitate Bio):     $532-910  (13-21%)
 Lab Synthesis (Adaptyv Standard): $3,500    (79-87%)
 ```
 

@@ -132,6 +132,5 @@ Install BoltzGen/PXDesign/Protenix at `/opt/by/` (or set PROTEUS_SSH_TOOLS_PATH)
 | Local GPU | $0/hr | Instant | Large campaigns, iteration |
 | SSH Remote | $0/hr* | ~5s overhead | GPU clusters |
 | Tamarind Bio | $2.50/hr | ~30s overhead | No GPU, getting started |
-| Levitate Bio | $3.50-29/hr | ~30s overhead | RFAntibody pipeline |
 
 *Assumes user owns the server

@@ -352,10 +352,9 @@ Agents resolve model at spawn time based on the active profile in `.by/config.js
 
 Auto-detect from environment:
 1. If TAMARIND_API_KEY set -> use Tamarind Bio (default, cloud, free tier available)
-2. If LEVITATE_CLIENT_ID set -> offer Levitate Bio (RFAntibody pipeline)
-3. If SSH hosts configured in `.by/config.json` -> offer SSH remote (Lambda.ai, RunPod)
-4. If PROTEUS_FOLD_DIR / PROTEUS_PROT_DIR / PROTEUS_AB_DIR set -> offer local GPU tools
-5. If nothing available -> prompt for TAMARIND_API_KEY (free tier: 10 jobs/month)
+2. If SSH hosts configured in `.by/config.json` -> offer SSH remote (Lambda.ai, RunPod)
+3. If PROTEUS_FOLD_DIR / PROTEUS_PROT_DIR / PROTEUS_AB_DIR set -> offer local GPU tools
+4. If nothing available -> prompt for TAMARIND_API_KEY (free tier: 10 jobs/month)
 
 ## Conversational Patterns
 

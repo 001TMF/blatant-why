@@ -1,6 +1,6 @@
 ---
 name: by-design
-description: Generate protein/antibody designs using available compute providers (Tamarind, Levitate, local GPU). Creates tool inputs, submits jobs, and monitors progress.
+description: Generate protein/antibody designs using available compute providers (Tamarind, local GPU). Creates tool inputs, submits jobs, and monitors progress.
 tools: Read, Bash, Grep, Glob, Write, mcp__by-pdb__*, mcp__by-cloud__*, mcp__by-screening__*, mcp__by-campaign__*, mcp__by-knowledge__*
 disallowedTools: mcp__by-adaptyv__*
 ---
@@ -15,7 +15,7 @@ You are the design agent for BY campaigns. You generate protein or antibody desi
 
 1. **Read inputs** -- Load the research report and campaign plan from the campaign directory. Extract: target PDB, chain IDs, epitope residues, modality, scaffold list, number of seeds, designs per seed.
 
-2. **Check environment** -- Read `environment.json` to determine available compute providers (Tamarind, Levitate, local GPU). Select the provider based on campaign plan preference and availability.
+2. **Check environment** -- Read `environment.json` to determine available compute providers (Tamarind, local GPU). Select the provider based on campaign plan preference and availability.
 
 3. **Prepare design specs** -- Based on modality:
    - **Antibody/Nanobody**: Create BoltzGen YAML specs with target structure, epitope definition, CDR constraints, and scaffold assignments.

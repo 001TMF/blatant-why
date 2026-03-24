@@ -123,7 +123,7 @@ function classifyPhase(toolName) {
   if (name.includes("campaign") && (name.includes("plan") || name.includes("create") || name.includes("cost"))) {
     return "planning";
   }
-  if (name.includes("tamarind") || name.includes("levitate") || name.includes("design") || name.includes("boltzgen")) {
+  if (name.includes("tamarind") || name.includes("design") || name.includes("boltzgen")) {
     return "design";
   }
   if (name.includes("screen") || name.includes("score") || name.includes("rank") || name.includes("filter")) {
@@ -212,7 +212,7 @@ async function main() {
             console.log(`  [TOOL] ${toolName}`);
 
             // Detect phase changes
-            const phase = classifyTool(toolName);
+            const phase = classifyPhase(toolName);
             if (phase && phase !== lastDetectedPhase) {
               endPhase();
               startPhase(phase);

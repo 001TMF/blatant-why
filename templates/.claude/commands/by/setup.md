@@ -51,7 +51,6 @@ Delegate to a **by-environment** agent (model per profile table above):
 >
 > **Cloud providers** — check API key environment variables:
 > - TAMARIND_API_KEY (Tamarind Bio)
-> - LEVITATE_API_KEY (Levitate Bio)
 > - ADAPTYV_API_KEY (Adaptyv Bio — lab submission)
 > - Report configured/missing for each (NEVER log key values)
 >
@@ -67,9 +66,8 @@ Verify the agent produced valid environment.json with all required sections.
 
 Based on the environment scan, recommend a compute provider:
 1. **Tamarind Bio** if API key is configured (preferred — free tier)
-2. **Levitate Bio** if API key is configured
-3. **Local GPU** if NVIDIA GPU detected with sufficient VRAM (>=16GB)
-4. **None** — warn that no compute provider is available
+2. **Local GPU** if NVIDIA GPU detected with sufficient VRAM (>=16GB)
+3. **None** — warn that no compute provider is available
 
 ### Step 5: Report to user
 

@@ -109,7 +109,6 @@ def _capture_environment() -> dict:
     ]:
         env[f"{tool}_version"] = _get_cmd_output(cmd)
     # API keys (just whether set, not values)
-    for key in ["TAMARIND_API_KEY", "LEVITATE_CLIENT_ID", "ADAPTYV_API_TOKEN"]:
         env[f"{key}_set"] = bool(os.getenv(key))
     return env
 

@@ -67,8 +67,6 @@ def _get_available_providers() -> list[str]:
     providers = []
     if os.environ.get("TAMARIND_API_KEY"):
         providers.append("tamarind")
-    if os.environ.get("LEVITATE_CLIENT_ID"):
-        providers.append("levitate")
     if os.environ.get("PROTEUS_SSH_HOST"):
         providers.append("ssh")
     # Check for local GPU

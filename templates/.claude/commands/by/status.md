@@ -14,7 +14,7 @@ This command does NOT spawn agents. Read state files directly.
 ### Step 1: Load environment
 
 Read `.by/environment.json` for:
-- Available compute providers (Tamarind, Levitate, Local GPU)
+- Available compute providers (Tamarind, Local GPU)
 - Detected tools and versions
 - API key status (present/missing, never show values)
 
@@ -36,7 +36,7 @@ Campaign:   {name}
 Phase:      {RESEARCH | COST | DESIGN | SCREENING | RANKING | LAB}
 Round:      {N}
 Created:    {timestamp}
-Provider:   {Tamarind Bio | Levitate Bio | Local GPU}
+Provider:   {Tamarind Bio | Local GPU}
 
 Designs:    {generated} generated, {screened} screened, {passed} passed
 Cost:       ~${estimated_cost} ({seeds} seeds x {designs_per_seed} designs)
@@ -47,7 +47,6 @@ Environment:
   proteus-ab:    {version or "not found"}
   GPU:           {name or "none detected"}
   Tamarind API:  {configured | missing}
-  Levitate API:  {configured | missing}
 ```
 
 ### Step 4: Show warnings

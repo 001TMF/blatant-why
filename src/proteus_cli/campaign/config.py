@@ -82,7 +82,7 @@ class LabConfig:
 @dataclass
 class ComputeConfig:
     """Compute backend configuration."""
-    provider: str = "tamarind"      # tamarind | levitate | local | ssh
+    provider: str = "tamarind"      # tamarind | local | ssh
     gpu_type: str = "A100"
     gpu_ids: str = ""               # for local: "0,1" for specific GPUs
     # SSH options

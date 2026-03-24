@@ -30,12 +30,6 @@
         "mcp_servers/tamarind/server.py"
       ]
     },
-    "levitate": {
-      "command": "python",
-      "args": [
-        "mcp_servers/levitate/server.py"
-      ]
-    },
     "adaptyv": {
       "command": "python",
       "args": [

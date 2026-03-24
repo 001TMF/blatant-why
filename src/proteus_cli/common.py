@@ -82,8 +82,6 @@ def get_available_providers() -> list[str]:
         providers.append("local")
     if os.getenv("TAMARIND_API_KEY"):
         providers.append("tamarind")
-    if os.getenv("LEVITATE_CLIENT_ID"):
-        providers.append("levitate")
     if os.getenv("PROTEUS_SSH_HOST"):
         providers.append("ssh")
     return providers if providers else ["tamarind"]  # default fallback

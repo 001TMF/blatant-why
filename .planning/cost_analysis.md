@@ -47,22 +47,6 @@
 - Proven pipeline for nanobody design
 - Fast turnaround (~2-4 hours total)
 
-### Option 2: Levitate Bio
-**Cost**: $750 - $1,250 USD (estimated)
-
-| Component | Designs | Rate ($/design) | Cost |
-|-----------|---------|-----------------|------|
-| RFAntibody Pipeline | 1,050 | $0.50-$0.75 | $525-$788 |
-| Structure Prediction | 70 | $2.00-$5.00 | $140-$350 |
-| Academic Discount | | -20% | -$133-$228 |
-| **Total** | | | **$532-$910** |
-
-**Advantages**:
-- State-of-the-art RFAntibody models
-- Academic pricing available
-- Integrated screening pipeline
-- High success rate for therapeutic candidates
-
 ### Option 3: Local GPU Infrastructure
 **Cost**: $2,000 - $2,500 USD (setup) + $250 ongoing
 
@@ -118,7 +102,6 @@
 | Provider | Compute Cost | Lab Cost | Total Cost | Timeline |
 |----------|--------------|----------|------------|----------|
 | **Tamarind Bio** | $17 | $3,500 | **$3,517** | 1 week |
-| **Levitate Bio** | $750 | $3,500 | **$4,250** | 1-2 weeks |
 | **Local GPU** | $364 | $3,500 | **$3,864** | 2-3 weeks |
 | **Premium Lab** | $17 | $5,500 | **$5,517** | 1-2 weeks |
 
@@ -132,7 +115,6 @@
    - Mitigation: Use diverse scaffold library, optimize parameters
 
 2. **Provider availability issues**
-   - Backup: Levitate Bio as secondary option
    - Local GPU setup as tertiary option
 
 ### Lab Risks

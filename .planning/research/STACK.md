@@ -24,7 +24,6 @@
 |------------|---------|---------|-----|
 | Tamarind Bio | Latest | Antibody design platform | Free tier, 200+ models, EGFR-specific data |
 | AlphaFold | v3 | Protein structure prediction | High-confidence EGFR structure (AF_AFP00533F1) |
-| Levitate Bio | Latest | RFAntibody pipeline | Academic discounts for design generation |
 
 ### Expression & Production
 | Technology | Version | Purpose | Why |

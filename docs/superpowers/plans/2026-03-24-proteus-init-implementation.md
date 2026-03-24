@@ -341,7 +341,6 @@ Pattern (adapt deps per server):
 # ///
 ```
 
-Remove `sys.path.insert(0, ...)` hacks from tamarind, levitate, research, knowledge, adaptyv. Replace shared module imports with inline code or add the shared module's functionality to deps.
 
 - [ ] **Step 3: Test each server starts with uv**
 
@@ -359,7 +358,6 @@ git commit -m "feat: add PEP 723 headers to all MCP servers — uv run ready"
 
 **Files:**
 - Create: `mcp_servers/cloud/server.py`
-- Delete: `mcp_servers/levitate/` (per user request)
 
 - [ ] **Step 1: Create cloud server with Tamarind + SSH backends**
 
@@ -379,17 +377,14 @@ SSH backend: wrap `paramiko` for SSH command execution (upload → run → downl
 Run: `uv run --script mcp_servers/cloud/server.py 2>&1 | head -3`
 Expected: Starts without error.
 
-- [ ] **Step 3: Remove levitate directory**
 
 ```bash
-rm -rf mcp_servers/levitate/
 ```
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add mcp_servers/cloud/ && git rm -r mcp_servers/levitate/
-git commit -m "feat: unified cloud MCP server (Tamarind + SSH), remove Levitate"
+git commit -m "feat: unified cloud MCP server (Tamarind + SSH)"
 ```
 
 ### Task 5: Rewrite knowledge MCP server with ChromaDB

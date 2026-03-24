@@ -83,7 +83,7 @@ When running antibody design campaigns, deploy these agent teams:
 | Agent | Role | MCP Servers |
 |-------|------|-------------|
 | Research | Target analysis, literature, prior art | pdb, uniprot, sabdab, research |
-| Design | Generate designs via cloud or local | pdb, screening, tamarind, levitate, campaign |
+| Design | Generate designs via cloud or local | pdb, screening, tamarind, campaign |
 | Screening | Score, filter, rank designs | screening, campaign |
 | Lab Integration | Submit to Adaptyv Bio (GATED) | adaptyv |
 
@@ -97,8 +97,7 @@ When running antibody design campaigns, deploy these agent teams:
 
 ### Compute Providers (in order of preference)
 1. **Tamarind Bio** (DEFAULT) — free tier, 200+ models, no GPU required
-2. **Levitate Bio** — RFAntibody pipeline, academic discount
-3. **Local GPU** — set PROTEUS_FOLD_DIR / PROTEUS_PROT_DIR / PROTEUS_AB_DIR (power users)
+2. **Local GPU** — set PROTEUS_FOLD_DIR / PROTEUS_PROT_DIR / PROTEUS_AB_DIR (power users)
 
 ### Lab Safety Gate
 Adaptyv Bio submissions require TRIPLE approval:

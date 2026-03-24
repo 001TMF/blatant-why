@@ -69,10 +69,6 @@ if (process.env.TAMARIND_API_KEY) {
   providers.push(`Tamarind (${tier})`);
 }
 
-// Levitate Bio — detected via API key
-if (process.env.LEVITATE_API_KEY) {
-  providers.push('Levitate');
-}
 
 // Local GPU — detected via tool directories or CUDA env
 const localDirs = ['PROTEUS_FOLD_DIR', 'PROTEUS_PROT_DIR', 'PROTEUS_AB_DIR'];

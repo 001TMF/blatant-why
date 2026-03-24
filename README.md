@@ -14,7 +14,7 @@
 <h3 align="center">Production-ready protein design orchestration for Claude Code</h3>
 
 <p align="center">
-Deploy 16 specialized agents, 11 MCP servers, and 15 skills to design protein binders, antibodies, and nanobodies from a single prompt. Cloud compute included. No GPU required.
+Deploy 16 specialized agents, 10 MCP servers, and 15 skills to design protein binders, antibodies, and nanobodies from a single prompt. Cloud compute included. No GPU required.
 </p>
 
 ---
@@ -51,7 +51,7 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 
 ## What Is Inside
 
-- **11 MCP servers** -- biological databases, cloud compute, screening, campaign management, knowledge
+- **10 MCP servers** -- biological databases, cloud compute, screening, campaign management, knowledge
 - **16 agents** -- specialized sub-agents for research, design, screening, evaluation, and lab integration
 - **15 skills** -- BoltzGen, Protenix, PXDesign, scoring, screening, epitope analysis, campaign management
 - **8 slash commands** -- campaign control from the Claude Code prompt
@@ -59,7 +59,7 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 - **Tamarind Bio cloud compute** -- free tier, 200+ structural biology models, no GPU required
 
 <details>
-<summary><strong>MCP Servers (11)</strong></summary>
+<summary><strong>MCP Servers (10)</strong></summary>
 
 | Server | Role |
 |--------|------|
@@ -68,7 +68,6 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 | `sabdab` | Structural Antibody Database |
 | `by-screening` | Screening battery orchestration |
 | `tamarind` | Tamarind Bio cloud compute |
-| `levitate` | Levitate Bio RFAntibody pipeline |
 | `adaptyv` | Adaptyv Bio lab submission (gated) |
 | `by-campaign` | Campaign state management |
 | `by-research` | Literature and target research |
@@ -150,12 +149,11 @@ by-design/
 ├── demo/                    # Headless demo runner (Claude Agent SDK)
 ├── docs/                    # Plans, specs, superpowers docs
 ├── examples/                # Example campaign configs
-├── mcp_servers/             # 11 MCP server implementations
+├── mcp_servers/             # 10 MCP server implementations
 │   ├── adaptyv/             #   Adaptyv Bio lab submission
 │   ├── campaign/            #   Campaign state management
 │   ├── cloud/               #   Cloud compute abstraction
 │   ├── knowledge/           #   ChromaDB semantic memory
-│   ├── levitate/            #   Levitate Bio RFAntibody
 │   ├── local_compute/       #   Local GPU dispatch
 │   ├── pdb/                 #   Protein Data Bank
 │   ├── research/            #   Literature & target research
@@ -201,7 +199,6 @@ flowchart TB
 
     subgraph Compute["Compute"]
         Tamarind["Tamarind Bio -- Free Cloud"]
-        Levitate["Levitate Bio -- RFAntibody"]
         LocalGPU["Local GPU -- Optional"]
     end
 

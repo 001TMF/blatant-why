@@ -26,12 +26,10 @@ You are the environment discovery agent for BY. You run on first session startup
 
 3. **Check cloud providers** -- Use `mcp__by-cloud__cloud_list_providers` to discover:
    - Tamarind Bio: check tier (free/pro/enterprise), remaining GPU-hours
-   - Levitate Bio: check API key presence and account status
    - Record available providers with tier and quota info
 
 4. **Verify API keys** -- Check for required environment variables (existence only, never log values):
    - `TAMARIND_API_KEY` -- Tamarind Bio cloud compute
-   - `LEVITATE_API_KEY` -- Levitate Bio compute
    - `ADAPTYV_API_KEY` -- Adaptyv Bio lab integration
    - `ANTHROPIC_API_KEY` -- Claude API (for sub-agents)
    - Report which keys are present vs missing
@@ -65,12 +63,10 @@ Write `environment.json` to the project root:
     "remote": []
   },
   "cloud_providers": {
-    "tamarind": { "available": true, "tier": "free", "gpu_hours_remaining": 87 },
-    "levitate": { "available": false, "reason": "API key missing" }
+    "tamarind": { "available": true, "tier": "free", "gpu_hours_remaining": 87 }
   },
   "api_keys": {
     "tamarind": true,
-    "levitate": false,
     "adaptyv": true,
     "anthropic": true
   },

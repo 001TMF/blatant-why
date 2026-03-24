@@ -1,6 +1,7 @@
 """Cross-validation between dual structure predictors."""
 from __future__ import annotations
 from dataclasses import dataclass
+from math import isclose
 
 
 @dataclass
@@ -29,12 +30,13 @@ def classify_cross_validation(
     Returns (status, confidence) tuple.
     """
     iptm_delta = abs(iptm_1 - iptm_2)
+    within_iptm_threshold = iptm_delta < iptm_threshold or isclose(iptm_delta, iptm_threshold)
     both_ipsae_good = ipsae_1 >= ipsae_min and ipsae_2 >= ipsae_min
     both_ipsae_bad = ipsae_1 < 0.1 and ipsae_2 < 0.1
 
     if iptm_delta > 0.5 or both_ipsae_bad:
         return "rejected", "low"
-    elif iptm_delta <= iptm_threshold and both_ipsae_good:
+    elif within_iptm_threshold and both_ipsae_good:
         return "consensus", "high"
     else:
         return "divergent", "medium"

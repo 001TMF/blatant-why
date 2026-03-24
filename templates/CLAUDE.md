@@ -307,6 +307,10 @@ For complex campaigns, deploy specialized agent teams. Each agent has scoped MCP
 | by-evaluator | Deep structural evaluation: refolding, interface quality, confidence decomposition, aggregation risk | adaptyv_* |
 | by-visualization | Generate PyMOL/ChimeraX session scripts for structural visualization | cloud_*, adaptyv_* |
 | by-diversity | Sequence/structural clustering, Pareto fronts, scaffold balance, diverse panel selection | cloud_*, adaptyv_* |
+| by-epitope | Deep epitope analysis: interface mapping, druggability scoring, cryptic sites, hotspot arrays | cloud_submit_job, adaptyv_* |
+| by-humanization | Humanize non-human antibodies: CDR grafting, back-mutations, T-cell epitopes, humanness scoring | cloud_*, adaptyv_* |
+| by-liability-engineer | Propose mutations to fix liabilities: structural context, impact scoring, mutation panels | cloud_*, adaptyv_* |
+| by-formatter | Format designs: scFv conversion, Fab assembly, expression vectors, FASTA/GenBank/YAML/Adaptyv output | cloud_*, adaptyv_confirm_submission |
 
 ### Model Profiles
 
@@ -326,6 +330,14 @@ Agents resolve model at spawn time based on the active profile in `.by/config.js
 | by-evaluator | opus | sonnet | sonnet |
 | by-visualization | sonnet | sonnet | haiku |
 | by-diversity | sonnet | sonnet | haiku |
+| by-epitope | opus | sonnet | sonnet |
+| by-humanization | sonnet | sonnet | haiku |
+| by-liability-engineer | sonnet | sonnet | haiku |
+| by-formatter | sonnet | haiku | haiku |
+| by-epitope | opus | sonnet | sonnet |
+| by-humanization | opus | sonnet | haiku |
+| by-liability-engineer | sonnet | sonnet | haiku |
+| by-formatter | sonnet | haiku | haiku |
 
 ## Slash Commands
 

@@ -76,3 +76,9 @@ tmp/
 *.key
 *.pem
 credentials.json
+
+# Claude Code local settings (contains API keys)
+.claude/settings.local.json
+
+# BY runtime data
+.by/knowledge.db

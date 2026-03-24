@@ -3,8 +3,10 @@
 // Detects campaign completion events and writes a knowledge entry to the
 // campaign's JSON file for future reference.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { resolve, dirname } from 'path';
+
+'use strict';
+const { readFileSync, writeFileSync, existsSync, mkdirSync } = require('fs');
+const { resolve, dirname } = require('path');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -39,7 +41,7 @@ let stdinData = '';
 process.stdin.setEncoding('utf-8');
 process.stdin.on('data', (chunk) => { stdinData += chunk; });
 process.stdin.on('end', () => {
-  run();
+  try { run(); } catch { /* never crash Claude Code */ }
 });
 
 function run() {

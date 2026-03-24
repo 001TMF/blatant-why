@@ -3,8 +3,10 @@
 // Blocks Adaptyv Bio lab submissions unless a fresh lab-approval.json exists.
 // This enforces the triple-layer safety gate for wet-lab submissions.
 
-import { readFileSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
+
+'use strict';
+const { readFileSync, existsSync } = require('fs');
+const { resolve, dirname } = require('path');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -36,7 +38,7 @@ let stdinData = '';
 process.stdin.setEncoding('utf-8');
 process.stdin.on('data', (chunk) => { stdinData += chunk; });
 process.stdin.on('end', () => {
-  run();
+  try { run(); } catch { /* never crash Claude Code */ }
 });
 
 function run() {

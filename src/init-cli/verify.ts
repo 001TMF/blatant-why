@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { readdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 export function verifyMcpServers(mcpDir: string): { passed: number; failed: string[] } {
@@ -12,9 +12,12 @@ export function verifyMcpServers(mcpDir: string): { passed: number; failed: stri
 
   for (const dir of dirs) {
     const serverPy = resolve(mcpDir, dir.name, "server.py");
+    if (!existsSync(serverPy)) {
+      continue; // Skip directories without server.py
+    }
     try {
-      // Just check if uv can resolve deps (don't actually run the server)
-      execSync(`uv run --script "${serverPy}" --help 2>&1 || true`, {
+      // Check if uv can resolve deps by doing a syntax check
+      execSync(`uv run --script "${serverPy}" --help`, {
         timeout: 30000,
         encoding: "utf-8",
         stdio: "pipe",

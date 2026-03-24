@@ -3,8 +3,10 @@
 // Generates a compact status string for the Claude Code status bar.
 // Reads config, active campaign, and provider info from .by/.
 
-import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
-import { resolve, dirname } from 'path';
+
+'use strict';
+const { readFileSync, existsSync, readdirSync, statSync } = require('fs');
+const { resolve, dirname } = require('path');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,7 +33,7 @@ let stdinData = '';
 process.stdin.setEncoding('utf-8');
 process.stdin.on('data', (chunk) => { stdinData += chunk; });
 process.stdin.on('end', () => {
-  run();
+  try { run(); } catch { /* never crash Claude Code */ }
 });
 
 // ---------------------------------------------------------------------------

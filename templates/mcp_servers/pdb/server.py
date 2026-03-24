@@ -4,6 +4,7 @@
 # dependencies = [
 #   "mcp>=1.0.0",
 #   "httpx",
+#   "biopython>=1.80",
 # ]
 # ///
 """PDB MCP Server — RCSB Protein Data Bank query tools for BY agent."""

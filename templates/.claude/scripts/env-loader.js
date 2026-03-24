@@ -2,8 +2,10 @@
 // BY env-loader hook — SessionStart
 // Loads .env from project root, detects compute providers, outputs context for Claude Code.
 
-import { readFileSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
+
+'use strict';
+const { readFileSync, existsSync } = require('fs');
+const { resolve, dirname } = require('path');
 
 // ---------------------------------------------------------------------------
 // 1. Locate the project root by walking up until we find .by/

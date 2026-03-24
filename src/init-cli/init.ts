@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { resolve, join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { copyTemplates, generateSettingsJson } from "./templates.js";
 import { promptApiKeys } from "./api-keys.js";
 import { verifyMcpServers } from "./verify.js";
@@ -105,7 +106,8 @@ function appendGitignore(targetDir: string, templatesDir: string): void {
  */
 function findTemplatesDir(): string {
   // Walk up from the built file to find the package root
-  let dir = resolve(import.meta.dirname ?? ".");
+  const thisFile = fileURLToPath(import.meta.url);
+  let dir = dirname(thisFile);
   while (dir !== resolve(dir, "..")) {
     if (existsSync(join(dir, "package.json"))) {
       return join(dir, "templates");

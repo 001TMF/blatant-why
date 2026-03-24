@@ -1,0 +1,41 @@
+# Source code (published via dist/)
+src/
+tsconfig*.json
+
+# Development & CI
+tests/
+docs/
+.planning/
+harness/
+demo/
+assets/
+
+# Project config
+.claude/
+.by/
+.env
+.env.local
+.gitignore
+
+# Documentation (README.md and LICENSE are in files field)
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+
+# Build intermediates
+node_modules/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Agent memory
+.claude/settings.local.json
+
+# Python bytecode (inside templates/)
+**/__pycache__/
+*.pyc

@@ -1,93 +1,66 @@
-#!/usr/bin/env node
+/**
+ * index.ts — entry point for the Proteus TUI.
+ *
+ * Detects the user's first name, renders <App> to the normal terminal
+ * buffer (no alternate screen), and handles clean shutdown on signals.
+ */
 
-// Force true-color support for the TUI
-process.env.FORCE_COLOR = '3';  // Level 3 = 16 million colors (TrueColor)
-
-import { render } from "ink";
 import React from "react";
-import ansiEscapes from "ansi-escapes";
+import { render } from "ink";
 import { App } from "./app.js";
-import { streamQuery, AgentConfig, StreamEvent } from "./agent.js";
+import { resolve } from "path";
+import { execSync } from "child_process";
+import { userInfo } from "os";
 
-async function main() {
-  const config: AgentConfig = {
-    projectDir: process.cwd(),
-    mode: "vhh",
-  };
+// ---------------------------------------------------------------------------
+// Detect user's first name from GECOS field or username
+// ---------------------------------------------------------------------------
 
-  async function* queryFn(
-    input: string,
-    sessionId?: string,
-    abortController?: AbortController,
-  ): AsyncGenerator<StreamEvent> {
-    yield* streamQuery(input, config, sessionId, abortController);
+function getForename(): string {
+  try {
+    const gecos = execSync(`getent passwd ${userInfo().username}`, {
+      encoding: "utf-8",
+      timeout: 1000,
+    })
+      .split(":")[4]
+      ?.split(",")[0]
+      ?.trim();
+    if (gecos?.includes(" ")) return gecos.split(" ")[0];
+    if (gecos) return gecos;
+  } catch {
+    /* fallback to username heuristics */
   }
 
-  // Detect if we're in a real terminal (not piped)
-  const isTTY = process.stdout.isTTY ?? false;
-
-  if (isTTY) {
-    // Enter alternate screen buffer for full-screen TUI
-    process.stdout.write(ansiEscapes.enterAlternativeScreen);
-    process.stdout.write(ansiEscapes.cursorHide);
+  const u = userInfo().username;
+  if (/[._-]/.test(u)) {
+    return u
+      .split(/[._-]/)[0]
+      .replace(/^./, (c) => c.toUpperCase());
   }
-
-  if (!isTTY) {
-    console.log("Proteus v0.1.0 — protein design agent");
-  }
-
-  let cleanedUp = false;
-  const cleanup = () => {
-    if (cleanedUp) return;
-    cleanedUp = true;
-    if (isTTY) {
-      process.stdout.write(ansiEscapes.cursorShow);
-      process.stdout.write(ansiEscapes.exitAlternativeScreen);
-    }
-  };
-
-  const { unmount, waitUntilExit } = render(
-    React.createElement(App, {
-      queryFn,
-      initialMode: "vhh",
-      configRef: config,
-    }),
-    {
-      exitOnCtrlC: false, // We handle Ctrl+C ourselves
-    },
-  );
-
-  // SIGINT (Ctrl+C) is handled by the app component
-  // Double Ctrl+C calls process.exit(0) which triggers the cleanup below
-
-  // Clean exit on SIGTERM
-  process.on("SIGTERM", () => {
-    unmount();
-    cleanup();
-    process.exit(0);
-  });
-
-  // Ensure cleanup on normal exit
-  process.on("exit", cleanup);
-
-  // Handle uncaught errors gracefully
-  process.on("uncaughtException", (err) => {
-    unmount();
-    cleanup();
-    console.error("Fatal error:", err.message);
-    process.exit(1);
-  });
-
-  await waitUntilExit();
-  cleanup();
+  return u.charAt(0).toUpperCase() + u.slice(1);
 }
 
-main().catch((err) => {
-  // Restore terminal even on startup errors
-  if (process.stdout.isTTY) {
-    process.stdout.write(ansiEscapes.cursorShow);
-    process.stdout.write(ansiEscapes.exitAlternativeScreen);
-  }
-  console.error(err);
-  process.exit(1);
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+
+const projectDir = resolve(process.cwd(), "..");
+const forename = getForename();
+
+// NO alternate screen — render to normal terminal buffer
+const { unmount, waitUntilExit } = render(
+  React.createElement(App, { projectDir, forename }),
+  { exitOnCtrlC: false },
+);
+
+// Signal handling
+process.on("SIGINT", () => {
+  unmount();
+  process.exit(0);
 });
+process.on("SIGTERM", () => {
+  unmount();
+  process.exit(0);
+});
+
+waitUntilExit().then(() => process.exit(0));

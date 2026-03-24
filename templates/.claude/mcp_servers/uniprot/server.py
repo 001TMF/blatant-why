@@ -17,7 +17,7 @@ from mcp.server.fastmcp import FastMCP
 UNIPROT_BASE = "https://rest.uniprot.org/uniprotkb"
 _TIMEOUT = 30.0
 
-mcp = FastMCP("uniprot")
+mcp = FastMCP("by-uniprot")
 
 
 # ---------------------------------------------------------------------------

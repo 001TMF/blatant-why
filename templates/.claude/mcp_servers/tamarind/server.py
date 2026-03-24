@@ -30,7 +30,7 @@ def _error(msg: str) -> str:
     """Return a JSON-encoded error payload."""
     return json.dumps({"error": msg})
 
-mcp = FastMCP("tamarind")
+mcp = FastMCP("by-tamarind")
 
 # ---------------------------------------------------------------------------
 # Constants

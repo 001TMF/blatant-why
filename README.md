@@ -11,10 +11,14 @@
   <img src="https://img.shields.io/badge/npm-package-CB3837?style=flat-square&logo=npm&logoColor=white" alt="npm">
 </p>
 
-<h3 align="center">Production-ready protein design orchestration for Claude Code</h3>
+<h3 align="center">Open-source protein design agent for Claude Code</h3>
 
 <p align="center">
-Deploy 16 specialized agents, 10 MCP servers, and 15 skills to design protein binders, antibodies, and nanobodies from a single prompt. Cloud compute included. No GPU required.
+Some platforms charge thousands for AI-driven protein design using the same open-source tools — BoltzGen, Protenix, PXDesign. BY gives you direct access through Claude Code: a frontier AI agent designing proteins with no platform fees, no vendor lock-in, no artificial limitations.
+</p>
+
+<p align="center">
+Use Tamarind Bio's free tier for cloud compute, bring your own GPU, or connect SSH remotes. Your tools, your models, your designs.
 </p>
 
 ---
@@ -30,14 +34,53 @@ Deploy 16 specialized agents, 10 MCP servers, and 15 skills to design protein bi
 ## Quick Start
 
 ```bash
-npx by-design init
+npx blatant-why init
 claude
 > "Design VHH nanobodies against PD-L1"
 ```
 
-That is it. `by-design init` generates everything Claude Code needs -- MCP servers, agents, skills, commands, hooks, and a CLAUDE.md personality file. Open Claude Code in the same directory and you have a protein design workstation.
+That is it. `blatant-why init` generates everything Claude Code needs -- MCP servers, agents, skills, commands, hooks, and a CLAUDE.md personality file. Open Claude Code in the same directory and you have a protein design workstation.
 
 **Prerequisites:** [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [uv](https://docs.astral.sh/uv/), Python >= 3.11, Node.js >= 18.
+
+---
+
+## Setup Guide
+
+### API Keys
+
+| Key | Required? | Where to get it | What it enables |
+|-----|-----------|-----------------|-----------------|
+| `ANTHROPIC_API_KEY` | Required | Via [Claude Code](https://docs.anthropic.com/en/docs/claude-code) subscription | Powers the AI agent |
+| `TAMARIND_API_KEY` | Recommended | [tamarind.bio](https://tamarind.bio) (free account) | Cloud compute -- BoltzGen, Protenix, 200+ models. Free tier: 10 jobs/month |
+| `ADAPTYV_API_TOKEN` | Optional | [adaptyvbio.com](https://www.adaptyvbio.com) | Lab testing submission (triple-gated) |
+
+### Setting up your environment
+
+After `npx blatant-why init`:
+
+1. Copy `.env.example` to `.env`
+2. Add your API keys:
+   ```
+   TAMARIND_API_KEY=your_key_here
+   ```
+3. For local GPU (optional):
+   ```
+   PROTEUS_FOLD_DIR=/path/to/Protenix
+   PROTEUS_PROT_DIR=/path/to/PXDesign
+   PROTEUS_AB_DIR=/path/to/boltzgen
+   ```
+4. For SSH remotes (optional):
+   Add host configs to `.by/config.json`
+
+### Compute Options
+
+| Provider | Cost | Setup | Best for |
+|----------|------|-------|----------|
+| **Tamarind Bio** | Free tier: 10 jobs/month | Just add API key | Getting started, small campaigns |
+| **Tamarind Paid** | Pay per job | Same API key | Production campaigns |
+| **Local GPU** | Your hardware | Install tools + set env vars | Power users with GPUs |
+| **SSH Remote** | Your infrastructure | Configure in `.by/config.json` | HPC clusters, Lambda.ai, RunPod |
 
 ---
 
@@ -51,15 +94,15 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 
 ## What Is Inside
 
-- **10 MCP servers** -- biological databases, cloud compute, screening, campaign management, knowledge
+- **11 MCP servers** -- biological databases, cloud compute, screening, campaign management, knowledge
 - **16 agents** -- specialized sub-agents for research, design, screening, evaluation, and lab integration
-- **15 skills** -- BoltzGen, Protenix, PXDesign, scoring, screening, epitope analysis, campaign management
-- **8 slash commands** -- campaign control from the Claude Code prompt
-- **ChromaDB learning system** -- semantic memory that improves with every campaign
-- **Tamarind Bio cloud compute** -- free tier, 200+ structural biology models, no GPU required
+- **14 skills** -- BoltzGen, Protenix, PXDesign, scoring, screening, epitope analysis, campaign management
+- **11 slash commands** -- campaign control from the Claude Code prompt
+- **JSON knowledge store** -- campaign memory that improves with every run
+- **Tamarind Bio cloud compute** -- free tier, 200+ structural biology models (via Tamarind Bio API), no GPU required
 
 <details>
-<summary><strong>MCP Servers (10)</strong></summary>
+<summary><strong>MCP Servers (11)</strong></summary>
 
 | Server | Role |
 |--------|------|
@@ -68,11 +111,12 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 | `sabdab` | Structural Antibody Database |
 | `by-screening` | Screening battery orchestration |
 | `tamarind` | Tamarind Bio cloud compute |
+| `by-cloud` | Cloud compute abstraction |
 | `adaptyv` | Adaptyv Bio lab submission (gated) |
 | `by-campaign` | Campaign state management |
 | `by-research` | Literature and target research |
 | `by-local` | Local GPU compute dispatch |
-| `by-knowledge` | ChromaDB semantic memory |
+| `by-knowledge` | JSON-backed campaign knowledge store |
 
 </details>
 
@@ -88,7 +132,7 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 | `by-visualization` | Structure and results visualization |
 | `by-diversity` | Sequence and structural diversity selection |
 | `by-campaign` | Campaign lifecycle orchestration |
-| `by-knowledge` | Learning system and semantic memory |
+| `by-knowledge` | Learning system and campaign memory |
 | `by-verifier` | Output verification and sanity checks |
 | `by-plan-checker` | Campaign plan validation |
 | `by-environment` | Environment setup and dependency checks |
@@ -101,30 +145,29 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 </details>
 
 <details>
-<summary><strong>Skills (15)</strong></summary>
+<summary><strong>Skills (14)</strong></summary>
 
 | Skill | Description |
 |-------|-------------|
 | `boltzgen` | BoltzGen antibody/nanobody generation |
 | `protenix` | Protenix structure prediction |
 | `pxdesign` | PXDesign de novo binder design |
-| `proteus-scoring` | ipSAE + p_bind composite scoring |
-| `proteus-screening` | Full screening battery |
-| `proteus-epitope-analysis` | Epitope mapping and analysis |
-| `proteus-campaign-manager` | Campaign state and lifecycle |
-| `proteus-campaign-optimizer` | Active learning and iteration |
-| `proteus-design-workflow` | End-to-end design pipeline |
-| `proteus-research` | Target research and literature |
-| `proteus-knowledge` | Semantic memory operations |
-| `proteus-database` | Local results database |
-| `proteus-failure-diagnosis` | Pipeline failure analysis |
-| `proteus-hypothesis-debate` | Multi-agent hypothesis evaluation |
-| `skill-creator` | Meta-skill for creating new skills |
+| `by-scoring` | ipSAE + p_bind composite scoring |
+| `by-screening` | Full screening battery |
+| `by-epitope-analysis` | Epitope mapping and analysis |
+| `by-campaign-manager` | Campaign state and lifecycle |
+| `by-campaign-optimizer` | Active learning and iteration |
+| `by-design-workflow` | End-to-end design pipeline |
+| `by-research` | Target research and literature |
+| `by-knowledge` | Campaign knowledge operations |
+| `by-database` | Local results database |
+| `by-failure-diagnosis` | Pipeline failure analysis |
+| `by-hypothesis-debate` | Multi-agent hypothesis evaluation |
 
 </details>
 
 <details>
-<summary><strong>Slash Commands (8)</strong></summary>
+<summary><strong>Slash Commands (11)</strong></summary>
 
 | Command | Action |
 |---------|--------|
@@ -136,6 +179,9 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 | `/by:approve-lab` | Approve Adaptyv Bio submission (gated) |
 | `/by:set-profile` | Switch compute profile |
 | `/by:setup` | Initialize environment and dependencies |
+| `/by:plan-campaign` | Generate a detailed campaign plan for a loaded target |
+| `/by:welcome` | Show welcome message and quick-start guide |
+| `/by:resume` | Resume an interrupted or paused campaign |
 
 </details>
 
@@ -143,30 +189,18 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 <summary><strong>Repository Structure</strong></summary>
 
 ```
-by-design/
+blatant-why/
 ├── assets/                  # Banner, diagrams, screenshots
 ├── campaigns/               # Campaign output directories
-├── demo/                    # Headless demo runner (Claude Agent SDK)
-├── docs/                    # Plans, specs, superpowers docs
+├── docs/                    # LOCAL_GPU_SETUP guide
 ├── examples/                # Example campaign configs
-├── mcp_servers/             # 10 MCP server implementations
-│   ├── adaptyv/             #   Adaptyv Bio lab submission
-│   ├── campaign/            #   Campaign state management
-│   ├── cloud/               #   Cloud compute abstraction
-│   ├── knowledge/           #   ChromaDB semantic memory
-│   ├── local_compute/       #   Local GPU dispatch
-│   ├── pdb/                 #   Protein Data Bank
-│   ├── research/            #   Literature & target research
-│   ├── sabdab/              #   Structural Antibody Database
-│   ├── screening/           #   Screening battery
-│   ├── tamarind/            #   Tamarind Bio cloud compute
-│   └── uniprot/             #   UniProt protein annotation
+├── mcp_servers/             # -> templates/.claude/mcp_servers (symlink)
 ├── src/                     # Source code
-│   ├── init-cli/            #   `npx by-design init` CLI
+│   ├── init-cli/            #   `npx blatant-why init` CLI
 │   ├── proteus_cli/         #   Python CLI (scoring, screening, campaign)
 ├── templates/               # Templates deployed by init CLI
 │   ├── .claude/             #   Agents, commands, hooks, skills, settings
-│   └── mcp_servers/         #   MCP server templates
+│   └── mcp_servers/         #   11 MCP server implementations
 ├── tests/                   # Test suite
 ├── CLAUDE.md                # Agent personality & orchestration rules
 ├── package.json             # Node.js package (Claude Code SDK)
@@ -185,8 +219,8 @@ flowchart TB
     User([User]) -->|prompt| Claude[Claude Code + CLAUDE.md]
 
     Claude -->|delegates| Agents[16 Specialized Agents]
-    Claude -->|invokes| Skills[15 Skills]
-    Claude -->|slash cmds| Commands[8 Commands]
+    Claude -->|invokes| Skills[14 Skills]
+    Claude -->|slash cmds| Commands[11 Commands]
 
     Agents --> MCP[11 MCP Servers]
     Skills --> MCP
@@ -225,7 +259,7 @@ flowchart TB
     MCP --> Screening
     MCP --> Lab
 
-    ChromaDB[(ChromaDB -- Learning System)] <--> MCP
+    Knowledge[("Knowledge Store -- JSON")] <--> MCP
 ```
 
 <details>
@@ -242,7 +276,7 @@ flowchart TB
 <details>
 <summary><strong>Learning System</strong></summary>
 
-Every campaign writes results to a ChromaDB vector store. The knowledge MCP server provides semantic search over past campaigns, so the system learns which design strategies work for which target classes.
+Every campaign writes results to a JSON knowledge store. The knowledge MCP server provides keyword search over past campaigns, so the system learns which design strategies work for which target classes.
 
 Stored per campaign:
 - Target metadata and research context

@@ -161,47 +161,48 @@ async def research_search_prior_art(
         except Exception as exc:
             errors.append(f"PubMed search failed: {exc}")
 
-        # --- bioRxiv search ---
+        # --- bioRxiv / preprint search via EuropePMC ---
         try:
-            # bioRxiv API uses date ranges; search last 2 years.
-            date_to = datetime.now().strftime("%Y-%m-%d")
-            date_from = (datetime.now() - timedelta(days=730)).strftime("%Y-%m-%d")
-
-            biorxiv_url = f"{BIORXIV_API_URL}/{date_from}/{date_to}/0/50"
-            resp = await client.get(biorxiv_url, timeout=TIMEOUT)
+            # The bioRxiv /details API only returns the N most recent
+            # preprints from a date window with no query filtering,
+            # making it nearly useless for target-specific search.
+            # Instead, query EuropePMC which indexes bioRxiv and medRxiv
+            # preprints and supports proper relevance-ranked search.
+            epmc_url = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+            epmc_params = {
+                "query": (
+                    f'(TITLE:"{target_name}" OR ABSTRACT:"{target_name}") '
+                    f"AND (antibody OR nanobody OR binder OR design OR engineering) "
+                    f'AND SRC:"PPR"'
+                ),
+                "format": "json",
+                "pageSize": max_results,
+                "sort": "RELEVANCE",
+            }
+            resp = await client.get(epmc_url, params=epmc_params, timeout=TIMEOUT)
             resp.raise_for_status()
-            biorxiv_data = resp.json()
+            epmc_data = resp.json()
 
-            # bioRxiv returns a "collection" list; filter by target name.
-            target_lower = target_name.lower()
-            collection = biorxiv_data.get("collection", [])
-
-            for paper in collection:
+            for paper in epmc_data.get("resultList", {}).get("result", []):
                 title = paper.get("title", "")
-                abstract = paper.get("abstract", "")
-                combined = (title + " " + abstract).lower()
+                authors = paper.get("authorString", "")
+                if len(authors) > 80:
+                    authors = authors[:80] + "..."
 
-                if target_lower in combined and any(
-                    kw in combined
-                    for kw in ["antibody", "nanobody", "binder", "design", "engineering"]
-                ):
-                    authors = paper.get("authors", "")
-                    if len(authors) > 80:
-                        authors = authors[:80] + "..."
+                biorxiv_results.append({
+                    "title": title,
+                    "authors": authors,
+                    "doi": paper.get("doi", ""),
+                    "date": paper.get("firstPublicationDate", ""),
+                    "category": paper.get("journalTitle", ""),
+                    "source": paper.get("source", ""),
+                })
 
-                    biorxiv_results.append({
-                        "title": title,
-                        "authors": authors,
-                        "doi": paper.get("doi", ""),
-                        "date": paper.get("date", ""),
-                        "category": paper.get("category", ""),
-                    })
-
-                    if len(biorxiv_results) >= max_results:
-                        break
+                if len(biorxiv_results) >= max_results:
+                    break
 
         except Exception as exc:
-            errors.append(f"bioRxiv search failed: {exc}")
+            errors.append(f"bioRxiv/EuropePMC search failed: {exc}")
 
     result: dict[str, Any] = {
         "query": query,

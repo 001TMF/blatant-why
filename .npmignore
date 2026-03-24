@@ -1,25 +1,41 @@
-# Source code (published via dist/)
-src/
-tsconfig*.json
-
-# Development & CI
-tests/
-docs/
+# Dev artifacts
 .planning/
-harness/
-demo/
-assets/
-
-# Project config
-.claude/
-.by/
+.git/
+.github/
 .env
-.env.local
-.gitignore
+.env.*
 
-# Documentation (README.md and LICENSE are in files field)
-*.md
-!README.md
+# Tarball artifacts
+*.tgz
+
+# Campaign data (user-generated)
+campaigns/
+.by/
+
+# Dev/test files
+tests/
+demo/
+docs/
+examples/
+mcp_servers/
+src/
+assets/
+harness/
+
+# Python artifacts
+*.pyc
+__pycache__/
+*.egg-info/
+dist-python/
+build/
+src/proteus_cli/
+
+# Config
+.claude/
+tsconfig*.json
+pyproject.toml
+.gitignore
+.npmrc
 
 # IDE
 .vscode/
@@ -28,14 +44,12 @@ assets/
 # Build intermediates
 node_modules/
 
-# Python artifacts
-__pycache__/
-*.pyc
-*.egg-info/
+# Documentation (README.md and LICENSE are in files field)
+*.md
+!README.md
 
 # Agent memory
 .claude/settings.local.json
 
 # Python bytecode (inside templates/)
 **/__pycache__/
-*.pyc

@@ -3,7 +3,8 @@ echo "=== Config System Test ==="
 PASS=0
 FAIL=0
 
-CONFIG="/home/tristanfarmer/Documents/protein_design_agent/templates/.by/config.json"
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+CONFIG="$SCRIPT_DIR/templates/.by/config.json"
 
 # Valid JSON
 if python3 -c "import json; json.load(open('$CONFIG'))" 2>/dev/null; then
@@ -33,7 +34,7 @@ else
 fi
 
 # CLAUDE.md exists and is substantial
-CLAUDEMD="/home/tristanfarmer/Documents/protein_design_agent/templates/CLAUDE.md"
+CLAUDEMD="$SCRIPT_DIR/templates/CLAUDE.md"
 LINES=$(wc -l < "$CLAUDEMD" 2>/dev/null || echo 0)
 if [ "$LINES" -gt 100 ]; then
   echo "  PASS  CLAUDE.md has $LINES lines"

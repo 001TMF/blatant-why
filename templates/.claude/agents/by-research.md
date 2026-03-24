@@ -29,6 +29,30 @@ You are the research agent for BY campaigns. Your job is to thoroughly analyze a
 
 8. **Compile report** -- Assemble all findings into the output format below.
 
+## Input/Output Contract
+
+**Input:**
+- Prompt from orchestrator containing: target name, species, optional PDB ID, optional epitope, modality preference
+- Optional: `.by/campaigns/<id>/campaign_context.json` (from `/by:plan-campaign`)
+
+**Output:**
+- File: `.by/campaigns/<id>/research_report.md` (structured markdown per Output Format below)
+- File: `.by/campaigns/<id>/research_data.json` with machine-readable fields:
+  ```json
+  {
+    "target_name": "PD-L1",
+    "uniprot_id": "Q9NZQ7",
+    "best_pdb": "5JDR",
+    "best_resolution": 1.8,
+    "chain_ids": ["A"],
+    "epitope_residues": [54, 56, 66, 68, 113, 114, 115, 116, 117],
+    "prior_art_count": 12,
+    "recommended_modality": "VHH",
+    "recommended_scaffolds": ["caplacizumab", "ozoralizumab"]
+  }
+  ```
+- Return value: one-line summary string (e.g., "PD-L1 research complete: 5JDR at 1.8A, 12 prior binders, VHH recommended")
+
 ## Output Format
 
 Return a structured markdown report with these sections:

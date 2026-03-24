@@ -2,12 +2,13 @@
 set -e
 echo "=== BY Init Test ==="
 
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 
 # Run init with --skip-keys
 cd "$TMPDIR"
-node /home/tristanfarmer/Documents/protein_design_agent/dist/index.js --skip-keys --force
+node "$SCRIPT_DIR/dist/index.js" --skip-keys --force
 
 # Verify core files exist
 PASS=0

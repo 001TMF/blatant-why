@@ -1368,8 +1368,10 @@ async def screen_composite(
         rmsd: RMSD in Angstroms (optional).
 
     Returns:
-        JSON object with pass (bool), liabilities, developability,
-        scores, interpretation, and flags.
+        JSON object with pass (bool), composite_score (float or null),
+        liabilities, developability, scores, interpretation, and flags.
+        composite_score uses the formula: 0.50*ipSAE_min + 0.30*ipTM + 0.20*(1-normalized_liability_count).
+        Returns null if ipTM or ipSAE not provided.
     """
     if not sequence or not sequence.strip():
         return _error("Sequence must not be empty.")
@@ -1445,9 +1447,24 @@ async def screen_composite(
             passes = False
             flags.append("Developability risk is HIGH")
 
+        # Composite ranking score (CLAUDE.md authoritative formula)
+        # composite = 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)
+        composite_score = None
+        if iptm is not None and ipsae is not None:
+            max_liabilities = 10  # normalization cap
+            liability_count = len(liabilities)
+            normalized_liability = min(liability_count / max_liabilities, 1.0)
+            composite_score = (
+                0.50 * ipsae
+                + 0.30 * iptm
+                + 0.20 * (1.0 - normalized_liability)
+            )
+            composite_score = round(composite_score, 4)
+
         return json.dumps(
             {
                 "pass": passes,
+                "composite_score": composite_score,
                 "liabilities": liabilities_json,
                 "developability": dev_json,
                 "scores": scores,

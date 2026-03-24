@@ -1,64 +1,15 @@
 {
   "mcpServers": {
-    "pdb": {
-      "command": "python",
-      "args": [
-        "mcp_servers/pdb/server.py"
-      ]
-    },
-    "uniprot": {
-      "command": "python",
-      "args": [
-        "mcp_servers/uniprot/server.py"
-      ]
-    },
-    "sabdab": {
-      "command": "python",
-      "args": [
-        "mcp_servers/sabdab/server.py"
-      ]
-    },
-    "by-screening": {
-      "command": "python",
-      "args": [
-        "mcp_servers/screening/server.py"
-      ]
-    },
-    "tamarind": {
-      "command": "python",
-      "args": [
-        "mcp_servers/tamarind/server.py"
-      ]
-    },
-    "adaptyv": {
-      "command": "python",
-      "args": [
-        "mcp_servers/adaptyv/server.py"
-      ]
-    },
-    "by-campaign": {
-      "command": "python",
-      "args": [
-        "mcp_servers/campaign/server.py"
-      ]
-    },
-    "by-research": {
-      "command": "python",
-      "args": [
-        "mcp_servers/research/server.py"
-      ]
-    },
-    "by-local": {
-      "command": "python",
-      "args": [
-        "mcp_servers/local_compute/server.py"
-      ]
-    },
-    "by-knowledge": {
-      "command": "python",
-      "args": [
-        "mcp_servers/knowledge/server.py"
-      ]
-    }
+    "by-pdb": { "command": "uv", "args": ["run", "--script", "mcp_servers/pdb/server.py"], "type": "stdio" },
+    "by-uniprot": { "command": "uv", "args": ["run", "--script", "mcp_servers/uniprot/server.py"], "type": "stdio" },
+    "by-sabdab": { "command": "uv", "args": ["run", "--script", "mcp_servers/sabdab/server.py"], "type": "stdio" },
+    "by-tamarind": { "command": "uv", "args": ["run", "--script", "mcp_servers/tamarind/server.py"], "type": "stdio" },
+    "by-cloud": { "command": "uv", "args": ["run", "--script", "mcp_servers/cloud/server.py"], "type": "stdio" },
+    "by-adaptyv": { "command": "uv", "args": ["run", "--script", "mcp_servers/adaptyv/server.py"], "type": "stdio" },
+    "by-screening": { "command": "uv", "args": ["run", "--script", "mcp_servers/screening/server.py"], "type": "stdio" },
+    "by-campaign": { "command": "uv", "args": ["run", "--script", "mcp_servers/campaign/server.py"], "type": "stdio" },
+    "by-research": { "command": "uv", "args": ["run", "--script", "mcp_servers/research/server.py"], "type": "stdio" },
+    "by-local-compute": { "command": "uv", "args": ["run", "--script", "mcp_servers/local_compute/server.py"], "type": "stdio" },
+    "by-knowledge": { "command": "uv", "args": ["run", "--script", "mcp_servers/knowledge/server.py"], "type": "stdio" }
   }
 }

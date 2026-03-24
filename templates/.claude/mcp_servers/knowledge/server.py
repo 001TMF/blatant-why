@@ -3,321 +3,134 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #   "mcp>=1.0.0",
-#   "chromadb>=0.5.0",
-#   "sentence-transformers>=3.0.0",
 # ]
 # ///
-"""BY Knowledge MCP Server — semantic memory with ChromaDB + sentence-transformers."""
+"""BY Knowledge MCP Server — campaign learning with lightweight JSON storage.
+
+Stores campaign outcomes, failures, and scaffold rankings as JSON files in
+the knowledge directory. Uses keyword matching for similarity queries. Zero
+heavy dependencies — starts in under 1 second.
+
+Knowledge directory resolution (in priority order):
+1. KNOWLEDGE_DIR environment variable
+2. .by/knowledge/ relative to BY_PROJECT_ROOT env var
+3. ~/.by/knowledge/ (home directory fallback)
+"""
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import uuid
 from collections import defaultdict
+from pathlib import Path
+from typing import Any
 
-import chromadb
-from chromadb.config import Settings
-from chromadb.utils import embedding_functions
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-import mcp.types as types
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("by-knowledge")
 
 # ---------------------------------------------------------------------------
-# ChromaDB setup
+# Knowledge directory resolution
 # ---------------------------------------------------------------------------
 
-COLLECTION_NAMES = ("campaigns", "scaffolds", "targets", "failures", "user_preferences")
 
-_client: chromadb.ClientAPI | None = None
-_ef: embedding_functions.SentenceTransformerEmbeddingFunction | None = None
+def _resolve_knowledge_dir() -> Path:
+    """Resolve the knowledge directory path.
 
+    Priority:
+    1. KNOWLEDGE_DIR env var (explicit override)
+    2. BY_PROJECT_ROOT/.by/knowledge/ (project-local)
+    3. ~/.by/knowledge/ (home directory fallback)
+    """
+    env_dir = os.environ.get("KNOWLEDGE_DIR")
+    if env_dir:
+        return Path(env_dir)
 
-def _get_embedding_function() -> embedding_functions.SentenceTransformerEmbeddingFunction:
-    global _ef
-    if _ef is None:
-        _ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="all-MiniLM-L6-v2",
-        )
-    return _ef
+    project_root = os.environ.get("BY_PROJECT_ROOT")
+    if project_root:
+        return Path(project_root) / ".by" / "knowledge"
 
-
-def _get_client() -> chromadb.ClientAPI:
-    global _client
-    if _client is None:
-        db_path = os.path.join(os.getcwd(), ".by", "knowledge.db")
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        _client = chromadb.PersistentClient(
-            path=db_path,
-            settings=Settings(anonymized_telemetry=False),
-        )
-    return _client
+    return Path(os.path.expanduser("~")) / ".by" / "knowledge"
 
 
-def _get_collection(name: str) -> chromadb.Collection:
-    client = _get_client()
-    ef = _get_embedding_function()
-    return client.get_or_create_collection(name, embedding_function=ef)
+KNOWLEDGE_DIR = _resolve_knowledge_dir()
+
+CAMPAIGNS_FILE = KNOWLEDGE_DIR / "campaigns.json"
+FAILURES_FILE = KNOWLEDGE_DIR / "failures.json"
+
+
+# ---------------------------------------------------------------------------
+# JSON-backed storage layer
+# ---------------------------------------------------------------------------
+
+
+def _ensure_dir() -> None:
+    """Create the knowledge directory if it doesn't exist."""
+    KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _load_json(path: Path) -> list[dict]:
+    """Load a JSON list from disk. Returns [] if file doesn't exist or is empty."""
+    try:
+        if path.exists() and path.stat().st_size > 0:
+            with open(path) as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                return data
+    except (json.JSONDecodeError, OSError):
+        pass
+    return []
+
+
+def _save_json(path: Path, data: list[dict]) -> None:
+    """Atomically write JSON data to disk (write to .tmp, then rename)."""
+    _ensure_dir()
+    tmp_path = path.with_suffix(".tmp")
+    with open(tmp_path, "w") as f:
+        json.dump(data, f, indent=2)
+    tmp_path.rename(path)
 
 
 def _error(msg: str) -> str:
     return json.dumps({"error": msg})
 
 
-def _flatten_metadata(d: dict) -> dict:
-    """Flatten a dict so all values are ChromaDB-safe (str, int, float, bool).
-
-    Nested dicts/lists are JSON-serialised to strings.
-    """
-    flat: dict = {}
-    for k, v in d.items():
-        if v is None:
-            continue
-        if isinstance(v, (str, int, float, bool)):
-            flat[k] = v
-        else:
-            flat[k] = json.dumps(v)
-    return flat
-
-
-def _unflatten_metadata(d: dict) -> dict:
-    """Attempt to JSON-parse string values that look like dicts/lists."""
-    out: dict = {}
-    for k, v in d.items():
-        if isinstance(v, str):
-            try:
-                parsed = json.loads(v)
-                if isinstance(parsed, (dict, list)):
-                    out[k] = parsed
-                    continue
-            except (json.JSONDecodeError, ValueError):
-                pass
-        out[k] = v
-    return out
-
-
 # ---------------------------------------------------------------------------
-# MMR helper
+# Keyword matching (replaces vector search)
 # ---------------------------------------------------------------------------
 
 
-def _mmr_rerank(
-    query_embedding: list[float],
-    doc_embeddings: list[list[float]],
-    doc_indices: list[int],
-    top_k: int,
-    lambda_param: float = 0.7,
-) -> list[int]:
-    """Maximal Marginal Relevance re-ranking.
-
-    score = lambda * similarity(query, doc) + (1-lambda) * max_diversity(doc, selected)
-    """
-    import math
-
-    def _cosine(a: list[float], b: list[float]) -> float:
-        dot = sum(x * y for x, y in zip(a, b))
-        na = math.sqrt(sum(x * x for x in a))
-        nb = math.sqrt(sum(x * x for x in b))
-        if na == 0 or nb == 0:
-            return 0.0
-        return dot / (na * nb)
-
-    if not doc_indices:
-        return []
-
-    selected: list[int] = []
-    remaining = list(range(len(doc_indices)))
-
-    # Precompute query similarities.
-    query_sims = [_cosine(query_embedding, doc_embeddings[i]) for i in range(len(doc_indices))]
-
-    for _ in range(min(top_k, len(doc_indices))):
-        best_score = -float("inf")
-        best_idx = -1
-
-        for idx in remaining:
-            sim_query = query_sims[idx]
-
-            if not selected:
-                diversity = 0.0
-            else:
-                max_sim_selected = max(
-                    _cosine(doc_embeddings[idx], doc_embeddings[s]) for s in selected
-                )
-                diversity = 1.0 - max_sim_selected
-
-            score = lambda_param * sim_query + (1 - lambda_param) * diversity
-            if score > best_score:
-                best_score = score
-                best_idx = idx
-
-        if best_idx < 0:
-            break
-        selected.append(best_idx)
-        remaining.remove(best_idx)
-
-    return [doc_indices[i] for i in selected]
+def _tokenize(text: str) -> set[str]:
+    """Extract lowercase keyword tokens from text."""
+    return set(re.findall(r"[a-z0-9]+", text.lower()))
 
 
-# ---------------------------------------------------------------------------
-# Server definition
-# ---------------------------------------------------------------------------
+def _keyword_score(query_tokens: set[str], doc_tokens: set[str]) -> float:
+    """Score = count of matching keywords / total query keywords."""
+    if not query_tokens:
+        return 0.0
+    overlap = query_tokens & doc_tokens
+    return len(overlap) / len(query_tokens)
 
-server = Server("by-knowledge")
 
-
-@server.list_tools()
-async def list_tools() -> list[types.Tool]:
-    return [
-        types.Tool(
-            name="knowledge_store_campaign",
-            description=(
-                "Store a completed campaign outcome in the knowledge base. "
-                "Embeds a text summary for semantic search and stores full data as metadata."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "target": {"type": "string", "description": "Target name or description"},
-                    "modality": {
-                        "type": "string",
-                        "description": "Design modality (e.g. antibody, nanobody, binder)",
-                    },
-                    "parameters": {
-                        "type": "object",
-                        "description": "Campaign parameters (scaffold, seeds, temperature, etc.)",
-                    },
-                    "outcomes": {
-                        "type": "object",
-                        "description": (
-                            "Campaign outcomes with keys: hit_rate, best_ipsae, best_iptm, "
-                            "screening_pass_rate"
-                        ),
-                    },
-                    "notes": {"type": "string", "description": "Free-text notes about the campaign"},
-                },
-                "required": ["target", "modality", "parameters", "outcomes"],
-            },
-        ),
-        types.Tool(
-            name="knowledge_query_similar",
-            description=(
-                "Find similar past campaigns using semantic search with MMR diversity re-ranking."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "target_description": {
-                        "type": "string",
-                        "description": "Description of the target to search for",
-                    },
-                    "modality": {
-                        "type": "string",
-                        "description": "Optional modality filter (e.g. antibody, nanobody)",
-                    },
-                    "top_k": {
-                        "type": "integer",
-                        "description": "Number of results to return (default 5)",
-                        "default": 5,
-                    },
-                },
-                "required": ["target_description"],
-            },
-        ),
-        types.Tool(
-            name="knowledge_scaffold_rankings",
-            description=(
-                "Get best-performing scaffolds for a target class, ranked by average hit rate "
-                "and average ipSAE across past campaigns."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "target_class": {
-                        "type": "string",
-                        "description": 'Target class (e.g. "immune checkpoint", "cytokine")',
-                    },
-                },
-                "required": ["target_class"],
-            },
-        ),
-        types.Tool(
-            name="knowledge_store_failure",
-            description="Store a campaign failure for future avoidance queries.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "campaign_id": {"type": "string", "description": "Campaign identifier"},
-                    "description": {"type": "string", "description": "What went wrong"},
-                    "root_cause": {
-                        "type": "string",
-                        "description": "Root cause analysis",
-                    },
-                    "target": {
-                        "type": "string",
-                        "description": "Target the campaign was for",
-                    },
-                },
-                "required": ["campaign_id", "description", "root_cause", "target"],
-            },
-        ),
-        types.Tool(
-            name="knowledge_get_recommendations",
-            description=(
-                "Get pre-campaign parameter recommendations by querying similar campaigns, "
-                "scaffold rankings, and past failures."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "target": {"type": "string", "description": "Target name or description"},
-                    "modality": {
-                        "type": "string",
-                        "description": "Design modality (e.g. antibody, nanobody, binder)",
-                    },
-                },
-                "required": ["target", "modality"],
-            },
-        ),
-        types.Tool(
-            name="knowledge_consolidate",
-            description=(
-                "Run a maintenance cycle: deduplicate near-identical entries (>0.95 cosine "
-                "similarity) and prune stale entries (>90 days old with <3 accesses)."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {},
-            },
-        ),
+def _campaign_text(campaign: dict) -> str:
+    """Build searchable text from a campaign record."""
+    parts = [
+        campaign.get("target", ""),
+        campaign.get("modality", ""),
+        campaign.get("notes", ""),
     ]
-
-
-@server.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
-    try:
-        result = await _dispatch(name, arguments)
-    except Exception as exc:
-        result = _error(f"Internal error: {exc}")
-    return [types.TextContent(type="text", text=result)]
-
-
-async def _dispatch(name: str, arguments: dict) -> str:
-    if name == "knowledge_store_campaign":
-        return await _store_campaign(arguments)
-    elif name == "knowledge_query_similar":
-        return await _query_similar(arguments)
-    elif name == "knowledge_scaffold_rankings":
-        return await _scaffold_rankings(arguments)
-    elif name == "knowledge_store_failure":
-        return await _store_failure(arguments)
-    elif name == "knowledge_get_recommendations":
-        return await _get_recommendations(arguments)
-    elif name == "knowledge_consolidate":
-        return await _consolidate(arguments)
-    else:
-        return _error(f"Unknown tool: {name}")
+    params = campaign.get("parameters", {})
+    if isinstance(params, dict):
+        parts.append(params.get("scaffold", ""))
+        parts.extend(str(v) for v in params.values())
+    outcomes = campaign.get("outcomes", {})
+    if isinstance(outcomes, dict):
+        parts.extend(str(v) for v in outcomes.values())
+    return " ".join(str(p) for p in parts if p)
 
 
 # ---------------------------------------------------------------------------
@@ -325,22 +138,61 @@ async def _dispatch(name: str, arguments: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def _store_campaign(args: dict) -> str:
-    target = args.get("target", "")
-    modality = args.get("modality", "")
-    parameters = args.get("parameters", {})
-    outcomes = args.get("outcomes", {})
-    notes = args.get("notes", "")
+@mcp.tool()
+async def knowledge_store_campaign(
+    target: str,
+    modality: str,
+    parameters: dict[str, Any],
+    outcomes: dict[str, Any],
+    notes: str = "",
+    designs: list[dict[str, Any]] | None = None,
+) -> str:
+    """Store a completed campaign outcome in the knowledge base.
 
+    Embeds a text summary for semantic search and stores full data as metadata.
+
+    Args:
+        target: Target name or description.
+        modality: Design modality (e.g. antibody, nanobody, binder).
+        parameters: Campaign parameters (scaffold, seeds, temperature, etc.).
+        outcomes: Campaign outcomes with keys: hit_rate, best_ipsae, best_iptm,
+            screening_pass_rate.
+        notes: Free-text notes about the campaign.
+        designs: Optional per-design provenance array. Each entry should include:
+            design_id, job_id, scaffold, epitope, tool, ipsae, iptm, status.
+
+    Returns:
+        JSON with status, id, document summary, and metadata.
+    """
     if not target:
         return _error("target is required")
     if not modality:
         return _error("modality is required")
 
-    # Build a text summary for embedding.
-    summary_parts = [
-        f"Campaign targeting {target} using {modality} modality.",
-    ]
+    doc_id = f"campaign_{uuid.uuid4().hex[:12]}"
+    now = time.time()
+
+    record: dict[str, Any] = {
+        "id": doc_id,
+        "target": target,
+        "modality": modality,
+        "parameters": parameters,
+        "outcomes": outcomes,
+        "notes": notes,
+        "stored_at": now,
+        "access_count": 0,
+    }
+
+    # Store per-design provenance if provided
+    if designs is not None:
+        record["designs"] = designs
+
+    campaigns = _load_json(CAMPAIGNS_FILE)
+    campaigns.append(record)
+    _save_json(CAMPAIGNS_FILE, campaigns)
+
+    # Build summary text for the response.
+    summary_parts = [f"Campaign targeting {target} using {modality} modality."]
     if parameters.get("scaffold"):
         summary_parts.append(f"Scaffold: {parameters['scaffold']}.")
     if outcomes.get("hit_rate") is not None:
@@ -351,36 +203,24 @@ async def _store_campaign(args: dict) -> str:
         summary_parts.append(f"Best ipTM: {outcomes['best_iptm']}.")
     if notes:
         summary_parts.append(notes)
-
-    document = " ".join(summary_parts)
-    doc_id = f"campaign_{uuid.uuid4().hex[:12]}"
-    now = time.time()
-
-    metadata = _flatten_metadata(
-        {
-            "target": target,
-            "modality": modality,
-            "parameters": parameters,
-            "outcomes": outcomes,
-            "notes": notes,
-            "stored_at": now,
-            "access_count": 0,
-        }
-    )
-
-    collection = _get_collection("campaigns")
-    collection.add(
-        ids=[doc_id],
-        documents=[document],
-        metadatas=[metadata],
-    )
+    if designs:
+        summary_parts.append(f"{len(designs)} designs with provenance recorded.")
 
     return json.dumps(
         {
             "status": "stored",
             "id": doc_id,
-            "document": document,
-            "metadata": _unflatten_metadata(metadata),
+            "document": " ".join(summary_parts),
+            "metadata": {
+                "target": target,
+                "modality": modality,
+                "parameters": parameters,
+                "outcomes": outcomes,
+                "notes": notes,
+                "designs_count": len(designs) if designs else 0,
+                "stored_at": now,
+                "access_count": 0,
+            },
         },
         indent=2,
     )
@@ -391,90 +231,76 @@ async def _store_campaign(args: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def _query_similar(args: dict) -> str:
-    target_description = args.get("target_description", "")
-    modality = args.get("modality")
-    top_k = args.get("top_k", 5)
+@mcp.tool()
+async def knowledge_query_similar(
+    target_description: str,
+    modality: str | None = None,
+    top_k: int = 5,
+) -> str:
+    """Find similar past campaigns using keyword search with MMR diversity re-ranking.
 
+    Args:
+        target_description: Description of the target to search for.
+        modality: Optional modality filter (e.g. antibody, nanobody).
+        top_k: Number of results to return (default 5).
+
+    Returns:
+        JSON with results list and query string.
+    """
     if not target_description:
         return _error("target_description is required")
 
-    collection = _get_collection("campaigns")
+    campaigns = _load_json(CAMPAIGNS_FILE)
 
-    # Fetch more candidates than needed for MMR re-ranking.
-    fetch_k = min(top_k * 3, 20)
+    if not campaigns:
+        return json.dumps({
+            "results": [],
+            "query": target_description,
+            "message": "No prior campaigns recorded. Run campaigns and store outcomes to build knowledge.",
+        })
 
-    where_filter = None
-    if modality:
-        where_filter = {"modality": modality}
+    query_tokens = _tokenize(target_description)
 
-    try:
-        results = collection.query(
-            query_texts=[target_description],
-            n_results=fetch_k,
-            where=where_filter,
-            include=["documents", "metadatas", "distances", "embeddings"],
-        )
-    except Exception:
-        # If collection is empty or filter yields nothing, return empty.
-        return json.dumps({"results": [], "query": target_description})
+    scored: list[tuple[float, dict]] = []
+    for campaign in campaigns:
+        # Optional modality filter.
+        if modality and campaign.get("modality", "").lower() != modality.lower():
+            continue
+        doc_text = _campaign_text(campaign)
+        doc_tokens = _tokenize(doc_text)
+        score = _keyword_score(query_tokens, doc_tokens)
+        scored.append((score, campaign))
 
-    if not results["ids"] or not results["ids"][0]:
-        return json.dumps({"results": [], "query": target_description})
+    # Sort by score descending.
+    scored.sort(key=lambda x: x[0], reverse=True)
 
-    ids = results["ids"][0]
-    documents = results["documents"][0] if results["documents"] else [""] * len(ids)
-    metadatas = results["metadatas"][0] if results["metadatas"] else [{}] * len(ids)
-    distances = results["distances"][0] if results["distances"] else [0.0] * len(ids)
+    # Take top_k results.
+    results = []
+    for score, campaign in scored[:top_k]:
+        # Increment access count.
+        campaign["access_count"] = campaign.get("access_count", 0) + 1
 
-    # MMR re-ranking if we have embeddings.
-    doc_embeddings = results.get("embeddings", [[]])[0] if results.get("embeddings") else None
+        results.append({
+            "id": campaign.get("id", ""),
+            "similarity": round(score, 4),
+            "document": _campaign_text(campaign),
+            "metadata": {
+                "target": campaign.get("target", ""),
+                "modality": campaign.get("modality", ""),
+                "parameters": campaign.get("parameters", {}),
+                "outcomes": campaign.get("outcomes", {}),
+                "notes": campaign.get("notes", ""),
+                "designs_count": len(campaign.get("designs", [])),
+                "stored_at": campaign.get("stored_at", 0),
+                "access_count": campaign.get("access_count", 0),
+            },
+        })
 
-    if doc_embeddings and len(doc_embeddings) == len(ids):
-        # Get query embedding.
-        ef = _get_embedding_function()
-        query_emb = ef([target_description])[0]
+    # Persist updated access counts.
+    if results:
+        _save_json(CAMPAIGNS_FILE, campaigns)
 
-        reranked_indices = _mmr_rerank(
-            query_embedding=query_emb,
-            doc_embeddings=doc_embeddings,
-            doc_indices=list(range(len(ids))),
-            top_k=top_k,
-            lambda_param=0.7,
-        )
-    else:
-        reranked_indices = list(range(min(top_k, len(ids))))
-
-    # Increment access counts for returned results.
-    output = []
-    for idx in reranked_indices:
-        # Convert distance to similarity (ChromaDB L2 distance).
-        similarity = 1.0 / (1.0 + distances[idx])
-        meta = _unflatten_metadata(metadatas[idx]) if metadatas[idx] else {}
-
-        # Bump access count.
-        new_count = meta.get("access_count", 0)
-        if isinstance(new_count, (int, float)):
-            new_count = int(new_count) + 1
-        else:
-            new_count = 1
-        try:
-            updated_meta = dict(metadatas[idx]) if metadatas[idx] else {}
-            updated_meta["access_count"] = new_count
-            collection.update(ids=[ids[idx]], metadatas=[updated_meta])
-        except Exception:
-            pass
-
-        output.append(
-            {
-                "id": ids[idx],
-                "similarity": round(similarity, 4),
-                "document": documents[idx],
-                "metadata": meta,
-            }
-        )
-
-    return json.dumps({"results": output, "query": target_description}, indent=2)
+    return json.dumps({"results": results, "query": target_description}, indent=2)
 
 
 # ---------------------------------------------------------------------------
@@ -482,43 +308,49 @@ async def _query_similar(args: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def _scaffold_rankings(args: dict) -> str:
-    target_class = args.get("target_class", "")
+@mcp.tool()
+async def knowledge_scaffold_rankings(target_class: str) -> str:
+    """Get best-performing scaffolds for a target class.
+
+    Ranked by average hit rate and average ipSAE across past campaigns.
+
+    Args:
+        target_class: Target class (e.g. "immune checkpoint", "cytokine").
+
+    Returns:
+        JSON with rankings list and target_class.
+    """
     if not target_class:
         return _error("target_class is required")
 
-    collection = _get_collection("campaigns")
+    campaigns = _load_json(CAMPAIGNS_FILE)
 
-    # Semantic search for campaigns matching this target class.
-    try:
-        results = collection.query(
-            query_texts=[target_class],
-            n_results=50,
-            include=["metadatas"],
-        )
-    except Exception:
-        return json.dumps({"rankings": [], "target_class": target_class})
+    if not campaigns:
+        return json.dumps({
+            "rankings": [],
+            "target_class": target_class,
+            "message": "No scaffold data available yet.",
+        })
 
-    if not results["ids"] or not results["ids"][0]:
-        return json.dumps({"rankings": [], "target_class": target_class})
+    target_lower = target_class.lower()
 
-    metadatas = results["metadatas"][0] if results["metadatas"] else []
-
-    # Aggregate scaffold performance.
-    scaffold_stats: dict[str, dict] = defaultdict(
+    # Filter campaigns whose target field contains the target_class substring.
+    scaffold_stats: dict[str, dict[str, Any]] = defaultdict(
         lambda: {"hit_rates": [], "ipsae_scores": [], "campaign_count": 0}
     )
 
-    for meta in metadatas:
-        meta = _unflatten_metadata(meta) if meta else {}
-        params = meta.get("parameters", {})
+    for campaign in campaigns:
+        if target_lower not in campaign.get("target", "").lower():
+            continue
+
+        params = campaign.get("parameters", {})
         if isinstance(params, str):
             try:
                 params = json.loads(params)
             except (json.JSONDecodeError, ValueError):
                 params = {}
 
-        outcomes = meta.get("outcomes", {})
+        outcomes = campaign.get("outcomes", {})
         if isinstance(outcomes, str):
             try:
                 outcomes = json.loads(outcomes)
@@ -570,12 +402,24 @@ async def _scaffold_rankings(args: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def _store_failure(args: dict) -> str:
-    campaign_id = args.get("campaign_id", "")
-    description = args.get("description", "")
-    root_cause = args.get("root_cause", "")
-    target = args.get("target", "")
+@mcp.tool()
+async def knowledge_store_failure(
+    campaign_id: str,
+    description: str,
+    root_cause: str,
+    target: str,
+) -> str:
+    """Store a campaign failure for future avoidance queries.
 
+    Args:
+        campaign_id: Campaign identifier.
+        description: What went wrong.
+        root_cause: Root cause analysis.
+        target: Target the campaign was for.
+
+    Returns:
+        JSON with status, id, document summary, and metadata.
+    """
     if not campaign_id:
         return _error("campaign_id is required")
     if not description:
@@ -585,29 +429,26 @@ async def _store_failure(args: dict) -> str:
     if not target:
         return _error("target is required")
 
-    document = (
-        f"Failure in campaign {campaign_id} targeting {target}. "
-        f"Description: {description}. Root cause: {root_cause}."
-    )
     doc_id = f"failure_{uuid.uuid4().hex[:12]}"
     now = time.time()
 
-    metadata = _flatten_metadata(
-        {
-            "campaign_id": campaign_id,
-            "description": description,
-            "root_cause": root_cause,
-            "target": target,
-            "stored_at": now,
-            "access_count": 0,
-        }
-    )
+    record = {
+        "id": doc_id,
+        "campaign_id": campaign_id,
+        "description": description,
+        "root_cause": root_cause,
+        "target": target,
+        "stored_at": now,
+        "access_count": 0,
+    }
 
-    collection = _get_collection("failures")
-    collection.add(
-        ids=[doc_id],
-        documents=[document],
-        metadatas=[metadata],
+    failures = _load_json(FAILURES_FILE)
+    failures.append(record)
+    _save_json(FAILURES_FILE, failures)
+
+    document = (
+        f"Failure in campaign {campaign_id} targeting {target}. "
+        f"Description: {description}. Root cause: {root_cause}."
     )
 
     return json.dumps(
@@ -615,7 +456,14 @@ async def _store_failure(args: dict) -> str:
             "status": "stored",
             "id": doc_id,
             "document": document,
-            "metadata": _unflatten_metadata(metadata),
+            "metadata": {
+                "campaign_id": campaign_id,
+                "description": description,
+                "root_cause": root_cause,
+                "target": target,
+                "stored_at": now,
+                "access_count": 0,
+            },
         },
         indent=2,
     )
@@ -626,16 +474,32 @@ async def _store_failure(args: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def _get_recommendations(args: dict) -> str:
-    target = args.get("target", "")
-    modality = args.get("modality", "")
+@mcp.tool()
+async def knowledge_get_recommendations(
+    target: str,
+    modality: str,
+) -> str:
+    """Get pre-campaign parameter recommendations.
 
+    Queries similar campaigns, scaffold rankings, and past failures to suggest
+    parameters for a new campaign.
+
+    Args:
+        target: Target name or description.
+        modality: Design modality (e.g. antibody, nanobody, binder).
+
+    Returns:
+        JSON with similar_campaigns, recommended_scaffolds, warnings, and
+        suggested_parameters.
+    """
     if not target:
         return _error("target is required")
     if not modality:
         return _error("modality is required")
 
-    query_text = f"{target} {modality}"
+    campaigns = _load_json(CAMPAIGNS_FILE)
+    failures = _load_json(FAILURES_FILE)
+
     recommendations: dict = {
         "target": target,
         "modality": modality,
@@ -644,35 +508,36 @@ async def _get_recommendations(args: dict) -> str:
         "warnings": [],
     }
 
-    # 1. Query similar campaigns.
-    campaigns_coll = _get_collection("campaigns")
-    try:
-        campaign_results = campaigns_coll.query(
-            query_texts=[query_text],
-            n_results=5,
-            include=["documents", "metadatas", "distances"],
-        )
-        if campaign_results["ids"] and campaign_results["ids"][0]:
-            for i, doc_id in enumerate(campaign_results["ids"][0]):
-                meta = campaign_results["metadatas"][0][i] if campaign_results["metadatas"] else {}
-                meta = _unflatten_metadata(meta) if meta else {}
-                distance = campaign_results["distances"][0][i] if campaign_results["distances"] else 0
-                similarity = 1.0 / (1.0 + distance)
-                recommendations["similar_campaigns"].append(
-                    {
-                        "id": doc_id,
-                        "similarity": round(similarity, 4),
-                        "target": meta.get("target", ""),
-                        "modality": meta.get("modality", ""),
-                        "outcomes": meta.get("outcomes", {}),
-                        "parameters": meta.get("parameters", {}),
-                    }
-                )
-    except Exception:
-        pass
+    if not campaigns and not failures:
+        recommendations["message"] = "No prior campaign data. Using default parameters."
+        recommendations["suggested_parameters"] = {}
+        return json.dumps(recommendations, indent=2)
+
+    # 1. Query similar campaigns using keyword matching.
+    query_text = f"{target} {modality}"
+    query_tokens = _tokenize(query_text)
+
+    scored_campaigns: list[tuple[float, dict]] = []
+    for campaign in campaigns:
+        doc_text = _campaign_text(campaign)
+        doc_tokens = _tokenize(doc_text)
+        score = _keyword_score(query_tokens, doc_tokens)
+        scored_campaigns.append((score, campaign))
+
+    scored_campaigns.sort(key=lambda x: x[0], reverse=True)
+
+    for score, campaign in scored_campaigns[:5]:
+        recommendations["similar_campaigns"].append({
+            "id": campaign.get("id", ""),
+            "similarity": round(score, 4),
+            "target": campaign.get("target", ""),
+            "modality": campaign.get("modality", ""),
+            "outcomes": campaign.get("outcomes", {}),
+            "parameters": campaign.get("parameters", {}),
+        })
 
     # 2. Scaffold rankings from similar campaigns.
-    scaffold_stats: dict[str, dict] = defaultdict(
+    scaffold_stats: dict[str, dict[str, Any]] = defaultdict(
         lambda: {"hit_rates": [], "ipsae_scores": [], "count": 0}
     )
     for camp in recommendations["similar_campaigns"]:
@@ -721,32 +586,24 @@ async def _get_recommendations(args: dict) -> str:
     )
 
     # 3. Query failures for warnings.
-    failures_coll = _get_collection("failures")
-    try:
-        failure_results = failures_coll.query(
-            query_texts=[query_text],
-            n_results=5,
-            include=["documents", "metadatas", "distances"],
-        )
-        if failure_results["ids"] and failure_results["ids"][0]:
-            for i, doc_id in enumerate(failure_results["ids"][0]):
-                meta = failure_results["metadatas"][0][i] if failure_results["metadatas"] else {}
-                meta = _unflatten_metadata(meta) if meta else {}
-                distance = failure_results["distances"][0][i] if failure_results["distances"] else 0
-                similarity = 1.0 / (1.0 + distance)
-                # Only include reasonably relevant failures.
-                if similarity > 0.3:
-                    recommendations["warnings"].append(
-                        {
-                            "id": doc_id,
-                            "relevance": round(similarity, 4),
-                            "campaign_id": meta.get("campaign_id", ""),
-                            "description": meta.get("description", ""),
-                            "root_cause": meta.get("root_cause", ""),
-                        }
-                    )
-    except Exception:
-        pass
+    for failure in failures:
+        fail_text = f"{failure.get('target', '')} {failure.get('description', '')} {failure.get('root_cause', '')}"
+        fail_tokens = _tokenize(fail_text)
+        score = _keyword_score(query_tokens, fail_tokens)
+        if score > 0.2:
+            recommendations["warnings"].append({
+                "id": failure.get("id", ""),
+                "relevance": round(score, 4),
+                "campaign_id": failure.get("campaign_id", ""),
+                "description": failure.get("description", ""),
+                "root_cause": failure.get("root_cause", ""),
+            })
+
+    # Sort warnings by relevance.
+    recommendations["warnings"].sort(
+        key=lambda x: x.get("relevance", 0), reverse=True
+    )
+    recommendations["warnings"] = recommendations["warnings"][:5]
 
     # 4. Suggest parameters from the best similar campaign.
     suggested_params: dict = {}
@@ -770,120 +627,85 @@ async def _get_recommendations(args: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def _consolidate(args: dict) -> str:
-    import math
+@mcp.tool()
+async def knowledge_consolidate() -> str:
+    """Run a maintenance cycle on the knowledge base.
 
+    Deduplicates near-identical entries (same target+modality+scaffold) and
+    prunes stale entries (>90 days old with <3 accesses).
+
+    Returns:
+        JSON with deduped, pruned, and total_remaining counts.
+    """
     stats: dict = {"deduped": 0, "pruned": 0, "total_remaining": 0}
     now = time.time()
     ninety_days = 90 * 24 * 60 * 60
 
-    ef = _get_embedding_function()
+    # Process campaigns.
+    campaigns = _load_json(CAMPAIGNS_FILE)
 
-    for coll_name in COLLECTION_NAMES:
-        collection = _get_collection(coll_name)
+    if campaigns:
+        # Deduplication: find campaigns with identical target+modality+scaffold.
+        seen: dict[str, int] = {}  # key -> index of best
+        to_remove: set[int] = set()
 
-        try:
-            all_data = collection.get(include=["embeddings", "metadatas", "documents"])
-        except Exception:
-            continue
+        for i, campaign in enumerate(campaigns):
+            params = campaign.get("parameters", {})
+            scaffold = params.get("scaffold", "") if isinstance(params, dict) else ""
+            key = f"{campaign.get('target', '').lower()}|{campaign.get('modality', '').lower()}|{scaffold.lower()}"
 
-        if not all_data["ids"]:
-            continue
+            if key in seen:
+                j = seen[key]
+                existing = campaigns[j]
+                # Keep the one with higher access_count or more recent stored_at.
+                access_i = campaign.get("access_count", 0)
+                access_j = existing.get("access_count", 0)
+                stored_i = campaign.get("stored_at", 0)
+                stored_j = existing.get("stored_at", 0)
 
-        ids = all_data["ids"]
-        embeddings = all_data["embeddings"] if all_data.get("embeddings") else []
-        metadatas = all_data["metadatas"] if all_data.get("metadatas") else [{}] * len(ids)
+                if access_i > access_j or (access_i == access_j and stored_i > stored_j):
+                    to_remove.add(j)
+                    seen[key] = i
+                else:
+                    to_remove.add(i)
+            else:
+                seen[key] = i
 
-        # --- Deduplication: find pairs with >0.95 cosine similarity ---
-        to_remove: set[str] = set()
+        stats["deduped"] += len(to_remove)
+        if to_remove:
+            campaigns = [c for i, c in enumerate(campaigns) if i not in to_remove]
 
-        if embeddings and len(embeddings) == len(ids):
+        # Pruning: remove entries older than 90 days with <3 accesses.
+        before_count = len(campaigns)
+        campaigns = [
+            c for c in campaigns
+            if not (
+                (now - c.get("stored_at", 0)) > ninety_days
+                and c.get("access_count", 0) < 3
+            )
+        ]
+        stats["pruned"] += before_count - len(campaigns)
+        stats["total_remaining"] += len(campaigns)
 
-            def _cosine(a: list[float], b: list[float]) -> float:
-                dot = sum(x * y for x, y in zip(a, b))
-                na = math.sqrt(sum(x * x for x in a))
-                nb = math.sqrt(sum(x * x for x in b))
-                if na == 0 or nb == 0:
-                    return 0.0
-                return dot / (na * nb)
+        _save_json(CAMPAIGNS_FILE, campaigns)
 
-            for i in range(len(ids)):
-                if ids[i] in to_remove:
-                    continue
-                for j in range(i + 1, len(ids)):
-                    if ids[j] in to_remove:
-                        continue
-                    sim = _cosine(embeddings[i], embeddings[j])
-                    if sim > 0.95:
-                        # Keep the one with higher access_count or more recent timestamp.
-                        meta_i = metadatas[i] if metadatas[i] else {}
-                        meta_j = metadatas[j] if metadatas[j] else {}
-                        access_i = meta_i.get("access_count", 0)
-                        access_j = meta_j.get("access_count", 0)
-                        if isinstance(access_i, str):
-                            try:
-                                access_i = int(access_i)
-                            except ValueError:
-                                access_i = 0
-                        if isinstance(access_j, str):
-                            try:
-                                access_j = int(access_j)
-                            except ValueError:
-                                access_j = 0
+    # Process failures.
+    failures = _load_json(FAILURES_FILE)
 
-                        stored_i = meta_i.get("stored_at", 0)
-                        stored_j = meta_j.get("stored_at", 0)
+    if failures:
+        # Prune old failures with low access.
+        before_count = len(failures)
+        failures = [
+            f for f in failures
+            if not (
+                (now - f.get("stored_at", 0)) > ninety_days
+                and f.get("access_count", 0) < 3
+            )
+        ]
+        stats["pruned"] += before_count - len(failures)
+        stats["total_remaining"] += len(failures)
 
-                        # Remove the lower-quality one.
-                        if access_i > access_j or (access_i == access_j and stored_i >= stored_j):
-                            to_remove.add(ids[j])
-                        else:
-                            to_remove.add(ids[i])
-
-            if to_remove:
-                stats["deduped"] += len(to_remove)
-                collection.delete(ids=list(to_remove))
-
-        # --- Pruning: remove entries older than 90 days with <3 accesses ---
-        # Re-fetch after dedup.
-        try:
-            remaining = collection.get(include=["metadatas"])
-        except Exception:
-            continue
-
-        if not remaining["ids"]:
-            continue
-
-        prune_ids: list[str] = []
-        for idx, doc_id in enumerate(remaining["ids"]):
-            meta = remaining["metadatas"][idx] if remaining["metadatas"] and remaining["metadatas"][idx] else {}
-            stored_at = meta.get("stored_at", 0)
-            access_count = meta.get("access_count", 0)
-
-            if isinstance(stored_at, str):
-                try:
-                    stored_at = float(stored_at)
-                except ValueError:
-                    stored_at = 0
-            if isinstance(access_count, str):
-                try:
-                    access_count = int(access_count)
-                except ValueError:
-                    access_count = 0
-
-            age = now - stored_at
-            if age > ninety_days and access_count < 3:
-                prune_ids.append(doc_id)
-
-        if prune_ids:
-            stats["pruned"] += len(prune_ids)
-            collection.delete(ids=prune_ids)
-
-        # Count remaining.
-        try:
-            stats["total_remaining"] += collection.count()
-        except Exception:
-            pass
+        _save_json(FAILURES_FILE, failures)
 
     return json.dumps(
         {"status": "consolidation_complete", **stats},
@@ -895,17 +717,5 @@ async def _consolidate(args: dict) -> str:
 # Main
 # ---------------------------------------------------------------------------
 
-
-async def main():
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream,
-            write_stream,
-            server.create_initialization_options(),
-        )
-
-
 if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(main())
+    mcp.run()

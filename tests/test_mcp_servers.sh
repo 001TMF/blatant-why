@@ -4,7 +4,8 @@ PASS=0
 FAIL=0
 SKIP=0
 
-SERVERS_DIR="/home/tristanfarmer/Documents/protein_design_agent/mcp_servers"
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SERVERS_DIR="$SCRIPT_DIR/mcp_servers"
 
 for dir in "$SERVERS_DIR"/*/; do
   name=$(basename "$dir")

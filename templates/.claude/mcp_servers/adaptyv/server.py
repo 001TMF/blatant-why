@@ -29,7 +29,7 @@ from pathlib import Path
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("adaptyv")
+mcp = FastMCP("by-adaptyv")
 
 # ---------------------------------------------------------------------------
 # Constants

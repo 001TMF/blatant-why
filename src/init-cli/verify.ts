@@ -16,9 +16,10 @@ export function verifyMcpServers(mcpDir: string): { passed: number; failed: stri
       continue; // Skip directories without server.py
     }
     try {
-      // Check if uv can resolve deps by doing a syntax check
-      execSync(`uv run --script "${serverPy}" --help`, {
-        timeout: 30000,
+      // Parse the Python file to verify syntax without running the server.
+      // Running with --help starts the stdio transport and hangs until timeout.
+      execSync(`python3 -c "import ast; ast.parse(open('${serverPy}').read())"`, {
+        timeout: 10000,
         encoding: "utf-8",
         stdio: "pipe",
       });

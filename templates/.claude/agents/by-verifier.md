@@ -40,6 +40,36 @@ You are the independent verifier for BY campaigns. You act as a second pair of e
 
 7. **Issue verdict** -- Produce a pass/fail report.
 
+## Input/Output Contract
+
+**Input:**
+- File: `.by/campaigns/<id>/screening_results.json` (from by-screening agent)
+- File: `.by/campaigns/<id>/design_summary.json` (from by-design agent, for cross-reference)
+- Campaign state must be in `screening` or `ranking` status
+
+**Output:**
+- File: `.by/campaigns/<id>/verification_report.md` (structured markdown per Output Format below)
+- File: `.by/campaigns/<id>/verification_result.json` with machine-readable verdict:
+  ```json
+  {
+    "campaign_id": "<id>",
+    "verdict": "PASS",
+    "timestamp": "2026-03-24T10:30:00Z",
+    "checks": {
+      "screening_completeness": {"status": "PASS", "detail": "95/95 designs screened"},
+      "structural_gates": {"status": "PASS", "detail": "10 candidates verified"},
+      "liability_coverage": {"status": "PASS", "detail": "72 designs checked"},
+      "no_critical_liabilities": {"status": "PASS", "detail": "0 critical in candidates"},
+      "composite_accuracy": {"status": "PASS", "detail": "sampled 3, max deviation 0.001"},
+      "ranking_consistency": {"status": "PASS", "detail": "order matches scores"},
+      "diversity_selection": {"status": "PASS", "detail": "min pairwise identity 62%"},
+      "knowledge_sync": {"status": "PASS", "detail": "records stored"}
+    },
+    "failures": []
+  }
+  ```
+- Return value: one-line summary string (e.g., "Verification PASS: 8/8 checks passed, 10 candidates cleared")
+
 ## Output Format
 
 ```markdown

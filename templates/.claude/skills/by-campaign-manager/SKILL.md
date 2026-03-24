@@ -6,6 +6,33 @@ estimate cost and time, monitor progress, and evaluate campaign health.
 
 ---
 
+## 0. Pre-Campaign Discussion
+
+Before any campaign planning begins, run `/by:plan-campaign` to capture user preferences. This command produces `campaign_context.json` in the active campaign directory.
+
+### What campaign_context.json Controls
+
+| Field | Overrides | Default if Missing |
+|-------|-----------|-------------------|
+| `modality` | Tool selection (VHH -> nanobody-anything, scFv -> antibody-anything, de_novo -> protein-anything) | VHH |
+| `epitope.residues` | Hotspot selection -- research agent focuses on specified residues | Structure-derived from interface analysis |
+| `compute.tier` | Campaign sizing (preview: 500, standard: 5,000, production: 20,000) | Standard (5,000/scaffold) |
+| `scaffolds` | Template selection for design agent | Modality defaults (VHH: caplacizumab + ozoralizumab; scFv: adalimumab + tezepelumab) |
+| `success_criteria` | Composite score weighting in screening (hit_rate, diversity, confidence, or balanced) | Balanced |
+
+### When campaign_context.json Exists
+
+All downstream agents read it:
+- **by-research** focuses on user-specified epitope regions and target features relevant to the chosen modality.
+- **by-design** uses the specified modality, scaffolds, and compute tier without guessing.
+- **by-screening** applies success criteria to weight composite scoring (e.g., diversity mode promotes cluster variety over raw scores).
+
+### When campaign_context.json Does Not Exist
+
+Fall back to auto-detection: modality from keywords, scaffolds from modality defaults, compute tier standard, epitope from structure analysis.
+
+---
+
 ## 1. Campaign Planning
 
 ### 1.1 Assess Target Difficulty
@@ -115,7 +142,7 @@ For proteus-ab, vary: protocol, budget, diversity_alpha, MSA mode, prefilter tog
 
 1. Merge all `summary.csv` files into `aggregated_results.csv`.
 2. De-duplicate by sequence identity (>95% identity = same design).
-3. Re-rank: ipSAE_min (0.50) + ipTM (0.30) + liability_penalty (0.20).
+3. Re-rank: composite_score = 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count).
 4. Select top N diverse candidates via sequence clustering (Hamming distance).
 
 ---
@@ -233,6 +260,7 @@ Do NOT abort if:
 
 ## Quick Reference: Campaign Launch Checklist
 
+0. Run `/by:plan-campaign` to capture preferences (`campaign_context.json`).
 1. Classify target difficulty (well-studied / moderate / novel).
 2. Select tool (proteus-prot or proteus-ab) and protocol.
 3. Choose campaign tier (preview first, then escalate).
@@ -245,3 +273,89 @@ Do NOT abort if:
 10. On completion, run full screening battery and aggregate results.
 11. Assess campaign health against baselines.
 12. Present ranked candidates or recommend follow-up actions.
+
+---
+
+## 7. Checkpoint and Resume Integration
+
+### 7.1 Checkpoint File Contract
+
+Every campaign state transition writes a checkpoint file to
+`campaigns/{target_name}/campaign_{date}_{NNN}/checkpoints/`. The checkpoint file
+name encodes the phase order for resume logic.
+
+| File | Phase | Written By | Contains |
+|------|-------|-----------|----------|
+| `00_draft.json` | Draft | campaign agent | campaign_id, target, parameters |
+| `01_configured.json` | Configured | campaign agent | approved plan, user confirmation |
+| `02_designing.json` | Designing | design agent | job_ids, batch_id, provider, tool |
+| `03_design_complete.json` | Design done | design agent | designs_produced, results_path, provenance |
+| `04_screening.json` | Screening | screening agent | designs_to_screen, screening start |
+| `05_screening_complete.json` | Screened | screening agent | pass/fail counts, top scores, hit_rate |
+| `06_ranking.json` | Ranked | screening agent | ranked_results_path, diversity_clusters |
+| `07_complete.json` | Complete | campaign agent | final summary, knowledge_stored flag |
+
+### 7.2 Resume Protocol
+
+The `/by:resume` command follows this algorithm:
+
+1. Find campaign directory (active or most recent)
+2. List checkpoint files, sort by numeric prefix
+3. Read latest checkpoint to determine resume point
+4. Check for partial results or failed jobs
+5. Present resume plan to user for confirmation
+6. Dispatch the agent specified in `agent_to_dispatch`
+7. Pass checkpoint data as context so agent skips completed work
+
+### 7.3 Saga Compensation Rules
+
+When a phase fails partially, apply compensation:
+
+| Phase | Partial Failure | Compensation |
+|-------|----------------|--------------|
+| Design | Some Tamarind jobs failed | Proceed with successful; offer retry for failed |
+| Design | Tamarind timeout | Resubmit timed-out jobs |
+| Screening | Some designs fail to score | Skip failed, screen rest, report gap |
+| Screening | Zero designs pass | Auto-diagnose, present recovery options |
+| Ranking | Too few candidates | Warn user, present with caveats |
+
+### 7.4 Knowledge Integration at Campaign Boundaries
+
+**Pre-campaign (during planning):**
+- Query `knowledge_query_similar` for same/similar targets
+- Query `knowledge_scaffold_rankings` for scaffold performance
+- Query `knowledge_get_recommendations` for parameter suggestions
+- Cite all prior evidence in the campaign plan
+
+**Post-campaign (after ranking):**
+- Store outcomes via `knowledge_store_campaign`
+- Store failures via `knowledge_store_failure` (if hit rate < 15%)
+- Record design provenance (design_id -> job_id -> scaffold -> epitope -> tool)
+- Write round summary for cross-campaign comparison
+
+### 7.5 Progress Monitoring During Campaigns
+
+Track and report progress at each phase:
+
+- **Design phase**: Poll `cloud_get_batch_status` every 30s. Report designs
+  returned and best ipTM so far. Screen individual designs as they arrive
+  (scatter-gather pattern).
+- **Screening phase**: Report after every 5 designs scored. Show running pass
+  rate and best composite score.
+- **Cost tracking**: Maintain running cost counter if Tamarind tier info
+  available.
+- **Turn awareness**: Track turns used vs 25-turn budget. Checkpoint if
+  approaching limit.
+
+### 7.6 Campaign Health + Resume Decision Matrix
+
+When resuming, assess campaign health before continuing:
+
+| Checkpoint State | Health Check | Action |
+|-----------------|-------------|--------|
+| `02_designing` (no results) | Jobs may have expired | Check status; resubmit if expired |
+| `02_designing` (partial) | Some results exist | Continue monitoring; screen partial |
+| `03_design_complete` | Results on disk | Verify file integrity; start screening |
+| `04_screening` (partial) | Some scores exist | Screen only remaining designs |
+| `05_screening_complete` | Scores computed | Proceed to ranking |
+| Checkpoint > 24h old | May be stale | Warn user; offer restart option |

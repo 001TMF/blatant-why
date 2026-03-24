@@ -16,7 +16,10 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 import re
+import time
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -117,16 +120,59 @@ async def _search_pdb_and_get_tsv(
     return await _fetch_text(client, summary_url)
 
 
-async def _fetch_all_summary_tsv(client: httpx.AsyncClient) -> str:
-    """Fetch the full SAbDab database summary as TSV (~8MB).
+# ---------------------------------------------------------------------------
+# SAbDab summary caching
+# ---------------------------------------------------------------------------
 
-    This downloads the entire database summary and is used when client-side
-    filtering is needed (e.g. searching by antigen name, species, etc.).
+_SABDAB_CACHE_TTL = int(os.environ.get("SABDAB_CACHE_TTL", str(24 * 3600)))  # 24h default
+_SABDAB_CACHE_DIR = Path(os.environ.get(
+    "SABDAB_CACHE_DIR",
+    os.path.join(os.environ.get("TMPDIR", "/tmp"), "by_sabdab_cache"),
+))
+_SABDAB_CACHE_FILE = _SABDAB_CACHE_DIR / "sabdab_summary_all.tsv"
+
+
+def _cache_is_fresh() -> bool:
+    """Return True if the cached SAbDab summary exists and is within TTL."""
+    try:
+        if _SABDAB_CACHE_FILE.exists():
+            age = time.time() - _SABDAB_CACHE_FILE.stat().st_mtime
+            return age < _SABDAB_CACHE_TTL
+    except OSError:
+        pass
+    return False
+
+
+async def _fetch_all_summary_tsv(client: httpx.AsyncClient) -> str:
+    """Fetch the full SAbDab database summary as TSV (~8MB) with file caching.
+
+    Caches the downloaded summary in a temp directory and reuses it for
+    subsequent queries within the TTL (default 24 hours). This avoids
+    re-downloading ~8MB on every query.
     """
+    # Return cached version if fresh
+    if _cache_is_fresh():
+        try:
+            return _SABDAB_CACHE_FILE.read_text()
+        except OSError:
+            pass  # Fall through to download
+
+    # Download fresh copy
     url = f"{BASE_URL}/summary/all/"
     resp = await client.get(url, follow_redirects=True, timeout=60.0)
     resp.raise_for_status()
-    return resp.text
+    tsv_text = resp.text
+
+    # Write to cache (best-effort, non-blocking)
+    try:
+        _SABDAB_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        tmp_path = _SABDAB_CACHE_FILE.with_suffix(".tmp")
+        tmp_path.write_text(tsv_text)
+        tmp_path.rename(_SABDAB_CACHE_FILE)
+    except OSError:
+        pass  # Caching failure is non-fatal
+
+    return tsv_text
 
 
 def _extract_cdrs_from_html(html: str) -> dict[str, dict[str, str | int]]:

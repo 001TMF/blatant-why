@@ -1,7 +1,7 @@
 ---
 name: by-environment
 description: Discover available tools, compute providers, GPU access, API keys, and configuration. Produces structured environment.json for use by all other agents.
-tools: Read, Bash, Grep, Glob, Write, mcp__by-cloud__cloud_list_providers, mcp__by-cloud__cloud_check_status, mcp__by-cloud__cloud_estimate_cost, mcp__by-campaign__*, mcp__by-knowledge__*
+tools: Read, Bash, Grep, Glob, Write, mcp__by-cloud__cloud_list_providers, mcp__by-cloud__cloud_get_status, mcp__by-campaign__*, mcp__by-knowledge__*
 disallowedTools: mcp__by-adaptyv__adaptyv_confirm_submission
 ---
 

@@ -131,20 +131,75 @@ def _tam_check() -> str | None:
     return None
 
 
+def _get_alternative_providers() -> list[dict]:
+    """Return list of alternative providers with basic info for error responses."""
+    alternatives: list[dict] = []
+    # Check SSH hosts from config
+    for host_cfg in _ssh_hosts():
+        name = host_cfg.get("name", host_cfg["host"])
+        alternatives.append({
+            "name": name,
+            "type": "ssh",
+            "how": f"cloud_submit_job(provider='{name}', ...)",
+        })
+    # Check local GPU
+    if os.environ.get("CUDA_VISIBLE_DEVICES"):
+        alternatives.append({
+            "name": "local",
+            "type": "local",
+            "how": "cloud_submit_job(provider='local', ...)",
+        })
+    return alternatives
+
+
+def _structured_error(
+    msg: str,
+    error_code: str,
+    retry_eligible: bool = False,
+    **extra: Any,
+) -> str:
+    """Return a structured JSON error payload with alternatives and metadata."""
+    payload: dict[str, Any] = {
+        "error": msg,
+        "error_code": error_code,
+        "retry_eligible": retry_eligible,
+        "alternatives": _get_alternative_providers(),
+    }
+    payload.update(extra)
+    return json.dumps(payload, indent=2)
+
+
 def _tam_handle_http(resp: httpx.Response) -> str | None:
-    """Return error string for auth/rate-limit/server issues, or None."""
+    """Return structured error JSON for auth/rate-limit/server issues, or None."""
     if resp.status_code == 401:
-        return _error(
-            "Invalid TAMARIND_API_KEY. Get one at https://app.tamarind.bio"
+        return _structured_error(
+            "Invalid TAMARIND_API_KEY. Get one at https://app.tamarind.bio",
+            error_code="auth_error",
+            retry_eligible=False,
         )
     if resp.status_code == 429:
-        return _error(
-            "Rate limited. Free tier allows 10 jobs/month. "
-            "Upgrade at tamarind.bio/pricing"
+        return _structured_error(
+            "Rate limited by Tamarind. Check your tier quota with "
+            "cloud_list_providers(). Upgrade at tamarind.bio/pricing",
+            error_code="rate_limited",
+            retry_eligible=True,
+            suggestion="Wait a few minutes or switch to an alternative provider.",
+        )
+    if resp.status_code >= 500:
+        body = resp.text[:500]
+        return _structured_error(
+            f"Tamarind server error ({resp.status_code}): {body}",
+            error_code="server_error",
+            retry_eligible=True,
+            suggestion="Tamarind may be temporarily down. Try again in a few minutes.",
         )
     if resp.status_code >= 400:
         body = resp.text[:500]
-        return _error(f"Tamarind API error ({resp.status_code}): {body}")
+        return _structured_error(
+            f"Tamarind API error ({resp.status_code}): {body}",
+            error_code="api_error",
+            retry_eligible=False,
+        )
     return None
 
 
@@ -228,16 +283,21 @@ _batches: dict[str, dict] = {}
 
 @mcp.tool()
 async def cloud_list_providers() -> str:
-    """List available compute providers with status and capability details.
+    """List available compute providers with status, quota, and capability details.
 
     Reads ~/.by/environment.json for Tamarind config, pings each SSH
     host from ~/.by/config.json, and checks CUDA_VISIBLE_DEVICES for
     local GPU availability.
 
+    Returns quota/credit information for cloud providers and capabilities
+    (which tools each provider supports) for all providers.
+
     Returns:
-        JSON list of {name, type, status, details} objects.
+        JSON list of {name, type, status, details, capabilities, recommended} objects.
     """
     providers: list[dict] = []
+    cfg = _load_config()
+    default_provider = cfg.get("default_provider")
 
     # --- Tamarind ---
     tam_entry: dict[str, Any] = {
@@ -245,6 +305,8 @@ async def cloud_list_providers() -> str:
         "type": "cloud_api",
         "status": "unavailable",
         "details": {},
+        "capabilities": ["boltzgen", "protenix", "pxdesign", "tap"],
+        "recommended": False,
     }
     key = _tam_api_key()
     if key:
@@ -267,17 +329,34 @@ async def cloud_list_providers() -> str:
                         ),
                         "api_url": _tam_base_url(),
                     }
+                    # Extract quota/credit info from account response
+                    # Adaptively inspect fields -- Tamarind may use different names
+                    quota_used = acct.get("jobs_used", acct.get("usage", acct.get("quota_used")))
+                    quota_limit = acct.get("jobs_limit", acct.get("limit", acct.get("quota_limit")))
+                    quota_remaining = acct.get("quota_remaining", acct.get("jobs_remaining"))
+                    # Compute remaining if we have used and limit but not remaining
+                    if quota_remaining is None and quota_used is not None and quota_limit is not None:
+                        try:
+                            quota_remaining = int(quota_limit) - int(quota_used)
+                        except (ValueError, TypeError):
+                            quota_remaining = None
+                    tam_entry["details"]["quota_used"] = quota_used
+                    tam_entry["details"]["quota_limit"] = quota_limit
+                    tam_entry["details"]["quota_remaining"] = quota_remaining
                 elif resp.status_code == 401:
                     tam_entry["status"] = "auth_error"
                     tam_entry["details"] = {"error": "Invalid API key"}
                 else:
-                    # API key is set but /account may not exist — still usable
+                    # API key is set but /account may not exist -- still usable
                     tam_entry["status"] = "online"
                     tam_entry["details"] = {
                         "tier": "unknown",
                         "max_concurrent": _TIER_CONCURRENCY["free"],
                         "api_url": _tam_base_url(),
                         "note": f"/account returned {resp.status_code}",
+                        "quota_used": None,
+                        "quota_limit": None,
+                        "quota_remaining": None,
                     }
         except Exception as exc:
             tam_entry["status"] = "error"
@@ -292,18 +371,19 @@ async def cloud_list_providers() -> str:
     # --- SSH hosts ---
     for host_cfg in _ssh_hosts():
         info = await asyncio.to_thread(_ssh_ping, host_cfg)
-        providers.append(
-            {
-                "name": info["name"],
-                "type": "ssh",
-                "status": info["status"],
-                "details": {
-                    k: v
-                    for k, v in info.items()
-                    if k not in ("name", "status")
-                },
-            }
-        )
+        ssh_entry: dict[str, Any] = {
+            "name": info["name"],
+            "type": "ssh",
+            "status": info["status"],
+            "details": {
+                k: v
+                for k, v in info.items()
+                if k not in ("name", "status")
+            },
+            "capabilities": ["boltzgen", "protenix", "pxdesign"],
+            "recommended": False,
+        }
+        providers.append(ssh_entry)
 
     # --- Local GPU ---
     cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
@@ -312,7 +392,19 @@ async def cloud_list_providers() -> str:
         "type": "local",
         "status": "unavailable",
         "details": {},
+        "capabilities": [],
+        "recommended": False,
     }
+    # Detect local capabilities based on PROTEUS_*_DIR env vars
+    local_caps: list[str] = []
+    if os.environ.get("PROTEUS_FOLD_DIR"):
+        local_caps.append("protenix")
+    if os.environ.get("PROTEUS_PROT_DIR"):
+        local_caps.append("pxdesign")
+    if os.environ.get("PROTEUS_AB_DIR"):
+        local_caps.append("boltzgen")
+    local_entry["capabilities"] = local_caps
+
     if cuda_devices is not None:
         # Quick check for nvidia-smi
         try:
@@ -345,11 +437,161 @@ async def cloud_list_providers() -> str:
         local_entry["details"] = {"error": "CUDA_VISIBLE_DEVICES not set"}
     providers.append(local_entry)
 
+    # --- Set recommended provider ---
+    # If default_provider is configured, mark that one as recommended
+    recommended_set = False
+    if default_provider:
+        for p in providers:
+            if p["name"] == default_provider and p["status"] == "online":
+                p["recommended"] = True
+                recommended_set = True
+                break
+    # If no default set, recommend the first online provider (prefer Tamarind)
+    if not recommended_set:
+        for p in providers:
+            if p["status"] == "online":
+                p["recommended"] = True
+                break
+
     return _ok({"providers": providers, "count": len(providers)})
 
 
 # ---------------------------------------------------------------------------
-# Tool 2: cloud_submit_job
+# Tool 2: cloud_estimate_cost
+# ---------------------------------------------------------------------------
+
+# Estimated time per job in minutes by tool type
+_TOOL_TIME_ESTIMATES: dict[str, tuple[int, int]] = {
+    "boltzgen": (5, 15),
+    "protenix": (2, 5),
+    "pxdesign": (10, 30),
+    "tap": (1, 3),
+}
+
+
+@mcp.tool()
+async def cloud_estimate_cost(
+    provider: str,
+    tool: str,
+    num_jobs: int = 1,
+    num_designs_per_job: int = 10,
+) -> str:
+    """Estimate cost and quota impact BEFORE submitting compute jobs.
+
+    Checks whether the requested jobs fit within the provider's quota and
+    estimates execution time. Call this before cloud_submit_job or
+    cloud_submit_batch to avoid surprise quota exhaustion.
+
+    Args:
+        provider: Provider name -- "tamarind", an SSH host name, or "local".
+        tool: Tool/pipeline name (e.g. "boltzgen", "protenix", "pxdesign").
+        num_jobs: Number of jobs to submit (default 1).
+        num_designs_per_job: Designs per job, affects time estimate (default 10).
+
+    Returns:
+        JSON with estimated_time_minutes, jobs_within_quota, quota_after,
+        provider, tool, and warnings.
+    """
+    provider = provider.strip().lower()
+    tool = tool.strip().lower()
+    warnings: list[str] = []
+
+    # Time estimate
+    time_range = _TOOL_TIME_ESTIMATES.get(tool, (5, 15))
+    # Scale by designs per job (rough linear scaling)
+    scale_factor = max(1.0, num_designs_per_job / 10.0)
+    est_min = round(time_range[0] * num_jobs * scale_factor)
+    est_max = round(time_range[1] * num_jobs * scale_factor)
+    estimated_time = round((est_min + est_max) / 2)
+
+    result: dict[str, Any] = {
+        "provider": provider,
+        "tool": tool,
+        "num_jobs": num_jobs,
+        "num_designs_per_job": num_designs_per_job,
+        "estimated_time_minutes": estimated_time,
+        "estimated_time_range": f"{est_min}-{est_max} min",
+        "jobs_within_quota": True,
+        "quota_after": None,
+        "warnings": warnings,
+    }
+
+    if provider == "tamarind":
+        # Fetch current quota from Tamarind /account
+        key = _tam_api_key()
+        if not key:
+            result["jobs_within_quota"] = False
+            warnings.append("TAMARIND_API_KEY not set. Cannot check quota.")
+            result["warnings"] = warnings
+            return _ok(result)
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{_tam_base_url()}/account",
+                    headers=_tam_headers(),
+                    timeout=10.0,
+                )
+                if resp.status_code == 200:
+                    acct = resp.json()
+                    quota_used = acct.get("jobs_used", acct.get("usage", acct.get("quota_used")))
+                    quota_limit = acct.get("jobs_limit", acct.get("limit", acct.get("quota_limit")))
+                    quota_remaining = acct.get("quota_remaining", acct.get("jobs_remaining"))
+
+                    if quota_remaining is None and quota_used is not None and quota_limit is not None:
+                        try:
+                            quota_remaining = int(quota_limit) - int(quota_used)
+                        except (ValueError, TypeError):
+                            quota_remaining = None
+
+                    if quota_remaining is not None:
+                        remaining_int = int(quota_remaining)
+                        result["quota_after"] = remaining_int - num_jobs
+                        result["jobs_within_quota"] = num_jobs <= remaining_int
+
+                        if not result["jobs_within_quota"]:
+                            warnings.append(
+                                f"Batch of {num_jobs} jobs exceeds remaining quota "
+                                f"({remaining_int} remaining). Reduce batch or switch provider."
+                            )
+                        elif remaining_int > 0 and num_jobs / remaining_int > 0.8:
+                            warnings.append(
+                                f"This batch uses {num_jobs}/{remaining_int} remaining "
+                                f"quota (>{80}%). Consider reserving quota for future runs."
+                            )
+                    else:
+                        warnings.append(
+                            "Quota information not available from Tamarind API. "
+                            "Proceeding without quota check."
+                        )
+                        result["quota_after"] = None
+                else:
+                    warnings.append(
+                        f"Could not fetch account info (HTTP {resp.status_code}). "
+                        "Quota check skipped."
+                    )
+        except Exception as exc:
+            warnings.append(f"Failed to check Tamarind quota: {exc}")
+
+    elif provider == "local":
+        # Local GPU -- estimate GPU hours, no quota concept
+        gpu_hours = round(estimated_time / 60, 2)
+        result["estimated_gpu_hours"] = gpu_hours
+        if not os.environ.get("CUDA_VISIBLE_DEVICES"):
+            warnings.append("CUDA_VISIBLE_DEVICES not set. Local GPU may not be available.")
+            result["jobs_within_quota"] = False
+
+    else:
+        # SSH host -- estimate GPU hours, no quota concept
+        gpu_hours = round(estimated_time / 60, 2)
+        result["estimated_gpu_hours"] = gpu_hours
+
+    result["warnings"] = warnings
+    return _ok(result)
+
+
+# ---------------------------------------------------------------------------
+# Tool 3: cloud_submit_job
 # ---------------------------------------------------------------------------
 
 
@@ -481,8 +723,27 @@ async def _submit_tamarind(
                 "status": "submitted",
             })
 
+    except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+        return _structured_error(
+            "Cannot reach Tamarind API. Network may be down or API "
+            "may be temporarily unavailable.",
+            error_code="unreachable",
+            retry_eligible=True,
+            suggestion="Check your network connection. Try again in 30 seconds.",
+        )
+    except httpx.TimeoutException as exc:
+        return _structured_error(
+            f"Tamarind API request timed out after {_TAMARIND_TIMEOUT}s.",
+            error_code="unreachable",
+            retry_eligible=True,
+            suggestion="Tamarind may be slow. Try again in a minute.",
+        )
     except httpx.HTTPError as exc:
-        return _error(f"Failed to submit Tamarind job: {exc}")
+        return _structured_error(
+            f"Failed to submit Tamarind job: {exc}",
+            error_code="server_error",
+            retry_eligible=True,
+        )
     except Exception as exc:
         return _error(f"Unexpected error submitting Tamarind job: {exc}")
 
@@ -610,6 +871,7 @@ async def cloud_submit_batch(
     provider: str,
     jobs: list[dict],
     max_concurrent: int | None = None,
+    force: bool = False,
 ) -> str:
     """Submit multiple jobs respecting concurrency limits.
 
@@ -617,12 +879,17 @@ async def cloud_submit_batch(
     Each job dict must have 'tool' (str) and may have 'input_files' (list)
     and 'parameters' (dict).
 
+    For Tamarind, performs a quota pre-check before submitting. If
+    quota_remaining < len(jobs), returns an error with alternatives
+    unless force=True.
+
     Args:
-        provider: Provider name — "tamarind" or an SSH host name.
+        provider: Provider name -- "tamarind" or an SSH host name.
         jobs: List of job spec dicts, each with 'tool', optional
             'input_files', and optional 'parameters'.
         max_concurrent: Maximum concurrent jobs. If None, auto-detects
             from provider tier (Tamarind) or defaults to 2 (SSH).
+        force: If True, skip the quota pre-check (quota info may be stale).
 
     Returns:
         JSON with batch_id, job_ids, queued_count.
@@ -631,6 +898,57 @@ async def cloud_submit_batch(
 
     if not jobs:
         return _error("jobs list must not be empty.")
+
+    # --- Quota pre-check for Tamarind ---
+    if provider == "tamarind" and not force:
+        key = _tam_api_key()
+        if key:
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(
+                        f"{_tam_base_url()}/account",
+                        headers=_tam_headers(),
+                        timeout=10.0,
+                    )
+                    if resp.status_code == 200:
+                        acct = resp.json()
+                        quota_used = acct.get(
+                            "jobs_used", acct.get("usage", acct.get("quota_used"))
+                        )
+                        quota_limit = acct.get(
+                            "jobs_limit", acct.get("limit", acct.get("quota_limit"))
+                        )
+                        quota_remaining = acct.get(
+                            "quota_remaining", acct.get("jobs_remaining")
+                        )
+                        if (
+                            quota_remaining is None
+                            and quota_used is not None
+                            and quota_limit is not None
+                        ):
+                            try:
+                                quota_remaining = int(quota_limit) - int(quota_used)
+                            except (ValueError, TypeError):
+                                quota_remaining = None
+
+                        if quota_remaining is not None:
+                            remaining_int = int(quota_remaining)
+                            if remaining_int < len(jobs):
+                                return _structured_error(
+                                    f"Insufficient quota: {remaining_int} jobs remaining "
+                                    f"but {len(jobs)} requested.",
+                                    error_code="insufficient_quota",
+                                    retry_eligible=False,
+                                    quota_remaining=remaining_int,
+                                    jobs_requested=len(jobs),
+                                    suggestion=(
+                                        f"Reduce batch to {remaining_int} jobs, "
+                                        f"or use an alternative provider. "
+                                        f"Pass force=True to override this check."
+                                    ),
+                                )
+            except Exception:
+                pass  # Quota check is best-effort; proceed on failure
 
     # Determine concurrency limit
     if max_concurrent is None:

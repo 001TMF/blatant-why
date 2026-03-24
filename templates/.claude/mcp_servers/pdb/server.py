@@ -388,10 +388,26 @@ async def pdb_interface_residues(
     if not atoms2:
         return _error(f"No heavy atoms found in chain {chain2}")
 
+    # Build a mapping from (chain_id, auth_seq_id) -> label_seq_id.
+    # BioPython's MMCIFParser stores the _atom_site fields, but
+    # label_seq_id is most reliably obtained by counting residues
+    # sequentially within each chain (1-indexed, no gaps).
+    label_seq_map: dict[tuple[str, int, str], int] = {}  # (chain, auth_seq_id, icode) -> label
+    for ch in (chain_obj1, chain_obj2):
+        label_counter = 0
+        for residue in ch.get_residues():
+            hetfield = residue.id[0]
+            if hetfield == "W":
+                continue
+            label_counter += 1
+            key = (ch.id, residue.id[1], residue.id[2].strip())
+            label_seq_map[key] = label_counter
+
     # Find contacts
     cutoff_sq = distance_cutoff ** 2
-    c1_interface_residues: set[tuple[str, int]] = set()
-    c2_interface_residues: set[tuple[str, int]] = set()
+    # Store tuples of (resname, auth_seq_id, icode)
+    c1_interface_residues: set[tuple[str, int, str]] = set()
+    c2_interface_residues: set[tuple[str, int, str]] = set()
     contact_count = 0
 
     for a1 in atoms1:
@@ -401,18 +417,31 @@ async def pdb_interface_residues(
             dist_sq = diff[0] ** 2 + diff[1] ** 2 + diff[2] ** 2
             if dist_sq <= cutoff_sq:
                 r2 = a2.get_parent()
-                c1_interface_residues.add((r1.get_resname(), r1.id[1]))
-                c2_interface_residues.add((r2.get_resname(), r2.id[1]))
+                c1_interface_residues.add(
+                    (r1.get_resname(), r1.id[1], r1.id[2].strip())
+                )
+                c2_interface_residues.add(
+                    (r2.get_resname(), r2.id[1], r2.id[2].strip())
+                )
                 contact_count += 1
 
-    chain1_res = sorted(
-        [{"resname": r[0], "resseq": r[1]} for r in c1_interface_residues],
-        key=lambda x: x["resseq"],
-    )
-    chain2_res = sorted(
-        [{"resname": r[0], "resseq": r[1]} for r in c2_interface_residues],
-        key=lambda x: x["resseq"],
-    )
+    def _build_residue_list(
+        interface_set: set[tuple[str, int, str]], chain_id: str
+    ) -> list[dict]:
+        res_list = []
+        for resname, auth_seq, icode in interface_set:
+            label_seq = label_seq_map.get((chain_id, auth_seq, icode))
+            res_list.append({
+                "resname": resname,
+                "label_seq_id": label_seq,  # preferred — 1-indexed sequential
+                "auth_seq_id": auth_seq,     # kept for backward compat
+                "resseq": auth_seq,          # deprecated alias for auth_seq_id
+            })
+        res_list.sort(key=lambda x: (x["label_seq_id"] or 0, x["auth_seq_id"]))
+        return res_list
+
+    chain1_res = _build_residue_list(c1_interface_residues, chain1)
+    chain2_res = _build_residue_list(c2_interface_residues, chain2)
 
     return json.dumps(
         {

@@ -28,7 +28,44 @@ You are the design agent for BY campaigns. You generate protein or antibody desi
 
 6. **Collect results** -- When jobs complete, download output structures and confidence metrics. Parse ipTM, pLDDT, and PAE from output files. Store raw results in campaign directory.
 
-7. **Update campaign state** -- Write design results summary to campaign state via `mcp__by-campaign__*`. Update knowledge base with scaffold performance data via `mcp__by-knowledge__*`.
+7. **Update campaign state** -- Write design results summary to campaign state via `mcp__by-campaign__*`. Update knowledge base with scaffold performance data: use `knowledge_store_campaign(...)` for successful outcomes and `knowledge_store_failure(...)` for failures.
+
+## Input/Output Contract
+
+**Input:**
+- File: `.by/campaigns/<id>/campaign_plan.md` (from by-campaign agent)
+- File: `.by/campaigns/<id>/research_data.json` (from by-research agent)
+- Campaign state must be in `configured` status
+
+**Output:**
+- File: `.by/campaigns/<id>/design_summary.json` with per-design metrics:
+  ```json
+  {
+    "campaign_id": "<id>",
+    "provider": "tamarind",
+    "tool": "boltzgen",
+    "total_designs": 100,
+    "successful": 95,
+    "failed": 5,
+    "designs": [
+      {
+        "design_id": "design_001",
+        "scaffold": "caplacizumab",
+        "seed": 1,
+        "sequence": "QVQLVESGG...",
+        "iptm": 0.82,
+        "plddt": 87.3,
+        "rmsd": 1.8,
+        "npz_path": "structures/design_001.npz",
+        "status": "completed"
+      }
+    ],
+    "failed_jobs": [
+      {"job_id": "job_096", "error": "timeout", "retries": 2}
+    ]
+  }
+  ```
+- Return value: one-line summary string (e.g., "Design complete: 95/100 succeeded, top ipTM=0.89, ready for screening")
 
 ## Output Format
 

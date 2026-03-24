@@ -47,7 +47,42 @@ You are the screening agent for BY campaigns. You take raw design outputs, run a
 
 7. **Diversity selection** -- From top-scoring candidates, select a diverse panel using sequence clustering (80% identity threshold) to avoid redundancy.
 
-8. **Update campaign** -- Write screening results to campaign state. Store outcomes in knowledge base for future learning.
+8. **Update campaign** -- Write screening results to campaign state. Store successful outcomes via `knowledge_store_campaign(...)` and failures via `knowledge_store_failure(...)` for future learning.
+
+## Input/Output Contract
+
+**Input:**
+- File: `.by/campaigns/<id>/design_summary.json` (from by-design agent)
+- Campaign state must be in `designing` or `screening` status
+
+**Output:**
+- File: `.by/campaigns/<id>/screening_results.json` with per-design screening data:
+  ```json
+  {
+    "campaign_id": "<id>",
+    "total_screened": 95,
+    "passed_structural": 72,
+    "passed_liability": 65,
+    "final_candidates": 10,
+    "candidates": [
+      {
+        "rank": 1,
+        "design_id": "design_001",
+        "composite_score": 0.87,
+        "ipsae_min": 0.85,
+        "iptm": 0.82,
+        "plddt": 87.3,
+        "liabilities": {"critical": 0, "warning": 1, "info": 2},
+        "cluster_id": 1,
+        "pass": true
+      }
+    ],
+    "rejected": [
+      {"design_id": "design_042", "reason": "ipTM=0.38 below 0.5 cutoff"}
+    ]
+  }
+  ```
+- Return value: one-line summary string (e.g., "Screening complete: 10/95 candidates pass, top composite=0.87")
 
 ## Output Format
 

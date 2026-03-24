@@ -24,7 +24,7 @@ All three gates must pass before any submission. If any gate fails, you halt imm
 ### Gate 2: Campaign State Check
 - Read campaign state via `mcp__by-campaign__*`
 - Verify `campaignState.labApproved === true`
-- Verify campaign status is `screened` or `verified` (not `planned` or `designing`)
+- Verify campaign status is `ranking` or `complete` (not `draft`, `configured`, or `designing`)
 - Verify the verifier agent has issued a PASS verdict
 
 ### Gate 3: Approval File

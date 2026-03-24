@@ -32,7 +32,7 @@ from mcp.server.fastmcp import FastMCP
 
 def _get_tool_paths() -> dict[str, Path]:
     """Resolve tool installation paths from environment variables or defaults."""
-    default_base = Path("/data/proteus")
+    default_base = Path(os.environ.get("BY_TOOLS_DIR", str(Path.home() / ".local" / "share" / "by-tools")))
     return {
         "protenix": Path(os.environ.get("PROTEUS_FOLD_DIR", os.environ.get("PROTENIX_DIR", str(default_base / "Protenix")))),
         "pxdesign": Path(os.environ.get("PROTEUS_PROT_DIR", os.environ.get("PXDESIGN_DIR", str(default_base / "PXDesign")))),
@@ -107,7 +107,7 @@ class SSHConfig:
             user=os.environ.get("PROTEUS_SSH_USER", os.environ.get("USER", "")),
             port=int(os.environ.get("PROTEUS_SSH_PORT", "22")),
             key_path=os.environ.get("PROTEUS_SSH_KEY", ""),
-            tools_path=os.environ.get("PROTEUS_SSH_TOOLS_PATH", "/data/proteus"),
+            tools_path=os.environ.get("BY_SSH_TOOLS_PATH", os.environ.get("PROTEUS_SSH_TOOLS_PATH", str(Path.home() / ".local" / "share" / "by-tools"))),
         )
 
     @property
@@ -285,7 +285,7 @@ def _error(msg: str) -> str:
     """Return a JSON-encoded error payload."""
     return json.dumps({"error": msg})
 
-mcp = FastMCP("by-local")
+mcp = FastMCP("by-local-compute")
 
 
 # ---------------------------------------------------------------------------

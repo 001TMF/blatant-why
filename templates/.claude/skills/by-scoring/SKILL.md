@@ -183,6 +183,71 @@ Follow this sequence for every batch of new designs:
 6. **Provide interpretation** for the top candidates, noting any disagreements between metrics and recommending next steps (e.g., visualize structure, run developability, approve for experiment).
 
 
+## Calibrated Interpretation
+
+### ipSAE Interpretation Guide
+
+| ipSAE Range | Confidence | Biological Context | Recommendation |
+|-------------|------------|-------------------|----------------|
+| 0.85-1.0 | **Exceptional** | Comparable to co-crystal structures of approved therapeutics (e.g., pembrolizumab-PD1). | Lab-ready. Prioritize for experimental validation. |
+| 0.70-0.85 | **Strong** | Comparable to successful computational designs in published literature (17-82% hit rates). | Strong candidate. Recommend for first-round lab testing. |
+| 0.50-0.70 | **Moderate** | Predicted binding mode is plausible but interface confidence has gaps. | Consider for diverse panel; may benefit from follow-up design round. |
+| 0.30-0.50 | **Weak** | Interface prediction is uncertain -- binding mode may not reflect reality. | Do not send to lab. Redesign with different hotspots or scaffold. |
+| Below 0.30 | **Poor** | Essentially random interface placement. | Discard. Investigate target suitability for this modality. |
+
+### ipTM Interpretation Guide
+
+| ipTM Range | Confidence | Context |
+|------------|------------|---------|
+| Above 0.85 | **High** | Strong predicted interaction; complex geometry is reliable. |
+| 0.70-0.85 | **Good** | Reasonable confidence; consistent with successful designs. |
+| 0.50-0.70 | **Marginal** | May bind but prediction reliability is lower. |
+| Below 0.50 | **Low** | Complex prediction unreliable; do not trust placement. |
+
+### Composite Score Interpretation
+
+| Composite Range | Verdict | Action |
+|-----------------|---------|--------|
+| Above 0.75 | **Excellent** | Lab-ready candidate. Submit for experimental validation. |
+| 0.60-0.75 | **Good** | Include in testing panel. |
+| 0.45-0.60 | **Borderline** | Include only for diversity; do not prioritize. |
+| Below 0.45 | **Below threshold** | Do not advance. Redesign or discard. |
+
+### Presenting Results -- Required Elements
+
+When presenting a ranked results table, ALWAYS include these three elements after the table:
+
+1. **Score context sentence** for the top candidate. Example: "The top candidate has ipSAE 0.87 -- exceptional confidence, comparable to approved therapeutics (e.g., pembrolizumab-PD1 co-crystal structures)."
+
+2. **Actionable categorization** grouping candidates into tiers:
+   - **Lab-ready** (N designs): ipSAE above 0.70 -- strong confidence, recommend for experimental validation.
+   - **Worth testing** (M designs): ipSAE 0.50-0.70 -- moderate confidence, include in diverse panel.
+   - **Redesign needed** (K designs): ipSAE below 0.50 -- insufficient confidence, do not advance.
+
+3. **Numbered next steps** based on result quality:
+   - If lab-ready candidates exist: suggest submitting top candidates to Adaptyv Bio and running Protenix ensemble validation (20+ seeds) on the top 3-5.
+   - If no lab-ready candidates but worth-testing candidates exist: suggest increasing compute budget, trying alternative scaffolds, or refining epitope selection.
+   - If all candidates need redesign: suggest re-examining the epitope, switching modality, or investigating target tractability.
+
+### Zero-Candidate Failure Diagnosis
+
+When zero designs pass screening, do NOT show an empty table. Instead provide:
+
+1. **Failure summary**: "0 of N designs passed screening. This suggests [diagnosis]."
+
+2. **Diagnosis** (check in order):
+   - All ipSAE below 0.3: epitope may be too flat, flexible, or heavily glycosylated for productive binding.
+   - All pLDDT below 70: designs are not folding stably -- structural quality is the bottleneck.
+   - Good scores but all fail liabilities: manufacturing issues (deamidation, glycosylation, free Cys) -- consider liability engineering.
+   - Mixed failure modes: target may be genuinely difficult; multiple issues compound.
+
+3. **Specific remedies** (always provide 2-3 concrete actions):
+   - Try a different epitope region (identify alternative binding sites from structure analysis).
+   - Switch scaffold (e.g., from caplacizumab to ozoralizumab for more CDR diversity).
+   - Increase compute budget to explore more backbone conformations.
+   - Switch modality (e.g., from VHH to de novo binder if epitope is concave).
+   - Run fold validation on the target to confirm the epitope is structurally stable.
+
 ## Multi-Seed Refolding
 
 ### Rationale

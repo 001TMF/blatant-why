@@ -45,6 +45,7 @@ campaigns/*/
 # Claude Code worktrees + agent artifacts
 .claude/worktrees/
 .agent/
+.agents/
 
 # Knowledge graph data (user-specific)
 .proteus/knowledge/
@@ -82,3 +83,23 @@ credentials.json
 
 # BY runtime data
 .by/knowledge.db
+
+# Internal development state
+.planning/
+
+# Campaign output data
+campaigns/
+
+# Demo (local only, not shipped)
+demo/
+
+# Legacy research data
+her2_research/
+
+# Legacy docs (plans/superpowers from pre-rewrite)
+docs/plans/
+docs/superpowers/
+
+# Additional env patterns
+*.env
+.env.*

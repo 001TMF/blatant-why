@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Box, Text, useInput, Static } from "ink";
 import TextInput from "ink-text-input";
 import { execSync } from "child_process";
-import { writeFileSync, mkdirSync, readFileSync, existsSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync, existsSync, readdirSync } from "fs";
 import { resolve, basename } from "path";
 import { renderBanner } from "./banner.js";
 import { ProteusMode, cycleMode, getModeConfig } from "./modes.js";
@@ -28,6 +28,8 @@ import { handleLocalCommand } from "./handlers/localCommands.js";
 type Message =
   | { type: "user"; text: string }
   | { type: "assistant"; text: string }
+  | { type: "banner"; text: string }
+  | { type: "system"; text: string }
   | { type: "tool_use"; name: string }
   | { type: "progress"; data: RunProgress }
   | { type: "results"; data: DesignResult[] }
@@ -166,6 +168,14 @@ function saveLastSession(projectDir: string, sessionId: string, campaignDir?: st
  */
 function MessageComponent({ message }: { message: Message }) {
   switch (message.type) {
+    case "banner":
+      return <Text>{message.text}</Text>;
+    case "system":
+      return (
+        <Box marginLeft={2}>
+          <Text dimColor>{message.text}</Text>
+        </Box>
+      );
     case "user":
       return (
         <Text>
@@ -197,9 +207,113 @@ function MessageComponent({ message }: { message: Message }) {
   }
 }
 
+interface CampaignSummary {
+  dirName: string;
+  campaignId: string;
+  status: string;
+  target: string;
+  candidateCount: number;
+  updatedAt: string;
+}
+
+/**
+ * Scan the campaigns/ directory for existing campaigns and return summaries.
+ */
+function discoverCampaigns(projectDir: string): CampaignSummary[] {
+  const campaignsDir = resolve(projectDir, "campaigns");
+  if (!existsSync(campaignsDir)) return [];
+
+  const results: CampaignSummary[] = [];
+  try {
+    const entries = readdirSync(campaignsDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const logPath = resolve(campaignsDir, entry.name, "campaign_log.json");
+      if (!existsSync(logPath)) continue;
+      try {
+        const log = JSON.parse(readFileSync(logPath, "utf-8"));
+        const rounds = Array.isArray(log.rounds) ? log.rounds : [];
+        let candidateCount = 0;
+        for (const round of rounds) {
+          const runs = Array.isArray(round.runs) ? round.runs : [];
+          for (const run of runs) {
+            candidateCount += (run.designs_passed as number) ?? 0;
+          }
+        }
+        results.push({
+          dirName: entry.name,
+          campaignId: log.campaign_id ?? entry.name,
+          status: log.status ?? "unknown",
+          target: log.target?.name ?? "unknown",
+          candidateCount,
+          updatedAt: log.updated_at ?? log.created_at ?? "",
+        });
+      } catch { /* skip malformed */ }
+    }
+  } catch { /* silent */ }
+
+  // Sort by most recently updated first
+  results.sort((a, b) => (b.updatedAt > a.updatedAt ? 1 : -1));
+  return results;
+}
+
+/**
+ * Build the initial completedMessages array: banner + campaign menu (if any).
+ */
+function buildStartupMessages(mode: string, termWidth: number, projectDir: string): Message[] {
+  const messages: Message[] = [];
+
+  // Banner is always first — nothing can appear above it
+  messages.push({ type: "banner", text: renderBanner(mode, termWidth) });
+
+  // Discover existing campaigns
+  const campaigns = discoverCampaigns(projectDir);
+
+  if (campaigns.length > 0) {
+    const separator = "\u2500".repeat(Math.max(termWidth - 8, 20));
+    messages.push({ type: "system", text: separator });
+    messages.push({ type: "system", text: "" });
+    messages.push({ type: "system", text: theme.accent("Previous Campaigns:") });
+    messages.push({ type: "system", text: "" });
+
+    campaigns.forEach((c, i) => {
+      const statusTag = theme.dim(`[${c.status}]`);
+      const candidateInfo = c.candidateCount > 0 ? theme.dim(` \u2014 ${c.candidateCount} candidate${c.candidateCount === 1 ? "" : "s"}`) : "";
+      const targetInfo = theme.dim(` (${c.target})`);
+      messages.push({
+        type: "system",
+        text: `${theme.primary(`${i + 1}.`)} ${c.campaignId} ${statusTag}${targetInfo}${candidateInfo}`,
+      });
+    });
+
+    messages.push({ type: "system", text: "" });
+    messages.push({
+      type: "system",
+      text: `${theme.primary(`${campaigns.length + 1}.`)} Start new campaign`,
+    });
+    messages.push({ type: "system", text: "" });
+    messages.push({
+      type: "system",
+      text: theme.dim(`Use /resume <name> to continue a campaign, or just start typing.`),
+    });
+    messages.push({ type: "system", text: separator });
+  } else {
+    messages.push({
+      type: "system",
+      text: "\u2500".repeat(Math.max(termWidth - 8, 20)),
+    });
+  }
+
+  return messages;
+}
+
 export function App({ queryFn, initialMode, configRef }: AppProps) {
   const [mode, setMode] = useState<ProteusMode>(initialMode);
-  const [completedMessages, setCompletedMessages] = useState<Message[]>([]);
+  const { width: termWidth } = useTerminalSize();
+  const modeConfig = getModeConfig(mode);
+  const [completedMessages, setCompletedMessages] = useState<Message[]>(() =>
+    buildStartupMessages(modeConfig.displayName, termWidth, configRef.projectDir)
+  );
   const [streamingText, setStreamingText] = useState("");
   const [toolLog, setToolLog] = useState<ToolEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -211,21 +325,21 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
   const [showCosts, setShowCosts] = useState(false);
   const [showTeam, setShowTeam] = useState(false);
   const { currentInput, setCurrentInput, addToHistory } = useInputHistory();
-  const modeConfig = getModeConfig(mode);
   const completions = getCompletions(currentInput);
-  const { width: termWidth } = useTerminalSize();
   const campaign = useCampaignState(configRef.projectDir);
 
-  // Track session resume info (rendered as dim line below banner, not as a message)
-  const [resumeInfo, setResumeInfo] = useState<string | null>(null);
-
-  // Check for previous session on startup
+  // Check for previous session on startup — add resume info as a system message
+  // This runs after the initial render so the banner (first Static item) is already placed
+  const didResumeRef = useRef(false);
   useEffect(() => {
+    if (didResumeRef.current) return;
+    didResumeRef.current = true;
     const lastSession = loadLastSession(configRef.projectDir);
     if (lastSession) {
       setSessionId(lastSession.sessionId);
       const campaignLabel = lastSession.campaignDir ? ` | Campaign: ${basename(lastSession.campaignDir)}` : "";
-      setResumeInfo(`Resumed session from ${new Date(lastSession.timestamp).toLocaleString()}${campaignLabel}`);
+      const info = `Resumed session from ${new Date(lastSession.timestamp).toLocaleString()}${campaignLabel}`;
+      setCompletedMessages((prev) => [...prev, { type: "system", text: info }]);
     }
   }, [configRef.projectDir]);
 
@@ -569,30 +683,7 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
 
   return (
     <Box flexDirection="column">
-      {/* Banner — rendered once at top */}
-      <Text>{""}</Text>
-      <Text>{renderBanner(modeConfig.displayName)}</Text>
-
-      {/* Campaign status line (shown when a campaign is active) */}
-      {campaign.isActive && campaign.state && (
-        <Text dimColor>
-          {"  "}Campaign: {(campaign.state as Record<string, unknown>).campaign_id as string ?? "unknown"}
-          {" | "}Status: {campaign.phase}
-          {(campaign.state as Record<string, unknown>).rounds
-            ? ` | Round ${((campaign.state as Record<string, unknown>).rounds as unknown[]).length}`
-            : ""}
-        </Text>
-      )}
-
-      {/* Session resume info (dim, below banner) */}
-      {resumeInfo && (
-        <Text dimColor>{"  "}{resumeInfo}</Text>
-      )}
-
-      <Text dimColor>{"  " + "─".repeat(Math.max(termWidth - 4, 20))}</Text>
-      <Text>{""}</Text>
-
-      {/* Completed messages — permanently rendered above dynamic content */}
+      {/* All completed messages including banner (first item) — permanently rendered */}
       <Static items={staticItems}>
         {(item) => (
           <Box key={item.id} flexDirection="column">

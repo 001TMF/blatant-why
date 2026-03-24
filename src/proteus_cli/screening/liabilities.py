@@ -40,6 +40,7 @@ GLYCOSYLATION_PATTERN = re.compile(r"N[^P][ST]")
 
 def scan_liabilities(sequence: str) -> list[Liability]:
     """Scan a protein sequence for PTM liabilities."""
+    sequence = sequence.upper()
     liabilities = []
 
     for pattern, severity, desc in DEAMIDATION_PATTERNS:
@@ -68,6 +69,7 @@ def scan_liabilities(sequence: str) -> list[Liability]:
 
 def compute_net_charge(sequence: str, ph: float = 7.4) -> float:
     """Estimate net charge at given pH using Henderson-Hasselbalch."""
+    sequence = sequence.upper()
     if not sequence:
         return 0.0
     pka = {"D": 3.65, "E": 4.25, "H": 6.00, "C": 8.18, "Y": 10.07, "K": 10.53, "R": 12.48}

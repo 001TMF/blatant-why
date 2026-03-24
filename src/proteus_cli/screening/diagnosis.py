@@ -34,6 +34,21 @@ def diagnose_failures(
     pass_value: str = "PASS",
 ) -> FailureDiagnosis:
     """Compare passed vs failed designs to find discriminating features."""
+    # Check scipy availability before doing any work
+    try:
+        import scipy.stats  # noqa: F401
+    except ImportError:
+        return FailureDiagnosis(
+            total_designs=len(designs),
+            passed=0,
+            failed=0,
+            pass_rate=0.0,
+            summary=(
+                "scipy is not installed — statistical diagnosis requires it. "
+                "Install with: pip install scipy"
+            ),
+        )
+
     passed = [d for d in designs if d.get(pass_key) == pass_value]
     failed = [d for d in designs if d.get(pass_key) != pass_value]
 
@@ -95,7 +110,9 @@ def diagnose_failures(
                     interpretation=interp,
                 )
             )
-        except Exception:
+        except (ValueError, TypeError, ArithmeticError) as exc:
+            # Skip features where the statistical test fails (e.g.
+            # constant values, type mismatches, division issues)
             continue
 
     # Sort by p-value

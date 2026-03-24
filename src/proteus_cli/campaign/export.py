@@ -156,10 +156,15 @@ def export_fasta(campaign_dir: str, output_path: str = "") -> str:
                 lines.append(seq_val[i : i + 80])
 
     if not lines:
-        Path(output_path).write_text("# No design sequences found in campaign.\n")
-    else:
-        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        Path(output_path).write_text("\n".join(lines) + "\n")
+        return json.dumps({
+            "exported": None,
+            "format": "fasta",
+            "warning": "No design sequences found in campaign — nothing to export.",
+            "sequences_found": 0,
+        })
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(output_path).write_text("\n".join(lines) + "\n")
 
     return output_path
 

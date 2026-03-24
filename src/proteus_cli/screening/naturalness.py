@@ -32,6 +32,8 @@ def score_naturalness(sequence: str, chain_type: str = "heavy") -> dict:
         return {
             "naturalness_score": None,
             "chain_type": chain_type,
+            "warning": "Naturalness scoring skipped — ablang2 not installed",
+            "screening_incomplete": True,
             "interpretation": (
                 "AbLang2 not installed locally. Use Tamarind Bio's ablang tool "
                 "instead (tamarind_screen_naturalness)."

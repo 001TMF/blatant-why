@@ -203,6 +203,8 @@ async def research_search_prior_art(
     }
     if errors:
         result["warnings"] = errors
+        result["degraded"] = True
+        result["sources_failed"] = len(errors)
 
     return json.dumps(result, indent=2)
 
@@ -542,7 +544,9 @@ async def research_find_similar_targets(
 
     Returns:
         JSON with query_accession and list of similar proteins with
-        accession, name, identity_pct, and organism.
+        accession, name, identity_pct (None — sequence alignment not
+            available via REST search; length_similarity_pct is provided
+            as a proxy), length_similarity_pct, and organism.
     """
     if not uniprot_accession.strip():
         return _error("uniprot_accession must not be empty.")
@@ -696,12 +700,15 @@ async def _fetch_chain_sequence(
     client: httpx.AsyncClient,
     pdb_id: str,
     chain_id: str,
+    warnings: list[str] | None = None,
 ) -> str | None:
     """Fetch the amino-acid sequence for a specific chain from RCSB.
 
     Downloads the FASTA for the PDB entry and returns the sequence
-    whose header matches the requested chain.  Returns *None* on any
-    failure (missing entry, missing chain, network error).
+    whose header matches the requested chain.  Returns *None* when the
+    chain is not found in the entry.  Network errors are distinguished
+    from missing chains: if *warnings* is provided, network failures
+    are appended to it rather than silently swallowed.
     """
     try:
         url = f"{RCSB_FASTA_URL}/{pdb_id.upper()}"
@@ -723,8 +730,16 @@ async def _fetch_chain_sequence(
             if re.search(rf'\|Chains?\s+[^|]*\b{re.escape(chain_upper)}\b', header, re.IGNORECASE):
                 return seq
 
+        # Chain not found in the entry — this is not an error
         return None
-    except Exception:
+    except (httpx.HTTPError, httpx.TimeoutException, OSError) as exc:
+        # Network / HTTP error — not "sequence unavailable"
+        if warnings is not None:
+            warnings.append(f"Network error fetching {pdb_id} chain {chain_id}: {exc}")
+        return None
+    except Exception as exc:
+        if warnings is not None:
+            warnings.append(f"Unexpected error fetching {pdb_id} chain {chain_id}: {exc}")
         return None
 
 
@@ -848,7 +863,7 @@ async def research_check_novelty(
             if not chain_id:
                 continue
 
-            seq = await _fetch_chain_sequence(client, pdb_id, chain_id)
+            seq = await _fetch_chain_sequence(client, pdb_id, chain_id, warnings=errors)
             if not seq:
                 comparisons.append({
                     "pdb_id": pdb_id,

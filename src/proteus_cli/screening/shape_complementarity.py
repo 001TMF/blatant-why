@@ -6,8 +6,8 @@ from pathlib import Path
 
 def compute_interface_metrics(
     structure_path: str,
-    design_chains: list[str] = ["A"],
-    target_chains: list[str] = ["B"],
+    design_chains: list[str] | None = None,
+    target_chains: list[str] | None = None,
     contact_distance: float = 8.0,
 ) -> dict:
     """Compute interface metrics from a structure file.
@@ -20,6 +20,11 @@ def compute_interface_metrics(
         - interface_residues_target: residues on target side
         - contact_density: contacts per interface residue
     """
+    if design_chains is None:
+        design_chains = ["A"]
+    if target_chains is None:
+        target_chains = ["B"]
+
     from Bio.PDB import MMCIFParser, NeighborSearch, PDBParser
 
     # Parse structure

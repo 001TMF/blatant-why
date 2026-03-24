@@ -58,32 +58,37 @@ def _auth_headers() -> dict[str, str]:
 def _require_api_key() -> str | None:
     """Return an error JSON string if the API key is missing, else None."""
     if not _api_key():
-        return json.dumps(
-            _error(
+        return _error(
                 "TAMARIND_API_KEY is not set. "
                 "Get a free key at https://app.tamarind.bio and set it: "
                 "export TAMARIND_API_KEY=<your-key>"
             )
-        )
     return None
 
 
+def _invalidate_tool_cache() -> None:
+    """Clear the tool cache (e.g. after an auth error invalidates it)."""
+    global _tool_cache, _tool_cache_ts
+    _tool_cache = None
+    _tool_cache_ts = 0.0
+
+
 def _handle_http_error(resp: httpx.Response) -> str | None:
-    """Return an error string for auth/rate-limit issues, or None."""
+    """Return an error string for auth/rate-limit/server issues, or None."""
     if resp.status_code == 401:
-        return json.dumps(
-            _error(
+        _invalidate_tool_cache()
+        return _error(
                 "Invalid TAMARIND_API_KEY. "
                 "Get one at https://app.tamarind.bio"
             )
-        )
     if resp.status_code == 429:
-        return json.dumps(
-            _error(
+        return _error(
                 "Rate limited. Free tier allows 10 jobs/month. "
                 "Upgrade at tamarind.bio/pricing"
             )
-        )
+    if resp.status_code >= 400:
+        body = resp.text[:500]
+        return _error(f"Tamarind API error ({resp.status_code}): {body}")
     return None
 
 
@@ -176,11 +181,9 @@ async def tamarind_list_tools() -> str:
             )
 
     except httpx.HTTPError as exc:
-        return json.dumps(_error(f"Failed to list Tamarind tools: {exc}"))
+        return _error(f"Failed to list Tamarind tools: {exc}")
     except Exception as exc:
-        return json.dumps(
-            _error(f"Unexpected error listing Tamarind tools: {exc}")
-        )
+        return _error(f"Unexpected error listing Tamarind tools: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -208,16 +211,14 @@ async def tamarind_upload_file(file_path: str) -> str:
 
     p = Path(file_path).resolve()
     if not p.exists():
-        return json.dumps(_error(f"File not found: {p}"))
+        return _error(f"File not found: {p}")
     if p.suffix.lower() not in ALLOWED_EXTENSIONS:
-        return json.dumps(_error(f"File type '{p.suffix}' not allowed. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"))
+        return _error(f"File type '{p.suffix}' not allowed. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}")
     if p.stat().st_size > MAX_FILE_UPLOAD_SIZE:
-        return json.dumps(
-            _error(
+        return _error(
                 f"File exceeds {MAX_FILE_UPLOAD_SIZE // (1024 * 1024)} MB "
                 f"limit: {p} ({p.stat().st_size / (1024 * 1024):.1f} MB)"
             )
-        )
 
     url = f"{_base_url()}/files"
     try:
@@ -237,11 +238,9 @@ async def tamarind_upload_file(file_path: str) -> str:
             return json.dumps(data, indent=2)
 
     except httpx.HTTPError as exc:
-        return json.dumps(_error(f"Failed to upload file to Tamarind: {exc}"))
+        return _error(f"Failed to upload file to Tamarind: {exc}")
     except Exception as exc:
-        return json.dumps(
-            _error(f"Unexpected error uploading file to Tamarind: {exc}")
-        )
+        return _error(f"Unexpected error uploading file to Tamarind: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -275,11 +274,9 @@ async def tamarind_list_files() -> str:
             return json.dumps(data, indent=2)
 
     except httpx.HTTPError as exc:
-        return json.dumps(_error(f"Failed to list Tamarind files: {exc}"))
+        return _error(f"Failed to list Tamarind files: {exc}")
     except Exception as exc:
-        return json.dumps(
-            _error(f"Unexpected error listing Tamarind files: {exc}")
-        )
+        return _error(f"Unexpected error listing Tamarind files: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -313,15 +310,15 @@ async def tamarind_submit_job(
         return err
 
     if not job_name.strip():
-        return json.dumps(_error("job_name must not be empty."))
+        return _error("job_name must not be empty.")
     if not tool_type.strip():
-        return json.dumps(_error("tool_type must not be empty."))
+        return _error("tool_type must not be empty.")
 
     # Parse and validate settings
     try:
         settings = json.loads(settings_json)
     except json.JSONDecodeError as exc:
-        return json.dumps(_error(f"Invalid JSON in settings_json: {exc}"))
+        return _error(f"Invalid JSON in settings_json: {exc}")
 
     url = f"{_base_url()}/submit-job"
     body = {
@@ -355,11 +352,9 @@ async def tamarind_submit_job(
             )
 
     except httpx.HTTPError as exc:
-        return json.dumps(_error(f"Failed to submit Tamarind job: {exc}"))
+        return _error(f"Failed to submit Tamarind job: {exc}")
     except Exception as exc:
-        return json.dumps(
-            _error(f"Unexpected error submitting Tamarind job: {exc}")
-        )
+        return _error(f"Unexpected error submitting Tamarind job: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -395,24 +390,20 @@ async def tamarind_submit_batch(
         return err
 
     if not batch_name.strip():
-        return json.dumps(_error("batch_name must not be empty."))
+        return _error("batch_name must not be empty.")
     if not tool_type.strip():
-        return json.dumps(_error("tool_type must not be empty."))
+        return _error("tool_type must not be empty.")
 
     # Parse and validate settings list
     try:
         settings_list = json.loads(settings_list_json)
     except json.JSONDecodeError as exc:
-        return json.dumps(
-            _error(f"Invalid JSON in settings_list_json: {exc}")
-        )
+        return _error(f"Invalid JSON in settings_list_json: {exc}")
 
     if not isinstance(settings_list, list):
-        return json.dumps(
-            _error("settings_list_json must be a JSON array of settings objects.")
-        )
+        return _error("settings_list_json must be a JSON array of settings objects.")
     if len(settings_list) == 0:
-        return json.dumps(_error("settings_list_json must not be empty."))
+        return _error("settings_list_json must not be empty.")
 
     url = f"{_base_url()}/submit-batch"
     body = {
@@ -447,13 +438,9 @@ async def tamarind_submit_batch(
             )
 
     except httpx.HTTPError as exc:
-        return json.dumps(
-            _error(f"Failed to submit Tamarind batch: {exc}")
-        )
+        return _error(f"Failed to submit Tamarind batch: {exc}")
     except Exception as exc:
-        return json.dumps(
-            _error(f"Unexpected error submitting Tamarind batch: {exc}")
-        )
+        return _error(f"Unexpected error submitting Tamarind batch: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -498,11 +485,9 @@ async def tamarind_list_jobs() -> str:
             return json.dumps(jobs, indent=2)
 
     except httpx.HTTPError as exc:
-        return json.dumps(_error(f"Failed to list Tamarind jobs: {exc}"))
+        return _error(f"Failed to list Tamarind jobs: {exc}")
     except Exception as exc:
-        return json.dumps(
-            _error(f"Unexpected error listing Tamarind jobs: {exc}")
-        )
+        return _error(f"Unexpected error listing Tamarind jobs: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -529,7 +514,7 @@ async def tamarind_get_job(job_name: str) -> str:
         return err
 
     if not job_name.strip():
-        return json.dumps(_error("job_name must not be empty."))
+        return _error("job_name must not be empty.")
 
     url = f"{_base_url()}/jobs"
     try:
@@ -551,12 +536,10 @@ async def tamarind_get_job(job_name: str) -> str:
             ]
 
             if not matching:
-                return json.dumps(
-                    _error(
+                return _error(
                         f"No job found with name '{job_name}'. "
                         f"Use tamarind_list_jobs to see all jobs."
                     )
-                )
 
             # Return the most recent match (in case of duplicates)
             job = matching[-1]
@@ -568,15 +551,11 @@ async def tamarind_get_job(job_name: str) -> str:
             return json.dumps(job, indent=2)
 
     except httpx.HTTPError as exc:
-        return json.dumps(
-            _error(f"Failed to get Tamarind job '{job_name}': {exc}")
-        )
+        return _error(f"Failed to get Tamarind job '{job_name}': {exc}")
     except Exception as exc:
-        return json.dumps(
-            _error(
+        return _error(
                 f"Unexpected error getting Tamarind job '{job_name}': {exc}"
             )
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -608,7 +587,7 @@ async def tamarind_wait_for_job(
         return err
 
     if not job_name.strip():
-        return json.dumps(_error("job_name must not be empty."))
+        return _error("job_name must not be empty.")
 
     terminal_statuses = {"Complete", "Failed"}
     interval = max(1, poll_interval_seconds)
@@ -633,12 +612,10 @@ async def tamarind_wait_for_job(
         # Check timeout
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            return json.dumps(
-                _error(
+            return _error(
                     f"Timeout after {timeout_seconds}s waiting for job "
                     f"'{job_name}'. Last status: {current_status}"
                 )
-            )
 
         # Sleep with exponential backoff
         sleep_time = min(interval, max_interval, remaining)
@@ -678,7 +655,7 @@ async def tamarind_screen_developability(
         return err
 
     if not sequence.strip():
-        return json.dumps(_error("sequence must not be empty."))
+        return _error("sequence must not be empty.")
 
     modality_lower = modality.strip().lower()
 
@@ -689,12 +666,10 @@ async def tamarind_screen_developability(
         tool_type = "tap"
         settings = {"sequence": sequence}
     else:
-        return json.dumps(
-            _error(
+        return _error(
                 f"Unknown modality '{modality}'. "
                 f"Use 'vhh', 'nanobody', 'scfv', 'antibody', or 'mab'."
             )
-        )
 
     job_name = _generate_job_name(f"proteus_dev_{tool_type}")
 
@@ -759,7 +734,7 @@ async def tamarind_screen_naturalness(
         return err
 
     if not heavy_sequence.strip():
-        return json.dumps(_error("heavy_sequence must not be empty."))
+        return _error("heavy_sequence must not be empty.")
 
     settings: dict = {"heavy_sequence": heavy_sequence}
     if light_sequence.strip():

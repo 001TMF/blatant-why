@@ -148,7 +148,8 @@ function loadLastSession(projectDir: string): LastSession | null {
     const age = Date.now() - new Date(data.timestamp).getTime();
     if (age > 24 * 60 * 60 * 1000) return null;
     return data;
-  } catch {
+  } catch (err) {
+    process.stderr.write(`[proteus] Failed to load last session: ${err}\n`);
     return null;
   }
 }
@@ -163,8 +164,8 @@ function saveLastSession(projectDir: string, sessionId: string, campaignDir?: st
       timestamp: new Date().toISOString(),
     };
     writeFileSync(getLastSessionPath(projectDir), JSON.stringify(data, null, 2));
-  } catch {
-    // Silent — best effort
+  } catch (err) {
+    process.stderr.write(`[proteus] Failed to save last session: ${err}\n`);
   }
 }
 
@@ -223,8 +224,9 @@ function listCampaigns(projectDir: string): CampaignEntry[] {
         }
       }
     }
-  } catch {
-    // Silent
+  } catch (err) {
+    process.stderr.write(`[proteus] Failed to list campaigns: ${err}\n`);
+    return [{ name: "error", status: "error", lastUpdated: new Date().toISOString(), dir: campaignsDir } as CampaignEntry];
   }
   // Sort by most recently updated first
   entries.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime());
@@ -918,7 +920,7 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
         cancellingRef.current = false;
       }
     },
-    [queryFn, setCurrentInput, addToHistory, sessionId, loading],
+    [queryFn, setCurrentInput, addToHistory, sessionId, loading, campaign],
   );
 
   return (

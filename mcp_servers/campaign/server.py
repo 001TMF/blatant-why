@@ -74,6 +74,10 @@ def _locked_campaign(campaign_dir: str) -> Generator[tuple[CampaignState, Path],
     Yields (state, log_path). On successful exit the caller is expected to
     have mutated *state* and the context manager will persist it back to disk
     before releasing the lock.
+
+    NOTE: The fcntl lock is advisory — it only prevents races between
+    processes that also use ``_locked_campaign``.  Direct file writes that
+    bypass this function will NOT be blocked by the lock.
     """
     log = _log_path(campaign_dir)
     if not log.exists():
@@ -342,11 +346,21 @@ async def campaign_record_scores(
 
     scores_file = scores_dir / f"{run_id}_scores.json"
 
+    warning: str | None = None
     try:
         # If existing scores file, merge (append).
         existing: list[dict] = []
         if scores_file.exists():
-            existing = json.loads(scores_file.read_text())
+            try:
+                existing = json.loads(scores_file.read_text())
+            except json.JSONDecodeError:
+                # Corrupted file — preserve it and start fresh
+                corrupted_path = scores_file.with_suffix(".corrupted")
+                scores_file.rename(corrupted_path)
+                warning = (
+                    f"Existing scores file was corrupted JSON. "
+                    f"Renamed to {corrupted_path.name} and started fresh."
+                )
 
         existing.extend(scores)
 
@@ -358,10 +372,10 @@ async def campaign_record_scores(
             finally:
                 fcntl.flock(fd, fcntl.LOCK_UN)
 
-        return json.dumps(
-            {"num_scores_recorded": len(scores), "run_id": run_id},
-            indent=2,
-        )
+        result: dict = {"num_scores_recorded": len(scores), "run_id": run_id}
+        if warning:
+            result["warning"] = warning
+        return json.dumps(result, indent=2)
     except Exception as exc:
         return _error(f"Failed to record scores: {exc}")
 
@@ -754,17 +768,19 @@ async def campaign_suggest_next_round(
         feature_importances, confidence, and explanation.
     """
     try:
-        result = suggest_from_campaign(campaign_dir)
-        return json.dumps(
-            {
-                "source": result.source,
-                "recommended_parameters": result.recommended_parameters,
-                "feature_importances": result.feature_importances,
-                "confidence": result.confidence,
-                "explanation": result.explanation,
-            },
-            indent=2,
-        )
+        result = suggest_from_campaign(campaign_dir, min_designs=min_designs)
+        payload: dict = {
+            "source": result.source,
+            "recommended_parameters": result.recommended_parameters,
+            "feature_importances": result.feature_importances,
+            "confidence": result.confidence,
+            "explanation": result.explanation,
+        }
+        if result.files_skipped > 0:
+            payload["files_skipped"] = result.files_skipped
+        if result.warnings:
+            payload["warnings"] = result.warnings
+        return json.dumps(payload, indent=2)
     except Exception as exc:
         return _error(f"Failed to suggest next round: {exc}")
 

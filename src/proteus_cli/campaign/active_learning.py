@@ -21,6 +21,8 @@ class OptimizationResult:
     feature_importances: list[tuple[str, float]] = field(default_factory=list)
     confidence: str = "medium"
     explanation: str = ""
+    files_skipped: int = 0
+    warnings: list[str] = field(default_factory=list)
 
 
 # -- Feature extraction -------------------------------------------------------
@@ -63,7 +65,7 @@ def has_enough_data(campaign_dir: str, min_designs: int = 10) -> bool:
         try:
             data = json.loads(f.read_text())
             total += len(data) if isinstance(data, list) else 1
-        except Exception:
+        except (json.JSONDecodeError, OSError):
             continue
     return total >= min_designs
 
@@ -71,7 +73,7 @@ def has_enough_data(campaign_dir: str, min_designs: int = 10) -> bool:
 # -- Public entry point --------------------------------------------------------
 
 
-def suggest_from_campaign(campaign_dir: str) -> OptimizationResult:
+def suggest_from_campaign(campaign_dir: str, min_designs: int = 10) -> OptimizationResult:
     """Analyze campaign data and suggest next-round parameters.
 
     Collects all ``*_scores.json`` files under *campaign_dir*, trains a random
@@ -82,27 +84,40 @@ def suggest_from_campaign(campaign_dir: str) -> OptimizationResult:
     # Collect all scored designs
     scores_path = Path(campaign_dir)
     all_designs: list[dict] = []
+    files_skipped = 0
+    skip_warnings: list[str] = []
     for f in scores_path.rglob("*_scores.json"):
         try:
             data = json.loads(f.read_text())
             if isinstance(data, list):
                 all_designs.extend(data)
-        except Exception:
+        except json.JSONDecodeError as exc:
+            files_skipped += 1
+            skip_warnings.append(f"Skipped {f.name}: invalid JSON ({exc})")
+            continue
+        except OSError as exc:
+            files_skipped += 1
+            skip_warnings.append(f"Skipped {f.name}: read error ({exc})")
             continue
 
-    if len(all_designs) < 10:
+    if len(all_designs) < min_designs:
         return OptimizationResult(
             source="rule_based",
             recommended_parameters={},
             confidence="low",
             explanation=(
-                f"Only {len(all_designs)} scored designs -- need 10+ for ML. "
+                f"Only {len(all_designs)} scored designs -- need {min_designs}+ for ML. "
                 "Using rule-based iteration."
             ),
+            files_skipped=files_skipped,
+            warnings=skip_warnings,
         )
 
     try:
-        return _ml_suggest(all_designs)
+        result = _ml_suggest(all_designs)
+        result.files_skipped = files_skipped
+        result.warnings = skip_warnings
+        return result
     except ImportError:
         return OptimizationResult(
             source="rule_based",
@@ -112,6 +127,8 @@ def suggest_from_campaign(campaign_dir: str) -> OptimizationResult:
                 "scikit-learn not installed. "
                 "pip install scikit-learn for ML-based optimization."
             ),
+            files_skipped=files_skipped,
+            warnings=skip_warnings,
         )
 
 

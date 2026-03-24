@@ -759,7 +759,6 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
     <Box flexDirection="column">
       {/* Animated banner — lives outside Static so the scientist can animate */}
       <BannerComponent
-        mode={modeConfig.displayName}
         forename={forename}
         termWidth={termWidth}
       />

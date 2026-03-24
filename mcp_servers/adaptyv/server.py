@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -12,7 +14,6 @@ Safety architecture:
   Layer 2 — Approval file check (written by TUI, not by Claude)
   Layer 3 — Module-level pending dict with 5-minute TTL
 """
-from __future__ import annotations
 
 import json
 import os

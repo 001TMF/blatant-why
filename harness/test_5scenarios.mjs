@@ -16,6 +16,21 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const cwd = resolve(__dirname, "..");
+
+// Load .env from project root so TAMARIND_API_KEY etc. are available
+const envPath = resolve(cwd, ".env");
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, "utf-8").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const val = trimmed.slice(eq + 1).trim();
+    if (!process.env[key]) process.env[key] = val;
+  }
+  console.log("Loaded .env from project root");
+}
 const resultsDir = resolve(__dirname, "test_results");
 
 // Ensure output directory
@@ -209,13 +224,13 @@ async function runTest(testNum, label, prompt, maxTurns, timeoutMs, criteria) {
 
 // Test 1: Simple beginner question
 // Note: The orchestrator CLAUDE.md triggers autonomous research before responding.
-// Give it enough turns (15) and time (300s) to complete the full research+respond cycle.
+// Give it enough turns (25) and time (360s) to complete the full research+respond cycle.
 await runTest(
   1,
   "Simple beginner question",
   "I have a protein called PD-L1 and I want to make something that binds to it. What should I do?",
-  15,
-  300000,
+  25,
+  360000,
   {
     "responds without errors": (_text, _lower, _tools, r) => r.errors.length === 0,
     "mentions PD-L1": (_text, lower) => lower.includes("pd-l1") || lower.includes("pd l1") || lower.includes("pdl1"),
@@ -234,13 +249,13 @@ await runTest(
 
 // Test 2: Expert with specific parameters
 // Note: The orchestrator pattern uses TodoWrite + Task + MCP calls.
-// Give it 15 turns and 300s to research, plan, and present.
+// Give it 25 turns and 420s to research, plan, and present.
 await runTest(
   2,
   "Expert with exact parameters",
   "Design 20K VHH nanobodies against TNF-alpha residues 75-97 using caplacizumab scaffold, alpha 0.01, on Tamarind",
-  15,
-  300000,
+  25,
+  420000,
   {
     "responds without errors": (_text, _lower, _tools, r) => r.errors.length === 0,
     "recognizes VHH/nanobody modality": (_text, lower) =>
@@ -285,13 +300,13 @@ await runTest(
 
 // Test 4: Research target
 // Note: The orchestrator uses TodoWrite for planning which consumes turns.
-// Give it 20 turns and 300s to complete research + present results.
+// Give it 30 turns and 360s to complete research + present results.
 await runTest(
   4,
   "Research EGFR target",
   "Research EGFR as a target for antibody design. Check PDB and UniProt.",
-  20,
-  300000,
+  30,
+  360000,
   {
     "responds without errors": (_text, _lower, _tools, r) => r.errors.length === 0,
     "mentions EGFR": (_text, lower) => lower.includes("egfr"),

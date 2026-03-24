@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 """Research MCP Server — public API queries for target research in Proteus agent."""
-from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta

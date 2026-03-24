@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 """Levitate Bio MCP Server — antibody design and analysis pipelines."""
-from __future__ import annotations
 
 import asyncio
 import json

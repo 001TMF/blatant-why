@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -9,7 +11,6 @@ Endpoints verified by live API testing (2026-03-23).
 WARNING: Free tier allows only 10 jobs/month. The agent should minimize
 unnecessary submissions and prefer batching where possible.
 """
-from __future__ import annotations
 
 import asyncio
 import json

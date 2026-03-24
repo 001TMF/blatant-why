@@ -21,8 +21,18 @@ pip install -e .
 git clone https://github.com/bytedance/PXDesign.git
 cd PXDesign
 pip install -e .
+
+# Download model weights (required before first run)
+bash download_tool_weights.sh
+
+# CUTLASS dependency — required for PXDesign kernels
+export CUTLASS_PATH=/path/to/cutlass
 # See https://protenix.github.io/pxdesign/ for detailed setup
 ```
+
+> **Note:** PXDesign is also available as a cloud option via Tamarind Bio
+> (`tamarind_submit_job` with type `"pxdesign"`), which avoids local dependency
+> management entirely.
 
 ### Protenix (Structure Prediction)
 ```bash
@@ -54,13 +64,42 @@ The default paths are configurable via environment variables. Example layout:
 Set `compute.provider: "local"` in your campaign YAML.
 
 ## Verifying Installation
+
 ```bash
-# Check tool detection
+# Check tool detection (should show True only for configured tools)
 python -c "from proteus_cli.common import detect_local_tools; print(detect_local_tools())"
 
 # Check GPU
 nvidia-smi
+
+# Verify individual tools
+proteus-ab --help    # BoltzGen (antibody/nanobody design)
+pxdesign --help      # PXDesign (de novo protein binders)
+protenix --help      # Protenix (structure prediction)
 ```
+
+## Important Notes
+
+### Conflicting Python Dependencies
+BoltzGen, PXDesign, and Protenix may have conflicting Python dependency versions
+(e.g., different PyTorch or NumPy requirements). Two recommended approaches:
+
+1. **Separate conda environments** (recommended for local GPU):
+   ```bash
+   conda create -n boltzgen python=3.10 && conda activate boltzgen && pip install -e /path/to/boltzgen
+   conda create -n pxdesign python=3.10 && conda activate pxdesign && pip install -e /path/to/PXDesign
+   conda create -n protenix python=3.10 && conda activate protenix && pip install -e /path/to/Protenix
+   ```
+
+2. **Use Tamarind cloud** (no local dependencies needed):
+   Set `TAMARIND_API_KEY` and run all tools via the cloud API. Free tier gives
+   10 jobs/month — enough for preview campaigns.
+
+### The `proteus-design` Package
+The `proteus-design` PyPI package is the unified BoltzGen + Protenix pipeline
+(also called Proteus-AB). It bundles BoltzGen diffusion with Protenix refolding
+into a single `proteus-ab` CLI. If you install `proteus-design`, you get both
+BoltzGen and Protenix in one environment.
 
 ## SSH Remote Setup
 

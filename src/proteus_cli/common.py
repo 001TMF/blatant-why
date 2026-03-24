@@ -33,17 +33,41 @@ class ToolResult:
         )
 
 
+def _resolve_tool_path(*env_vars: str) -> Path | None:
+    """Return a Path from the first set env var, or None if all are empty.
+
+    Path("") resolves to "." which always passes .exists(), causing
+    false-positive tool detection.  This helper avoids that.
+    """
+    for var in env_vars:
+        value = os.getenv(var, "")
+        if value:
+            return Path(value)
+    return None
+
+
 # Default tool paths — override via environment variables
-TOOL_PATHS = {
-    "protenix": Path(os.getenv("PROTEUS_FOLD_DIR", os.getenv("PROTENIX_DIR", ""))),
-    "pxdesign": Path(os.getenv("PROTEUS_PROT_DIR", os.getenv("PXDESIGN_DIR", ""))),
-    "boltzgen": Path(os.getenv("PROTEUS_AB_DIR", os.getenv("BOLTZGEN_DIR", ""))),
+TOOL_PATHS: dict[str, Path | None] = {
+    "protenix": _resolve_tool_path("PROTEUS_FOLD_DIR", "PROTENIX_DIR"),
+    "pxdesign": _resolve_tool_path("PROTEUS_PROT_DIR", "PXDESIGN_DIR"),
+    "boltzgen": _resolve_tool_path("PROTEUS_AB_DIR", "BOLTZGEN_DIR"),
 }
 
 
 def detect_local_tools() -> dict[str, bool]:
     """Check which local tools are available."""
-    return {name: path.exists() for name, path in TOOL_PATHS.items()}
+    result = {}
+    for name, path in TOOL_PATHS.items():
+        if path is None or str(path) == "" or str(path) == ".":
+            result[name] = False
+            continue
+        # Check for actual tool indicator (setup.py, pyproject.toml, or src/)
+        result[name] = path.exists() and (
+            (path / "setup.py").exists()
+            or (path / "pyproject.toml").exists()
+            or (path / "src").exists()
+        )
+    return result
 
 
 def get_available_providers() -> list[str]:
@@ -66,9 +90,14 @@ def get_available_providers() -> list[str]:
 
 
 def validate_tool_path(tool_name: str) -> Path:
-    path = TOOL_PATHS.get(tool_name)
-    if path is None:
+    if tool_name not in TOOL_PATHS:
         raise ValueError(f"Unknown tool: {tool_name}. Available: {list(TOOL_PATHS)}")
+    path = TOOL_PATHS[tool_name]
+    if path is None or str(path) == "" or str(path) == ".":
+        raise FileNotFoundError(
+            f"Tool directory not configured for {tool_name}. "
+            f"Set the appropriate environment variable (e.g. PROTEUS_FOLD_DIR)."
+        )
     if not path.exists():
         raise FileNotFoundError(f"Tool directory not found: {path}")
     return path
@@ -77,7 +106,12 @@ def validate_tool_path(tool_name: str) -> Path:
 def get_tool_env(tool_name: str) -> dict[str, str]:
     """Return environment variables needed for a specific tool."""
     base = dict(os.environ)
-    tool_dir = TOOL_PATHS[tool_name]
+    tool_dir = TOOL_PATHS.get(tool_name)
+    if tool_dir is None:
+        raise FileNotFoundError(
+            f"Tool directory not configured for {tool_name}. "
+            f"Set the appropriate environment variable."
+        )
 
     if tool_name == "protenix":
         base["PROTENIX_ROOT_DIR"] = str(tool_dir)

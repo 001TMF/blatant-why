@@ -57,6 +57,16 @@ MODALITY_PROTOCOLS = {
     "de_novo_protein": "protein-anything",
 }
 
+# Cloud tools available per modality on Tamarind
+# Both BoltzGen and PXDesign are available for de novo protein binders via
+# Tamarind cloud. PXDesign is preferred when the target has a clear structure
+# and defined epitope; BoltzGen is more flexible for unusual targets.
+CLOUD_TOOLS = {
+    "vhh": ["boltzgen"],
+    "scfv": ["boltzgen"],
+    "de_novo_protein": ["boltzgen", "pxdesign"],  # Both available on Tamarind
+}
+
 # Smart tier selection guidance
 TIER_SELECTION_RULES = """
 The agent should select tier based on:

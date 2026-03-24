@@ -7,6 +7,7 @@ entirely in-process with temporary directories.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -127,8 +128,12 @@ class TestE2EProteinDesignPipeline:
                 stderr = ""
             return FakeProc()
 
+        def mock_get_tool_env(name: str) -> dict[str, str]:
+            return dict(os.environ)
+
         monkeypatch.setattr(protein_mod, "validate_tool_path", mock_validate)
         monkeypatch.setattr(protein_mod, "run_command", mock_run)
+        monkeypatch.setattr(protein_mod, "get_tool_env", mock_get_tool_env)
 
         from proteus_cli.protein import run_protein_design
         result = run_protein_design(config_path, output_dir=tmp_path)
@@ -234,8 +239,12 @@ class TestE2EAntibodyDesignPipeline:
                 stderr = ""
             return FakeProc()
 
+        def mock_get_tool_env(name: str) -> dict[str, str]:
+            return dict(os.environ)
+
         monkeypatch.setattr(antibody_mod, "validate_tool_path", mock_validate)
         monkeypatch.setattr(antibody_mod, "run_command", mock_run)
+        monkeypatch.setattr(antibody_mod, "get_tool_env", mock_get_tool_env)
 
         from proteus_cli.antibody import run_antibody_design
         result = run_antibody_design(spec_path, output_dir=tmp_path)

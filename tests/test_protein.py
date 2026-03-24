@@ -1,6 +1,7 @@
 """Tests for proteus_cli.protein module."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -127,8 +128,12 @@ class TestRunProteinDesign:
 
             return FakeProc()
 
+        def mock_get_tool_env(name: str) -> dict[str, str]:
+            return dict(os.environ)
+
         monkeypatch.setattr(protein_mod, "validate_tool_path", mock_validate)
         monkeypatch.setattr(protein_mod, "run_command", mock_run)
+        monkeypatch.setattr(protein_mod, "get_tool_env", mock_get_tool_env)
 
         config = tmp_path / "pxdesign_config.yaml"
         config.touch()

@@ -206,6 +206,14 @@ When designing, try Tamarind first (default cloud provider):
 3. tamarind_wait_for_job or poll tamarind_get_job_status
 4. tamarind_get_job_results to download output
 
+### PXDesign via Tamarind (De Novo Protein Binders)
+PXDesign is available as a cloud option on Tamarind for de novo protein binder design:
+- Use tamarind_submit_job with type "pxdesign"
+- Required: targetFile, targetChains
+- Optional: hotspots, binderLength (default 10)
+- 17-82% experimental hit rates (published)
+- Prefer PXDesign for structured targets with clear epitopes; use BoltzGen for more flexible generative design
+
 ## Cloud Compute MCP Tools (Levitate — Alternative)
 - levitate: levitate_list_pipelines, levitate_run_rfantibody, levitate_run_analysis, levitate_get_results, levitate_estimate_cost
 

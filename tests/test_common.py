@@ -88,17 +88,21 @@ class TestToolPaths:
         expected = {"protenix", "pxdesign", "boltzgen"}
         assert set(TOOL_PATHS.keys()) == expected
 
-    def test_paths_are_path_objects(self):
-        """All values in TOOL_PATHS are Path instances."""
+    def test_paths_are_path_or_none(self):
+        """All values in TOOL_PATHS are Path instances or None."""
         for name, path in TOOL_PATHS.items():
-            assert isinstance(path, Path), f"{name} path is not a Path object"
+            assert path is None or isinstance(path, Path), (
+                f"{name} path should be a Path or None, got {type(path)}"
+            )
 
-    def test_default_paths_empty_without_env(self, monkeypatch):
-        """Default tool paths are empty when no env vars are set."""
+    def test_default_paths_none_without_env(self, monkeypatch):
+        """Default tool paths are None when no env vars are set."""
         # Note: TOOL_PATHS are resolved at import time from env vars.
-        # Without env vars set, they default to empty Path("").
+        # Without env vars set, they default to None (not Path("")).
         for name, path in TOOL_PATHS.items():
-            assert isinstance(path, Path), f"{name} should be a Path"
+            assert path is None or isinstance(path, Path), (
+                f"{name} should be None or a Path"
+            )
 
 
 class TestValidateToolPath:

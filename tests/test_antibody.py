@@ -1,6 +1,7 @@
 """Tests for proteus_cli.antibody module."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -133,8 +134,12 @@ class TestRunAntibodyDesign:
 
             return FakeProc()
 
+        def mock_get_tool_env(name: str) -> dict[str, str]:
+            return dict(os.environ)
+
         monkeypatch.setattr(antibody_mod, "validate_tool_path", mock_validate)
         monkeypatch.setattr(antibody_mod, "run_command", mock_run)
+        monkeypatch.setattr(antibody_mod, "get_tool_env", mock_get_tool_env)
 
         spec = tmp_path / "design_spec.yaml"
         spec.touch()

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -132,8 +133,12 @@ class TestRunFold:
 
         import proteus_cli.fold as fold_mod
 
+        def fake_get_tool_env(name: str) -> dict[str, str]:
+            return dict(os.environ)
+
         monkeypatch.setattr(fold_mod, "validate_tool_path", fake_validate)
         monkeypatch.setattr(fold_mod, "run_command", fake_run_command)
+        monkeypatch.setattr(fold_mod, "get_tool_env", fake_get_tool_env)
 
         # Need a real input file for the path-exists check.
         import tempfile

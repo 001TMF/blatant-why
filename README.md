@@ -9,7 +9,7 @@
  ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝   ╚══════╝ ╚═════╝ ╚══════╝
 ```
 
-**AI-Powered Antibody Design Campaign Agent**
+**AI-Powered Biologics Design Campaign Agent**
 
 </div>
 
@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-Design antibodies from target to lab in one conversation. Proteus orchestrates multi-agent design campaigns with BoltzGen, Protenix, and 200+ cloud tools -- from literature research through experimental validation.
+Design antibodies, nanobodies, de novo protein binders, and peptides from target to lab in one conversation. Proteus orchestrates multi-agent biologics design campaigns with BoltzGen, PXDesign, Protenix, and 200+ cloud tools -- from literature research through experimental validation.
 </p>
 
 <p align="center">
@@ -34,13 +34,13 @@ Design antibodies from target to lab in one conversation. Proteus orchestrates m
 
 ## What Makes Proteus Different
 
-Proteus is not a chatbot with tool access. It is a multi-agent campaign system that coordinates the entire antibody design lifecycle autonomously.
+Proteus is not a chatbot with tool access. It is a multi-agent campaign system that coordinates the entire biologics design lifecycle autonomously -- from antibodies and nanobodies to de novo protein binders.
 
 | Capability | What It Means |
 |---|---|
 | **Multi-agent orchestration** | 8 specialized agents (research, design, screening, lab, monitor, director, hypothesis, reflection) collaborate on each campaign |
 | **Hypothesis debate** | Three competing strategy agents argue epitope selection, scaffold choice, and parameters before a reflection agent picks the winner -- inspired by Google's AI Co-Scientist |
-| **8-phase research** | Quick / Standard / Deep / UltraDeep target research with quality gates, anti-drift checkpoints, and persistent memory |
+| **8-phase research** | Quick / Standard / Deep / UltraDeep target research with quality gates, anti-drift checkpoints, and persistent memory. Works for any protein target. |
 | **Active learning** | A random-forest optimizer analyzes scored designs after each round and recommends parameter changes for the next (EVOLVEpro-inspired) |
 | **Statistical failure diagnosis** | Mann-Whitney U tests identify which features discriminate passed vs failed designs, with concrete threshold recommendations |
 | **Knowledge graph** | Persistent structured memory across campaigns -- targets, scaffolds, failure patterns, and design outcomes carry forward |
@@ -55,7 +55,7 @@ Proteus is not a chatbot with tool access. It is a multi-agent campaign system t
 
 **Design**
 
-VHH nanobodies, scFv antibodies, de novo protein binders. BoltzGen diffusion + Protenix refolding. 7 VHH + 14 Fab scaffold templates. Fab-to-scFv conversion via (G4S)3 linker.
+VHH nanobodies, scFv antibodies, de novo protein binders, and peptides. BoltzGen diffusion + PXDesign miniproteins + Protenix refolding. 7 VHH + 14 Fab scaffold templates. Fab-to-scFv conversion via (G4S)3 linker.
 
 </td>
 <td width="25%" valign="top">
@@ -372,7 +372,7 @@ Cost estimates via `adaptyv_estimate_cost` are always safe to run -- they never 
 
 ## Campaign Cost Reference
 
-Based on real-world antibody design economics ([Asimov Press](https://press.asimov.com/)):
+Based on real-world biologics design economics ([Asimov Press](https://press.asimov.com/)):
 
 | Campaign Type | Compute | Lab Testing | Total |
 |---|---|---|---|
@@ -632,7 +632,7 @@ If Proteus is useful in your research, you can cite it as:
 
 ```bibtex
 @software{proteus2026,
-  title   = {Proteus: AI-Powered Antibody Design Campaign Agent},
+  title   = {Proteus: AI-Powered Biologics Design Campaign Agent},
   author  = {Tristan Farmer},
   year    = {2026},
   url     = {https://github.com/001TMF/blatant-why},

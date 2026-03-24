@@ -18,6 +18,11 @@ Compatibility note (2026-03-23):
 """
 from __future__ import annotations
 
+# Key naming conventions:
+# - compute_ipsae() returns "ipsae_min" (chain-letter API, used with JSON confidence files)
+# - score_npz() returns "design_ipsae_min" (asym_id API, used with NPZ files)
+# - score_multi_seed() handles both via _get_ipsae_min() helper
+
 import json
 from pathlib import Path
 from typing import Any

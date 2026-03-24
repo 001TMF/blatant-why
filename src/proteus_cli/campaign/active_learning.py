@@ -78,7 +78,7 @@ def suggest_from_campaign(campaign_dir: str, min_designs: int = 10) -> Optimizat
 
     Collects all ``*_scores.json`` files under *campaign_dir*, trains a random
     forest regressor on the scored designs, and returns data-driven
-    recommendations.  Falls back to a rule-based stub when fewer than 10
+    recommendations.  Falls back to a rule-based stub when fewer than *min_designs*
     scored designs are available or when scikit-learn is not installed.
     """
     # Collect all scored designs

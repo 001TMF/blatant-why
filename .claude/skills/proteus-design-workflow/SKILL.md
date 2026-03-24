@@ -56,7 +56,6 @@ User wants to...
 +-- SCORE an existing design
 |   +-- ipSAE from PAE matrix --> screening MCP: score_ipsae
 |   +-- Full battery          --> screening MCP: screen_composite
-|   +-- Full battery          --> screening MCP: screen_composite
 |
 +-- ANALYZE a target
     --> PDB/UniProt MCP tools, then proteus-epitope-analysis skill
@@ -110,7 +109,7 @@ Run all screens via the screening MCP: structural confidence (ipTM, pTM, pLDDT),
 **Stage 5 -- Ranking and Filtering:**
 Hard filters first: ipTM > 0.5, pLDDT > 70, CA-RMSD < 3.5A, high-severity liabilities <= 2.
 Soft ranking: `composite = 0.50 * ipSAE_min + 0.30 * ipTM + 0.20 * (1 - normalized_liability_count)`.
-Diversity selection: cluster at 80% sequence identity, pick top from each cluster.
+Diversity selection: cluster at 90% sequence identity for antibodies, 70% for protein binders; pick top from each cluster.
 
 **Stage 6 -- Review and Decision:**
 Present ranked table: `Rank | Design | ipSAE | ipTM | pLDDT | CA-RMSD | Liabilities | Status`.

@@ -129,17 +129,15 @@ async def local_run_boltzgen(
     """
     tool_path = TOOL_PATHS["boltzgen"]
     if not tool_path.exists():
-        return json.dumps(
-            _error(
+        return _error(
                 f"BoltzGen not found at {tool_path}. "
                 f"Set PROTEUS_AB_DIR or BOLTZGEN_DIR to override."
             )
-        )
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     spec = Path(spec_yaml).resolve()
     if not spec.exists():
-        return json.dumps(_error(f"Spec file not found: {spec}"))
+        return _error(f"Spec file not found: {spec}")
 
     cmd = [
         "proteus-ab", "run", str(spec),
@@ -162,7 +160,7 @@ async def local_run_boltzgen(
             timeout=7200, env=env,
         )
     except subprocess.TimeoutExpired:
-        return json.dumps(_error("BoltzGen run timed out after 2 hours"))
+        return _error("BoltzGen run timed out after 2 hours")
 
     if result.returncode != 0:
         return json.dumps({
@@ -205,17 +203,15 @@ async def local_run_pxdesign(
     """
     tool_path = TOOL_PATHS["pxdesign"]
     if not tool_path.exists():
-        return json.dumps(
-            _error(
+        return _error(
                 f"PXDesign not found at {tool_path}. "
                 f"Set PROTEUS_PROT_DIR or PXDESIGN_DIR to override."
             )
-        )
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     config = Path(config_yaml).resolve()
     if not config.exists():
-        return json.dumps(_error(f"Config file not found: {config}"))
+        return _error(f"Config file not found: {config}")
 
     cmd = [
         "pxdesign", "pipeline",
@@ -239,7 +235,7 @@ async def local_run_pxdesign(
             timeout=7200, env=env,
         )
     except subprocess.TimeoutExpired:
-        return json.dumps(_error("PXDesign run timed out after 2 hours"))
+        return _error("PXDesign run timed out after 2 hours")
 
     if result.returncode != 0:
         return json.dumps({
@@ -280,17 +276,15 @@ async def local_run_protenix(
     """
     tool_path = TOOL_PATHS["protenix"]
     if not tool_path.exists():
-        return json.dumps(
-            _error(
+        return _error(
                 f"Protenix not found at {tool_path}. "
                 f"Set PROTEUS_FOLD_DIR or PROTENIX_DIR to override."
             )
-        )
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     inp = Path(input_json).resolve()
     if not inp.exists():
-        return json.dumps(_error(f"Input JSON not found: {inp}"))
+        return _error(f"Input JSON not found: {inp}")
 
     cmd = [
         "protenix", "pred",
@@ -312,7 +306,7 @@ async def local_run_protenix(
             timeout=7200, env=env,
         )
     except subprocess.TimeoutExpired:
-        return json.dumps(_error("Protenix run timed out after 2 hours"))
+        return _error("Protenix run timed out after 2 hours")
 
     if result.returncode != 0:
         return json.dumps({
@@ -366,16 +360,14 @@ async def ssh_detect_tools_remote(
         config.tools_path = tools_path
 
     if not config.is_configured:
-        return json.dumps(
-            _error(
+        return _error(
                 "SSH not configured. Set PROTEUS_SSH_HOST or pass host parameter."
             )
-        )
 
     try:
         tools = ssh_check_tools(config)
     except Exception as exc:
-        return json.dumps(_error(f"SSH connection failed: {exc}"))
+        return _error(f"SSH connection failed: {exc}")
 
     return json.dumps({"host": config.host, "tools": tools}, indent=2)
 
@@ -414,16 +406,14 @@ async def ssh_detect_gpu_remote(
         config.key_path = key_path
 
     if not config.is_configured:
-        return json.dumps(
-            _error(
+        return _error(
                 "SSH not configured. Set PROTEUS_SSH_HOST or pass host parameter."
             )
-        )
 
     try:
         gpu_info = ssh_check_gpu(config)
     except Exception as exc:
-        return json.dumps(_error(f"SSH connection failed: {exc}"))
+        return _error(f"SSH connection failed: {exc}")
 
     return json.dumps({"host": config.host, **gpu_info}, indent=2)
 
@@ -466,9 +456,7 @@ async def ssh_run_job(
     """
     valid_tools = {"protenix", "pxdesign", "boltzgen"}
     if tool not in valid_tools:
-        return json.dumps(
-            _error(f"Unknown tool: {tool}. Must be one of: {sorted(valid_tools)}")
-        )
+        return _error(f"Unknown tool: {tool}. Must be one of: {sorted(valid_tools)}")
 
     config = SSHConfig.from_env()
     if host:
@@ -483,21 +471,19 @@ async def ssh_run_job(
         config.tools_path = tools_path
 
     if not config.is_configured:
-        return json.dumps(
-            _error(
+        return _error(
                 "SSH not configured. Set PROTEUS_SSH_HOST or pass host parameter."
             )
-        )
 
     if not Path(config_path).exists():
-        return json.dumps(_error(f"Config file not found: {config_path}"))
+        return _error(f"Config file not found: {config_path}")
 
     try:
         result = ssh_run_design_job(
             config, tool, config_path, output_dir, extra_args=extra_args,
         )
     except Exception as exc:
-        return json.dumps(_error(f"SSH job execution failed: {exc}"))
+        return _error(f"SSH job execution failed: {exc}")
 
     return json.dumps(result, indent=2)
 

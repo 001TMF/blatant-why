@@ -73,29 +73,23 @@ def _check_credentials() -> str | None:
     cid = _client_id()
     secret = _client_secret()
     if not cid or not secret:
-        return json.dumps(
-            _error(
+        return _error(
                 "LEVITATE_CLIENT_ID and LEVITATE_CLIENT_SECRET must be set. "
                 "Get credentials at https://levitate.bio/register"
             )
-        )
     return None
 
 
 def _handle_status_error(resp: httpx.Response) -> str | None:
     """Return an error string for common HTTP errors, or None."""
     if resp.status_code == 401:
-        return json.dumps(
-            _error(
+        return _error(
                 "Invalid Levitate credentials. "
                 "Check LEVITATE_CLIENT_ID and LEVITATE_CLIENT_SECRET. "
                 "Get credentials at https://levitate.bio/register"
             )
-        )
     if resp.status_code == 429:
-        return json.dumps(
-            _error("Rate limited by Levitate Bio. Please try again later.")
-        )
+        return _error("Rate limited by Levitate Bio. Please try again later.")
     return None
 
 
@@ -132,13 +126,9 @@ async def levitate_list_pipelines() -> str:
             return json.dumps(data, indent=2)
 
     except httpx.HTTPError as exc:
-        return json.dumps(
-            _error(f"Failed to list Levitate pipelines: {exc}")
-        )
+        return _error(f"Failed to list Levitate pipelines: {exc}")
     except Exception as exc:
-        return json.dumps(
-            _error(f"Unexpected error listing Levitate pipelines: {exc}")
-        )
+        return _error(f"Unexpected error listing Levitate pipelines: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -175,43 +165,37 @@ async def levitate_run_rfantibody(
     # Validate gpu_type
     gpu_type = gpu_type.lower().strip()
     if gpu_type not in VALID_GPU_TYPES:
-        return json.dumps(
-            _error(
+        return _error(
                 f"Invalid gpu_type: '{gpu_type}'. "
                 f"Must be one of: {', '.join(sorted(VALID_GPU_TYPES))}"
             )
-        )
 
     # Validate target_chain
     if not target_chain.strip():
-        return json.dumps(_error("target_chain must not be empty."))
+        return _error("target_chain must not be empty.")
 
     # Validate epitope_residues
     if not epitope_residues.strip():
-        return json.dumps(_error("epitope_residues must not be empty."))
+        return _error("epitope_residues must not be empty.")
     try:
         residue_list = [
             int(r.strip()) for r in epitope_residues.split(",") if r.strip()
         ]
     except ValueError:
-        return json.dumps(
-            _error(
+        return _error(
                 "epitope_residues must be comma-separated integers "
                 f"(e.g. '75,76,77'). Got: '{epitope_residues}'"
             )
-        )
 
     if not residue_list:
-        return json.dumps(_error("epitope_residues must not be empty."))
+        return _error("epitope_residues must not be empty.")
 
     # Validate and read PDB file
     p = Path(target_pdb).resolve()
     if not p.exists():
-        return json.dumps(_error(f"Target PDB file not found: {p}"))
+        return _error(f"Target PDB file not found: {p}")
     if p.stat().st_size > 10 * 1024 * 1024:
-        return json.dumps(
-            _error(f"Target PDB file exceeds 10 MB limit: {p}")
-        )
+        return _error(f"Target PDB file exceeds 10 MB limit: {p}")
 
     pdb_bytes = p.read_bytes()
 
@@ -252,7 +236,7 @@ async def levitate_run_rfantibody(
                     else f"GPU out of memory on {gpu_type} (already highest tier). "
                     f"Reduce num_designs or simplify the input."
                 )
-                return json.dumps(_error(msg))
+                return _error(msg)
 
             resp.raise_for_status()
             data = resp.json()
@@ -260,13 +244,9 @@ async def levitate_run_rfantibody(
             return json.dumps(data, indent=2)
 
     except httpx.HTTPError as exc:
-        return json.dumps(
-            _error(f"Failed to submit RFAntibody run: {exc}")
-        )
+        return _error(f"Failed to submit RFAntibody run: {exc}")
     except Exception as exc:
-        return json.dumps(
-            _error(f"Unexpected error submitting RFAntibody run: {exc}")
-        )
+        return _error(f"Unexpected error submitting RFAntibody run: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -296,21 +276,17 @@ async def levitate_run_analysis(
     valid_types = {"developability", "immunogenicity", "biophysics"}
     analysis_type = analysis_type.lower().strip()
     if analysis_type not in valid_types:
-        return json.dumps(
-            _error(
+        return _error(
                 f"Invalid analysis_type: '{analysis_type}'. "
                 f"Must be one of: {', '.join(sorted(valid_types))}"
             )
-        )
 
     # Validate and read PDB file
     p = Path(design_pdb).resolve()
     if not p.exists():
-        return json.dumps(_error(f"Design PDB file not found: {p}"))
+        return _error(f"Design PDB file not found: {p}")
     if p.stat().st_size > 10 * 1024 * 1024:
-        return json.dumps(
-            _error(f"Design PDB file exceeds 10 MB limit: {p}")
-        )
+        return _error(f"Design PDB file exceeds 10 MB limit: {p}")
 
     pdb_bytes = p.read_bytes()
 
@@ -337,13 +313,9 @@ async def levitate_run_analysis(
             return json.dumps(data, indent=2)
 
     except httpx.HTTPError as exc:
-        return json.dumps(
-            _error(f"Failed to submit Levitate analysis: {exc}")
-        )
+        return _error(f"Failed to submit Levitate analysis: {exc}")
     except Exception as exc:
-        return json.dumps(
-            _error(f"Unexpected error submitting Levitate analysis: {exc}")
-        )
+        return _error(f"Unexpected error submitting Levitate analysis: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -368,13 +340,13 @@ async def levitate_get_results(run_id: str, output_dir: str) -> str:
         return cred_err
 
     if not run_id.strip():
-        return json.dumps(_error("run_id must not be empty."))
+        return _error("run_id must not be empty.")
 
     out_path = Path(output_dir)
     try:
         out_path.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        return json.dumps(_error(f"Cannot create output directory: {exc}"))
+        return _error(f"Cannot create output directory: {exc}")
 
     url = f"{_base_url()}/runs/{run_id}/results"
 
@@ -439,16 +411,12 @@ async def levitate_get_results(run_id: str, output_dir: str) -> str:
             )
 
     except httpx.HTTPError as exc:
-        return json.dumps(
-            _error(f"Failed to get Levitate results for {run_id}: {exc}")
-        )
+        return _error(f"Failed to get Levitate results for {run_id}: {exc}")
     except Exception as exc:
-        return json.dumps(
-            _error(
+        return _error(
                 f"Unexpected error getting Levitate results "
                 f"for {run_id}: {exc}"
             )
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -476,24 +444,20 @@ async def levitate_estimate_cost(
     """
     gpu_type = gpu_type.lower().strip()
     if gpu_type not in VALID_GPU_TYPES:
-        return json.dumps(
-            _error(
+        return _error(
                 f"Invalid gpu_type: '{gpu_type}'. "
                 f"Must be one of: {', '.join(sorted(VALID_GPU_TYPES))}"
             )
-        )
 
     pipeline = pipeline.lower().strip()
     if pipeline not in _PIPELINE_HOURS_PER_10:
-        return json.dumps(
-            _error(
+        return _error(
                 f"Unknown pipeline: '{pipeline}'. "
                 f"Must be one of: {', '.join(sorted(_PIPELINE_HOURS_PER_10))}"
             )
-        )
 
     if num_designs < 1:
-        return json.dumps(_error("num_designs must be at least 1."))
+        return _error("num_designs must be at least 1.")
 
     # Scale linearly from the per-10 baseline
     hours_per_10 = _PIPELINE_HOURS_PER_10[pipeline][gpu_type]

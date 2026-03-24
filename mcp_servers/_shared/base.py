@@ -1,5 +1,7 @@
 """Shared MCP server utilities for Proteus agent."""
 
+import json
+
 import asyncio
 import base64
 import os
@@ -11,9 +13,9 @@ T = TypeVar("T")
 MAX_PDB_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
-def _error(msg: str) -> dict:
-    """Return a standardized error response."""
-    return {"error": msg}
+def _error(msg: str) -> str:
+    """Return a JSON-encoded error payload."""
+    return json.dumps({"error": msg})
 
 
 def _load_env_key(key: str, required: bool = True) -> str | None:

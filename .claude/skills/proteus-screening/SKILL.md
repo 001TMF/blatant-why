@@ -316,8 +316,8 @@ The following MCP tools are available via the proteus-screening server for progr
 
 Scan a protein sequence for PTM liabilities (deamidation, isomerization, oxidation, free cysteines, glycosylation motifs).
 
-Input: `{ "sequence": "EVQLV...", "cdr_regions": [[26,35], [50,66], [93,102]] }`
-Output: List of `Liability` objects with type, position, motif, severity, description. Liabilities within CDR regions are annotated with `in_cdr: true`.
+Input: `{ "sequence": "EVQLV..." }`
+Output: List of `Liability` objects with type, position, motif, severity, and description.
 
 ### screen_developability
 

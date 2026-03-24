@@ -24,8 +24,8 @@ export function ToolActivityPanel({ tools, maxDisplay = 5 }: Props) {
         const elapsed = tool.endTime
           ? ((tool.endTime - tool.startTime) / 1000).toFixed(1)
           : ((Date.now() - tool.startTime) / 1000).toFixed(0);
-        const icon = tool.status === "done" ? "\u2713" : tool.status === "error" ? "\u2717" : "\u25CF";
-        const color = tool.status === "done" ? theme.hex.success : tool.status === "error" ? theme.hex.error : theme.hex.tealBright;
+        const icon = tool.status === "done" ? "\u2714" : tool.status === "error" ? "\u2716" : "\u25CF";
+        const color = tool.status === "done" ? theme.hex.success : tool.status === "error" ? theme.hex.error : theme.hex.primary;
 
         return (
           <Box key={i}>

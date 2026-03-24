@@ -225,7 +225,7 @@ export function renderResults(designs: DesignResult[], termWidth: number = 120):
   lines.push("");
   lines.push(
     I +
-      theme.warningText("\u26A0") +
+      theme.warningText("\u25B2") +
       " " +
       theme.warningText(
         "Note: Run screening battery (/screen) for full developability assessment.",

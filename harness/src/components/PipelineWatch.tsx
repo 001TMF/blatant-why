@@ -45,7 +45,7 @@ export function PipelineWatch({ manifest, onComplete }: PipelineWatchProps) {
       <Text color={theme.hex.accent} bold>Watching run {truncId}</Text>
       <Text dimColor>  Press Ctrl+C to stop</Text>
       <Text>{""}</Text>
-      <Text>Design Run: <Text color={theme.hex.tealBright}>{truncId}</Text></Text>
+      <Text>Design Run: <Text color={theme.hex.primary}>{truncId}</Text></Text>
       <Text>{""}</Text>
       {stageNames.map((name, i) => {
         const stageNum = i + 1;
@@ -53,14 +53,14 @@ export function PipelineWatch({ manifest, onComplete }: PipelineWatchProps) {
         let color: string;
 
         if (stageNum < status.stage || status.complete) {
-          symbol = "\u2713";
+          symbol = "\u2714";
           color = theme.hex.success;
         } else if (stageNum === status.stage && !status.complete) {
           symbol = "\u25CF";
-          color = theme.hex.warning;
+          color = theme.hex.primary;
         } else {
           symbol = "\u25CB";
-          color = "#78909C";
+          color = theme.hex.dim;
         }
 
         return (
@@ -83,17 +83,17 @@ export function PipelineWatch({ manifest, onComplete }: PipelineWatchProps) {
       <Text>
         <Text>Status: </Text>
         {status.complete ? (
-          <Text color={theme.hex.success}>{"\u2713"} complete</Text>
+          <Text color={theme.hex.success}>{"\u2714"} complete</Text>
         ) : status.error ? (
-          <Text color={theme.hex.error}>{"\u2717"} error</Text>
+          <Text color={theme.hex.error}>{"\u2716"} error</Text>
         ) : (
-          <Text color={theme.hex.teal}>{"\u25CF"} running</Text>
+          <Text color={theme.hex.primary}>{"\u25CF"} running</Text>
         )}
       </Text>
       {status.complete && (
         <>
           <Text>{""}</Text>
-          <Text color={theme.hex.success}>{"\u2713"} Design run completed!</Text>
+          <Text color={theme.hex.success}>{"\u2714"} Design run completed!</Text>
           <Text>Use /results or ask me to show the designs.</Text>
         </>
       )}

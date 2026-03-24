@@ -1,8 +1,10 @@
 import React from "react";
 import { Text } from "ink";
 // Note: MarkdownText uses raw ANSI codes for inline highlighting.
-// Theme hex values are referenced via constants below for consistency.
-// Primary: #448AFF (blue), Accent: #FFAB40 (amber), Teal: #26C6DA
+// Okabe-Ito colorblind-safe palette (Nature Methods standard):
+// skyBlue: #56B4E9 (86,180,233)  orange: #E69F00 (230,159,0)
+// blue: #0072B2 (0,114,178)      bluishGreen: #009E73 (0,158,115)
+// vermillion: #D55E00 (213,94,0) muted: #CC79A7 (204,121,167)
 
 // eslint-disable-next-line no-control-regex
 const ANSI_RE = /\u001b\[[0-9;]*m/g;
@@ -59,48 +61,48 @@ function wrapLine(line: string, maxWidth: number): string[] {
 function highlightCode(code: string, lang: string): string {
   const supported = ["yaml", "json", "python", "py", "bash", "sh"];
   if (!supported.includes(lang)) {
-    // Default: just green
-    return "\x1b[38;2;255;171;64m" + code + "\x1b[0m";
+    // Default: Okabe-Ito orange for unsupported languages
+    return "\x1b[38;2;230;159;0m" + code + "\x1b[0m";
   }
 
   const lines = code.split("\n");
   const highlighted = lines.map((line) => {
     let result = line;
 
-    // Strings in accent color (#66BB6A)
+    // Strings in Okabe-Ito orange (#E69F00)
     result = result.replace(
       /(["'])(?:(?=(\\?))\2.)*?\1/g,
-      "\x1b[38;2;255;171;64m$&\x1b[38;2;120;144;156m",
+      "\x1b[38;2;230;159;0m$&\x1b[38;2;120;144;156m",
     );
 
-    // Numbers in cyan (#80DEEA)
+    // Numbers in Okabe-Ito skyBlue (#56B4E9)
     result = result.replace(
       /(?<![a-zA-Z_])(\d+\.?\d*(?:e[+-]?\d+)?)\b/g,
-      "\x1b[38;2;128;222;234m$1\x1b[38;2;120;144;156m",
+      "\x1b[38;2;86;180;233m$1\x1b[38;2;120;144;156m",
     );
 
     // Language-specific keywords
     if (lang === "python" || lang === "py") {
       result = result.replace(
         /\b(def|class|import|from|return|if|else|elif|for|while|with|as|in|not|and|or|True|False|None|try|except|finally|raise|yield|async|await)\b/g,
-        "\x1b[38;2;68;138;255m$1\x1b[38;2;120;144;156m",
+        "\x1b[38;2;0;114;178m$1\x1b[38;2;120;144;156m",
       );
     } else if (lang === "bash" || lang === "sh") {
       result = result.replace(
         /\b(if|then|else|fi|for|do|done|while|case|esac|function|export|source|echo|cd|ls|grep|sed|awk)\b/g,
-        "\x1b[38;2;68;138;255m$1\x1b[38;2;120;144;156m",
+        "\x1b[38;2;0;114;178m$1\x1b[38;2;120;144;156m",
       );
     } else if (lang === "yaml") {
       // YAML keys (word followed by colon)
       result = result.replace(
         /^(\s*)([\w.-]+)(:)/gm,
-        "$1\x1b[38;2;68;138;255m$2\x1b[38;2;120;144;156m$3",
+        "$1\x1b[38;2;0;114;178m$2\x1b[38;2;120;144;156m$3",
       );
     } else if (lang === "json") {
       // JSON keys
       result = result.replace(
         /"([^"]+)"\s*:/g,
-        "\x1b[38;2;68;138;255m\"$1\"\x1b[38;2;120;144;156m:",
+        "\x1b[38;2;0;114;178m\"$1\"\x1b[38;2;120;144;156m:",
       );
     }
 
@@ -136,7 +138,7 @@ export function MarkdownText({ children, width }: MarkdownTextProps) {
     text = text.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, "\x1b[3m$1\x1b[23m");
 
     // Inline code: `text`
-    text = text.replace(/`([^`]+)`/g, "\x1b[38;2;128;203;196m$1\x1b[0m");
+    text = text.replace(/`([^`]+)`/g, "\x1b[38;2;86;180;233m$1\x1b[0m");
 
     // Headers: # text
     text = text.replace(/^### (.+)$/gm, "\x1b[1;37m  $1\x1b[0m");
@@ -202,10 +204,10 @@ export function MarkdownText({ children, width }: MarkdownTextProps) {
     );
 
     // List items: - text or * text
-    text = text.replace(/^[\s]*[-*] (.+)$/gm, "  \x1b[38;2;68;138;255m\u25CF\x1b[0m $1");
+    text = text.replace(/^[\s]*[-*] (.+)$/gm, "  \x1b[38;2;0;114;178m\u25CF\x1b[0m $1");
 
     // Numbered list items
-    text = text.replace(/^[\s]*(\d+)\. (.+)$/gm, "  \x1b[38;2;68;138;255m$1.\x1b[0m $2");
+    text = text.replace(/^[\s]*(\d+)\. (.+)$/gm, "  \x1b[38;2;0;114;178m$1.\x1b[0m $2");
 
     // Width-aware wrapping
     if (width && width > 0) {

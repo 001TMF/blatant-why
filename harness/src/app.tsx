@@ -55,7 +55,7 @@ function humanizeToolName(name: string): string | null {
   // Map known MCP tool prefixes to readable names
   const mappings: Record<string, string> = {
     "pdb_search": "Searching PDB",
-    "pdb_fetch_structure": "Fetching PDB structure",
+    "pdb_fetch_structure": "Fetching structure",
     "pdb_get_chains": "Analyzing chains",
     "pdb_interface_residues": "Analyzing interface",
     "pdb_download": "Downloading structure",
@@ -64,12 +64,39 @@ function humanizeToolName(name: string): string | null {
     "uniprot_get_domains": "Analyzing domains",
     "uniprot_get_variants": "Checking variants",
     "sabdab_search": "Searching SAbDab",
-    "screen_liabilities": "Screening liabilities",
+    "screen_liabilities": "Scanning liabilities",
     "screen_developability": "Screening developability",
-    "screen_composite": "Running composite screen",
-    "score_ipsae": "Computing ipSAE scores",
-
+    "screen_composite": "Running screening",
+    "screen_net_charge": "Computing net charge",
+    "score_ipsae": "Computing ipSAE",
     "interpret_scores": "Interpreting scores",
+    "tamarind_list_models": "Listing compute models",
+    "tamarind_submit_job": "Submitting to Tamarind",
+    "tamarind_get_job_status": "Checking job status",
+    "tamarind_get_job_results": "Fetching job results",
+    "tamarind_wait_for_job": "Waiting for compute",
+    "levitate_list_pipelines": "Listing pipelines",
+    "levitate_run_rfantibody": "Running RFAntibody",
+    "levitate_run_analysis": "Running analysis",
+    "levitate_get_results": "Fetching results",
+    "levitate_estimate_cost": "Estimating cost",
+    "campaign_create": "Creating campaign",
+    "campaign_get": "Loading campaign",
+    "campaign_update_status": "Updating campaign",
+    "campaign_add_round": "Adding round",
+    "campaign_update_round": "Updating round",
+    "campaign_record_scores": "Recording scores",
+    "campaign_get_summary": "Summarizing campaign",
+    "campaign_get_cost_estimate": "Estimating costs",
+    "research_search_prior_art": "Searching literature",
+    "research_get_target_info": "Researching target",
+    "research_analyze_known_binders": "Analyzing binders",
+    "research_find_similar_targets": "Finding similar targets",
+    "adaptyv_estimate_cost": "Estimating lab cost",
+    "adaptyv_prepare_submission": "Preparing submission",
+    "adaptyv_confirm_submission": "Confirming submission",
+    "adaptyv_get_experiment_status": "Checking experiment",
+    "adaptyv_get_results": "Fetching lab results",
   };
 
   if (mappings[name]) return mappings[name];
@@ -142,7 +169,7 @@ function MessageComponent({ message }: { message: Message }) {
     case "user":
       return (
         <Text>
-          <Text color={theme.hex.primary}>{"  \u25B8 "}</Text>
+          <Text color={theme.hex.primary}>{"  \u25C6 "}</Text>
           <Text color={theme.hex.body}>{message.text}</Text>
         </Text>
       );
@@ -163,7 +190,7 @@ function MessageComponent({ message }: { message: Message }) {
     case "error":
       return (
         <Box>
-          <Text color={theme.hex.error} bold>{"  \u2717 "}</Text>
+          <Text color={theme.hex.error} bold>{"  \u2716 "}</Text>
           <Text color={theme.hex.error}>{message.text}</Text>
         </Box>
       );
@@ -693,10 +720,11 @@ export function App({ queryFn, initialMode, configRef }: AppProps) {
       <Box>
         <Text dimColor>
           {"  "}
-          {mode === "vhh" ? "VHH" : mode === "scfv" ? "scFv" : "De Novo"}
-          {campaign.isActive ? ` | ${(campaign.state as Record<string, unknown>)?.campaign_id ?? "campaign"}` : ""}
-          {activeRun ? ` | Run: ${activeRun.runId.substring(0, 8)}` : ""}
-          {loading ? " | Esc to interrupt" : " | Ctrl+C+C to exit"}
+          {mode === "vhh" ? "VHH Nanobody" : mode === "scfv" ? "scFv Antibody" : "De Novo Binder"}
+          {campaign.isActive ? ` \u2502 Campaign: ${(campaign.state as Record<string, unknown>)?.campaign_id ?? "campaign"}` : ""}
+          {activeRun ? ` \u2502 Run: ${activeRun.runId.substring(0, 8)}` : ""}
+          {" \u2502 Tamarind Bio"}
+          {loading ? " \u2502 Esc to interrupt" : ""}
         </Text>
       </Box>
 

@@ -54,7 +54,7 @@ export function LabApproval({
   return (
     <Box flexDirection="column">
       <Text>{""}</Text>
-      <Text color={theme.hex.warning} bold>{"  \u26A0 LAB SUBMISSION APPROVAL"}</Text>
+      <Text color={theme.hex.warning} bold>{"  \u25B2 LAB SUBMISSION APPROVAL"}</Text>
       <Text>{""}</Text>
       <Text color={theme.hex.error} bold>
         {"  WARNING: This will submit designs to Adaptyv Bio"}
@@ -65,7 +65,7 @@ export function LabApproval({
       <Text>{""}</Text>
       <Text>
         <Text dimColor>{"  Campaign:    "}</Text>
-        <Text color={theme.hex.tealBright}>{campaignName}</Text>
+        <Text color={theme.hex.primary}>{campaignName}</Text>
       </Text>
       <Text>
         <Text dimColor>{"  Candidates:  "}</Text>

@@ -15,15 +15,15 @@ export interface RunProgress {
 }
 
 const STATUS_ICONS = {
-  pending: "○",
-  active: "●",
-  complete: "✓",
-  error: "✗",
+  pending: "\u25CB",  // ○ — pending (dim)
+  active: "\u25CF",   // ● — running/active (skyBlue)
+  complete: "\u2714", // ✔ — success/complete (bluishGreen)
+  error: "\u2716",    // ✖ — error/failed (vermillion)
 };
 
 function stageColor(status: PipelineStage["status"]): (s: string) => string {
   switch (status) {
-    case "active": return theme.warning;
+    case "active": return theme.running;
     case "complete": return theme.success;
     case "error": return theme.error;
     default: return theme.dim;

@@ -27,11 +27,11 @@ function formatElapsed(ms?: number): string {
 function statusIcon(status: AgentStatus["status"]): { symbol: string; color: string } {
   switch (status) {
     case "complete":
-      return { symbol: "\u2713", color: theme.hex.success };
+      return { symbol: "\u2714", color: theme.hex.success };
     case "running":
-      return { symbol: "\u25CF", color: theme.hex.warning };
+      return { symbol: "\u25CF", color: theme.hex.primary };
     case "error":
-      return { symbol: "\u2717", color: theme.hex.error };
+      return { symbol: "\u2716", color: theme.hex.error };
     case "idle":
     default:
       return { symbol: "\u25CB", color: "#78909C" };
@@ -43,7 +43,7 @@ export function AgentTeamStatus({ agents, campaignPhase, totalCostUsd }: AgentTe
     <Box flexDirection="column">
       <Text>
         <Text color={theme.hex.accent} bold>Campaign Phase: </Text>
-        <Text color={theme.hex.tealBright} bold>{campaignPhase.toUpperCase()}</Text>
+        <Text color={theme.hex.primary} bold>{campaignPhase.toUpperCase()}</Text>
       </Text>
       <Text>{""}</Text>
 

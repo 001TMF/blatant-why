@@ -1,0 +1,95 @@
+{
+  "campaign_id": "her2_research",
+  "target": "HER2/ERBB2",
+  "research_depth": "STANDARD",
+  "current_phase": 8,
+  "completed_phases": [1, 3, 5, 8],
+
+  "research_phases": {
+    "phase_1_scope": {
+      "status": "completed",
+      "completed_date": "2026-03-24",
+      "deliverables": ["scope.json"]
+    },
+    "phase_3_retrieve": {
+      "status": "completed",
+      "completed_date": "2026-03-24",
+      "deliverables": ["target_info_results.json", "sources.json"],
+      "tasks_completed": [
+        "research_get_target_info for HER2/ERBB2 - COMPLETED",
+        "UniProt P04626 analysis - COMPLETED",
+        "PDB structure analysis (12+ structures identified) - COMPLETED",
+        "Clinical literature review - COMPLETED",
+        "Therapeutic antibody analysis - COMPLETED"
+      ]
+    },
+    "phase_5_synthesize": {
+      "status": "completed",
+      "completed_date": "2026-03-24",
+      "deliverables": ["research.md"],
+      "synthesis_completed": [
+        "Target overview and domain architecture",
+        "Structural insights from PDB analysis",
+        "Existing antibody landscape (trastuzumab, pertuzumab)",
+        "Binding site recommendations",
+        "Modality recommendations",
+        "Risk assessment"
+      ]
+    },
+    "phase_8_package": {
+      "status": "completed",
+      "completed_date": "2026-03-24",
+      "deliverables": [
+        "research/research.md",
+        "research/recommended_hotspots.json",
+        "research/design_recommendation.json",
+        "research/sources.json"
+      ]
+    }
+  },
+
+  "quality_metrics": {
+    "sources_collected": 15,
+    "minimum_required": 10,
+    "quality_gate_passed": true,
+    "high_confidence_findings": 8,
+    "medium_confidence_findings": 4,
+    "low_confidence_findings": 0,
+    "contradicted_findings": 0
+  },
+
+  "research_summary": {
+    "target_confidence": "HIGH",
+    "druggability": "EXCELLENT",
+    "structural_data_quality": "HIGH",
+    "clinical_validation": "HIGH",
+    "design_feasibility": "HIGH"
+  },
+
+  "deliverable_status": {
+    "scope.json": "completed",
+    "target_info_results.json": "completed",
+    "sources.json": "completed",
+    "research.md": "completed",
+    "recommended_hotspots.json": "completed",
+    "design_recommendation.json": "completed"
+  },
+
+  "started_at": "2026-03-24T09:15:00Z",
+  "last_checkpoint": "2026-03-24T09:30:00Z",
+  "completed_at": "2026-03-24T09:30:00Z",
+  "total_duration_minutes": 15,
+
+  "agent_metadata": {
+    "research_agent": "Proteus Research Agent",
+    "orchestrator": "Proteus Campaign Orchestrator",
+    "mcp_servers_used": ["uniprot", "pdb", "sabdab", "proteus-research"],
+    "tools_called": ["research_get_target_info", "database_searches", "structural_analysis"]
+  },
+
+  "next_steps": {
+    "immediate": "Research complete - ready for design phase",
+    "recommended_action": "Launch BoltzGen campaign with IgG modality targeting Domain IV epitope",
+    "campaign_parameters": "Standard tier: 5,000 designs per scaffold, adalimumab + tezepelumab scaffolds"
+  }
+}

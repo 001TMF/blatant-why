@@ -1,0 +1,154 @@
+{
+  "target": "HER2/ERBB2",
+  "campaign_id": "her2_research",
+  "research_date": "2026-03-24",
+  "overall_confidence": "HIGH",
+
+  "modality_recommendation": {
+    "primary_modality": "IgG",
+    "rationale": "Proven clinical success with trastuzumab and pertuzumab, optimal half-life, established development pathway",
+    "confidence": "HIGH",
+    "expected_success_rate": "HIGH",
+    "scaffolds": ["adalimumab", "tezepelumab"],
+    "design_considerations": [
+      "Target Domain IV region for anti-dimerization activity",
+      "Consider Fc engineering for enhanced effector function",
+      "Optimize CDR regions for improved affinity over trastuzumab"
+    ]
+  },
+
+  "alternative_modalities": [
+    {
+      "modality": "Fab",
+      "rationale": "Better tissue penetration, maintained binding affinity based on structural studies",
+      "confidence": "MEDIUM-HIGH",
+      "expected_success_rate": "MEDIUM-HIGH",
+      "scaffolds": ["adalimumab", "tezepelumab"],
+      "use_case": "If full IgG shows penetration limitations or for diagnostic applications"
+    },
+    {
+      "modality": "scFv",
+      "rationale": "Smaller size for tissue penetration",
+      "confidence": "MEDIUM",
+      "expected_success_rate": "MEDIUM",
+      "scaffolds": ["adalimumab", "tezepelumab"],
+      "challenges": "Stability issues, rapid clearance, limited HER2 clinical precedent",
+      "use_case": "Specialized applications requiring small molecular size"
+    }
+  ],
+
+  "not_recommended": [
+    {
+      "modality": "nanobody",
+      "reason": "Limited clinical success for HER2 targeting, rapid clearance, stability challenges",
+      "exception": "Only consider for research tools or specialized delivery applications"
+    }
+  ],
+
+  "campaign_parameters": {
+    "tier": "Standard",
+    "designs_per_scaffold": 5000,
+    "total_designs": 10000,
+    "budget": 50,
+    "alpha": 0.001,
+    "protocol": "antibody-anything",
+    "compute_provider": "tamarind_bio"
+  },
+
+  "scaffold_recommendations": {
+    "primary_scaffold": "adalimumab",
+    "rationale": "Well-characterized framework, good stability, proven therapeutic antibody",
+    "secondary_scaffold": "tezepelumab",
+    "rationale": "Modern framework with excellent developability profile"
+  },
+
+  "target_epitope": {
+    "primary_target": "Domain IV (trastuzumab-adjacent)",
+    "coordinates": "HER2 ECD residues 520-600",
+    "binding_mode": "prevent receptor dimerization",
+    "validation": "clinically proven mechanism"
+  },
+
+  "design_objectives": {
+    "primary_objectives": [
+      "Achieve binding affinity equal or superior to trastuzumab (Kd < 1 nM)",
+      "Maintain ability to prevent HER2 dimerization",
+      "Optimize for good developability (low aggregation, stable expression)"
+    ],
+    "secondary_objectives": [
+      "Explore novel epitopes adjacent to trastuzumab binding site",
+      "Engineer for enhanced Fc effector functions",
+      "Minimize potential immunogenicity risks"
+    ]
+  },
+
+  "quality_thresholds": {
+    "structural_confidence": {
+      "ipSAE": ">0.7",
+      "ipTM": ">0.8",
+      "pLDDT": ">80"
+    },
+    "developability": {
+      "max_liabilities": 2,
+      "net_charge_ph7": "-5 to +5",
+      "hydrophobic_fraction": "<0.4"
+    },
+    "binding_prediction": {
+      "target_affinity": "< 1 nM (if predictable)",
+      "interface_contacts": "> 15 residues",
+      "buried_surface_area": "> 1000 Å²"
+    }
+  },
+
+  "risk_assessment": {
+    "technical_risk": "LOW",
+    "rationale": "Well-validated target, extensive structural data, proven binding sites",
+    "development_risk": "LOW",
+    "rationale": "Established therapeutic area, standard antibody format",
+    "ip_risk": "MEDIUM",
+    "rationale": "Trastuzumab patents expired, but pertuzumab still protected"
+  },
+
+  "success_criteria": {
+    "minimum_viable": [
+      "Generate designs with ipSAE > 0.5 and ipTM > 0.7",
+      "Identify candidates with favorable developability profiles",
+      "Produce binders targeting validated HER2 epitopes"
+    ],
+    "target_success": [
+      "Achieve designs with ipSAE > 0.7 and ipTM > 0.8",
+      "Generate candidates with predicted affinity improvements over trastuzumab",
+      "Identify novel binding modes while maintaining anti-dimerization activity"
+    ],
+    "stretch_goals": [
+      "Engineer antibodies with enhanced effector functions",
+      "Develop binders with improved tissue penetration",
+      "Create candidates suitable for antibody-drug conjugation"
+    ]
+  },
+
+  "next_steps": {
+    "immediate": [
+      "Launch BoltzGen campaign with recommended parameters",
+      "Set up monitoring for design generation progress",
+      "Prepare screening pipeline for generated candidates"
+    ],
+    "validation": [
+      "Structure prediction of top candidates against PDB references",
+      "Liability screening and developability assessment",
+      "Interface analysis and binding mode prediction"
+    ],
+    "development": [
+      "Experimental validation of top 5-10 candidates",
+      "Binding affinity measurements vs trastuzumab baseline",
+      "Functional assays for anti-dimerization activity"
+    ]
+  },
+
+  "references": {
+    "target_validation": ["Trastuzumab clinical success", "Pertuzumab clinical success"],
+    "structural_data": ["PDB: 1N8Z", "PDB: 9QBG", "PDB: 9QBF", "PDB: 6OGE"],
+    "sequence_data": ["UniProt: P04626"],
+    "literature": ["Clinical studies of HER2-targeting therapeutics"]
+  }
+}

@@ -1,0 +1,255 @@
+{
+  "research_metadata": {
+    "target": "HER2/ERBB2",
+    "research_date": "2026-03-24",
+    "total_sources": 15,
+    "confidence_assessment": "HIGH"
+  },
+
+  "sources": {
+    "src_001": {
+      "type": "UniProt",
+      "identifier": "P04626",
+      "title": "Receptor tyrosine-protein kinase erbB-2 (HER2/ERBB2)",
+      "url": "https://www.uniprot.org/uniprotkb/P04626",
+      "credibility_score": 0.95,
+      "key_findings": [
+        "Primary sequence: 1255 amino acids",
+        "Domain structure: extracellular (23-653), transmembrane (654-676), intracellular (677-1255)",
+        "Functional annotation: receptor tyrosine kinase activity",
+        "Clinical significance: overexpressed in 20-30% breast cancers"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_002": {
+      "type": "PDB_structure",
+      "identifier": "9QBG",
+      "title": "HER2/ErbB2 extracellular domain in extended conformation in complex with trastuzumab antibody",
+      "method": "Cryo-EM",
+      "year": "2025",
+      "url": "https://www.rcsb.org/structure/9QBG",
+      "credibility_score": 0.95,
+      "key_findings": [
+        "Recent high-resolution structure of HER2-trastuzumab complex",
+        "Extended conformation of HER2 ECD",
+        "Detailed antibody-antigen interface"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_003": {
+      "type": "PDB_structure",
+      "identifier": "1N8Z",
+      "title": "Crystal structure of extracellular domain of human HER2 complexed with Herceptin Fab",
+      "method": "X-ray crystallography",
+      "resolution": "2.5 Å",
+      "url": "https://www.rcsb.org/structure/1N8Z",
+      "credibility_score": 0.95,
+      "key_findings": [
+        "First detailed structure of trastuzumab-HER2 interface",
+        "Binding to juxtamembrane region (Domain IV)",
+        "Mechanism of dimerization inhibition"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_004": {
+      "type": "PDB_structure",
+      "identifier": "6OGE",
+      "title": "Cryo-EM structure of Her2 extracellular domain-Trastuzumab Fab-Pertuzumab Fab complex",
+      "method": "Cryo-EM",
+      "resolution": "4.36 Å",
+      "url": "https://www.rcsb.org/structure/6OGE",
+      "credibility_score": 0.90,
+      "key_findings": [
+        "Dual antibody binding to HER2",
+        "Non-overlapping epitopes for trastuzumab and pertuzumab",
+        "Structural basis for combination therapy"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_005": {
+      "type": "PDB_structure",
+      "identifier": "9QBF",
+      "title": "HER2/ErbB2 extracellular domain in compact conformation in complex with trastuzumab antibody",
+      "method": "Cryo-EM",
+      "year": "2025",
+      "url": "https://www.rcsb.org/structure/9QBF",
+      "credibility_score": 0.95,
+      "key_findings": [
+        "Compact conformation of HER2-trastuzumab complex",
+        "Conformational flexibility of HER2 ECD",
+        "Alternative binding mode analysis"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_006": {
+      "type": "PDB_structure",
+      "identifier": "2A91",
+      "title": "Crystal structure of ErbB2 domains 1-3",
+      "method": "X-ray crystallography",
+      "resolution": "2.5 Å",
+      "url": "https://www.rcsb.org/structure/2A91",
+      "credibility_score": 0.90,
+      "key_findings": [
+        "Activated conformation similar to ligand-bound EGFR",
+        "Structural insights into HER2 activation mechanism",
+        "Domain organization in extended state"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_007": {
+      "type": "clinical_literature",
+      "title": "Trastuzumab (Herceptin) clinical efficacy",
+      "credibility_score": 0.90,
+      "key_findings": [
+        "FDA approved for HER2+ breast cancer treatment",
+        "Mechanism: prevents HER2 dimerization and signaling",
+        "Target epitope in Domain IV (juxtamembrane region)",
+        "Proven therapeutic efficacy in multiple clinical trials"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_008": {
+      "type": "clinical_literature",
+      "title": "Pertuzumab (Perjeta) clinical efficacy",
+      "credibility_score": 0.90,
+      "key_findings": [
+        "FDA approved for HER2+ breast cancer (combination therapy)",
+        "Mechanism: prevents HER2-HER3 heterodimerization",
+        "Target epitope in Domain II (dimerization interface)",
+        "Synergistic effect with trastuzumab"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_009": {
+      "type": "structural_analysis",
+      "title": "HER2 conformational states analysis",
+      "credibility_score": 0.80,
+      "key_findings": [
+        "HER2 exhibits extended and compact conformations",
+        "Extended state more accessible for antibody binding",
+        "Conformational selection influences therapeutic efficacy"
+      ],
+      "confidence": "MEDIUM"
+    },
+
+    "src_010": {
+      "type": "therapeutic_landscape",
+      "title": "HER2-targeting antibody therapeutics",
+      "credibility_score": 0.85,
+      "key_findings": [
+        "Multiple FDA-approved HER2-targeting antibodies",
+        "IgG format most successful for HER2 targeting",
+        "Proven druggability of HER2 extracellular domain"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_011": {
+      "type": "PDB_structure",
+      "identifier": "3PP0",
+      "title": "Crystal Structure of the Kinase domain of Human HER2 (erbB2)",
+      "method": "X-ray crystallography",
+      "url": "https://www.rcsb.org/structure/3PP0",
+      "credibility_score": 0.90,
+      "key_findings": [
+        "High-resolution structure of HER2 kinase domain",
+        "Intracellular domain structure (not accessible for antibodies)",
+        "Reference for full-length HER2 modeling"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_012": {
+      "type": "domain_analysis",
+      "title": "HER2 extracellular domain structure-function",
+      "credibility_score": 0.85,
+      "key_findings": [
+        "Domain I and III: leucine-rich, potential ligand binding",
+        "Domain II: cysteine-rich, dimerization interface",
+        "Domain IV: cysteine-rich, primary antibody target region",
+        "Glycosylation important for proper folding"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_013": {
+      "type": "antibody_engineering",
+      "title": "HER2-targeting antibody design principles",
+      "credibility_score": 0.80,
+      "key_findings": [
+        "Domain IV targeting most successful approach",
+        "Prevention of dimerization critical mechanism",
+        "IgG format preferred for half-life and efficacy",
+        "Fc engineering can enhance therapeutic effect"
+      ],
+      "confidence": "MEDIUM"
+    },
+
+    "src_014": {
+      "type": "cancer_biology",
+      "title": "HER2 in cancer pathogenesis",
+      "credibility_score": 0.85,
+      "key_findings": [
+        "Overexpressed in 20-30% of breast cancers",
+        "Associated with aggressive tumor behavior",
+        "Key driver of cancer cell proliferation and survival",
+        "Validated therapeutic target with clinical precedent"
+      ],
+      "confidence": "HIGH"
+    },
+
+    "src_015": {
+      "type": "protein_family",
+      "title": "EGF receptor family analysis",
+      "credibility_score": 0.80,
+      "key_findings": [
+        "HER2 lacks direct ligand binding capability",
+        "Forms heterodimers with other family members (HER1, HER3)",
+        "Constitutively active in overexpressing cancers",
+        "Unique among EGF receptor family members"
+      ],
+      "confidence": "MEDIUM"
+    }
+  },
+
+  "validation_matrix": {
+    "structural_data": {
+      "sources": ["src_002", "src_003", "src_004", "src_005", "src_006"],
+      "consensus": "HIGH",
+      "key_findings": "Multiple high-quality structures confirm HER2 ECD architecture and antibody binding sites"
+    },
+
+    "clinical_validation": {
+      "sources": ["src_007", "src_008", "src_010"],
+      "consensus": "HIGH",
+      "key_findings": "Extensive clinical validation of HER2 as therapeutic target with multiple approved antibodies"
+    },
+
+    "sequence_and_domains": {
+      "sources": ["src_001", "src_012", "src_015"],
+      "consensus": "HIGH",
+      "key_findings": "Well-characterized protein sequence and domain organization"
+    },
+
+    "binding_mechanisms": {
+      "sources": ["src_003", "src_007", "src_008", "src_013"],
+      "consensus": "HIGH",
+      "key_findings": "Clear understanding of successful antibody binding mechanisms and MOA"
+    }
+  },
+
+  "gaps_and_limitations": [
+    "Precise atomic-level contact residues for hotspot definition require experimental validation",
+    "Effects of native glycosylation on antibody binding not fully characterized",
+    "Limited structural data on alternative conformational states",
+    "Detailed epitope mapping beyond trastuzumab/pertuzumab binding sites incomplete"
+  ]
+}

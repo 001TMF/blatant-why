@@ -1,0 +1,206 @@
+{
+  "target_info": {
+    "protein_name": "HER2/ERBB2",
+    "uniprot_accession": "P04626",
+    "full_name": "Receptor tyrosine-protein kinase erbB-2",
+    "alternative_names": [
+      "HER2",
+      "ERBB2",
+      "c-ERB-2",
+      "c-ERB2",
+      "CD340",
+      "HER-2",
+      "MLN-19",
+      "NEU",
+      "NGL",
+      "p185(erbB2)"
+    ],
+    "organism": "Homo sapiens",
+    "confidence_level": "HIGH"
+  },
+  "sequence_information": {
+    "total_length": 1255,
+    "signal_peptide": "22 amino acids (positions 1-22)",
+    "mature_protein": "1233 amino acids",
+    "molecular_weight": "185 kDa (glycosylated transmembrane protein)",
+    "confidence_level": "HIGH"
+  },
+  "domain_structure": {
+    "extracellular_domain": {
+      "length": "630-631 amino acids",
+      "position": "23-653",
+      "subdomains": [
+        {
+          "name": "Domain I (L1)",
+          "type": "leucine-rich domain",
+          "function": "ligand binding region"
+        },
+        {
+          "name": "Domain II (CR1)",
+          "type": "cysteine-rich domain",
+          "function": "dimerization, contains disulfide bonds"
+        },
+        {
+          "name": "Domain III (L2)",
+          "type": "leucine-rich domain",
+          "function": "ligand binding region"
+        },
+        {
+          "name": "Domain IV (CR2)",
+          "type": "cysteine-rich domain",
+          "function": "contains disulfide bonds, function unclear"
+        }
+      ]
+    },
+    "transmembrane_domain": {
+      "length": "23 amino acids",
+      "position": "654-676",
+      "function": "membrane anchoring, receptor activation"
+    },
+    "intracellular_domain": {
+      "length": "580 amino acids",
+      "position": "677-1255",
+      "subdomains": [
+        {
+          "name": "Juxtamembrane domain (JMD)",
+          "function": "regulation of kinase activity"
+        },
+        {
+          "name": "Kinase domain (KD)",
+          "function": "tyrosine kinase activity, phosphorylation"
+        },
+        {
+          "name": "C-terminal tail domain (CTD)",
+          "function": "signaling, protein interactions"
+        }
+      ]
+    },
+    "confidence_level": "HIGH"
+  },
+  "functional_characteristics": {
+    "receptor_family": "epidermal growth factor (EGF) receptor family",
+    "ligand_binding": "no direct ligand binding domain",
+    "dimerization": "forms heterodimers with other EGF receptor family members",
+    "kinase_activity": "tyrosine kinase activity upon dimerization",
+    "cellular_location": "transmembrane protein",
+    "confidence_level": "HIGH"
+  },
+  "pdb_structures": {
+    "recent_2025_structures": [
+      {
+        "pdb_id": "9QBH",
+        "title": "HER2/ErbB2 extracellular domain (ECD) from a near full-length construct solubilized in amphipols",
+        "method": "cryo-EM",
+        "year": "2025"
+      },
+      {
+        "pdb_id": "9QBG",
+        "title": "HER2/ErbB2 extracellular domain (ECD) in extended conformation in complex with trastuzumab (TZB) antibody",
+        "method": "cryo-EM",
+        "year": "2025"
+      },
+      {
+        "pdb_id": "9QBF",
+        "title": "HER2/ErbB2 extracellular domain (ECD) in compact conformation in complex with trastuzumab (TZB) antibody",
+        "method": "cryo-EM",
+        "year": "2025"
+      }
+    ],
+    "key_historical_structures": [
+      {
+        "pdb_id": "3PP0",
+        "title": "Crystal Structure of the Kinase domain of Human HER2 (erbB2)",
+        "method": "X-ray crystallography",
+        "resolution": "high resolution",
+        "notes": "first high resolution crystal structure of HER2 kinase domain"
+      },
+      {
+        "pdb_id": "1N8Z",
+        "title": "Crystal structure of extracellular domain of human HER2 complexed with Herceptin Fab",
+        "method": "X-ray crystallography",
+        "resolution": "2.5 Å",
+        "notes": "Herceptin binding to juxtamembrane region"
+      },
+      {
+        "pdb_id": "6OGE",
+        "title": "Cryo-EM structure of Her2 extracellular domain-Trastuzumab Fab-Pertuzumab Fab complex",
+        "method": "cryo-EM",
+        "resolution": "4.36 Å",
+        "notes": "dual antibody complex"
+      },
+      {
+        "pdb_id": "2A91",
+        "title": "Crystal structure of ErbB2 domains 1-3",
+        "method": "X-ray crystallography",
+        "resolution": "2.5 Å",
+        "notes": "activated conformation similar to ligand-bound EGFR"
+      },
+      {
+        "pdb_id": "7MN5",
+        "title": "Structure of the HER2/HER3/NRG1b Heterodimer Extracellular Domain",
+        "method": "cryo-EM",
+        "notes": "heterodimer formation with HER3"
+      },
+      {
+        "pdb_id": "8U8X",
+        "title": "crystal structure of the receptor tyrosine kinase Human HER2 (ERBB2) YVMA mutant kinase domain in complex with inhibitor compound 27",
+        "method": "X-ray crystallography",
+        "notes": "mutant form with inhibitor"
+      }
+    ],
+    "total_structures_identified": 12,
+    "confidence_level": "HIGH"
+  },
+  "known_variants": {
+    "alternative_isoforms": [
+      {
+        "name": "full-length HER2",
+        "length": "1255 amino acids",
+        "initiation": "AUG codon at position 1"
+      },
+      {
+        "name": "p95 HER2 (isoform 1)",
+        "initiation": "internal AUG codon at position 611"
+      },
+      {
+        "name": "p95 HER2 (isoform 2)",
+        "initiation": "internal AUG codon at position 678"
+      }
+    ],
+    "shedding_products": [
+      {
+        "name": "p95 HER2 membrane fragment",
+        "molecular_weight": "95-100 kDa",
+        "origin": "ectodomain shedding"
+      }
+    ],
+    "confidence_level": "MEDIUM"
+  },
+  "clinical_significance": {
+    "cancer_association": "overexpressed in 20-30% of human breast cancers",
+    "prognosis": "correlates with more aggressive tumors and poorer prognosis",
+    "therapeutic_target": "target of monoclonal antibody Herceptin (trastuzumab)",
+    "confidence_level": "HIGH"
+  },
+  "research_sources": [
+    {
+      "type": "UniProt",
+      "identifier": "P04626",
+      "url": "https://www.uniprot.org/uniprotkb/P04626/entry"
+    },
+    {
+      "type": "PDB structures",
+      "recent_releases": ["9QBH", "9QBG", "9QBF"],
+      "url_base": "https://www.rcsb.org/structure/"
+    },
+    {
+      "type": "Scientific literature",
+      "notes": "multiple peer-reviewed publications on HER2 structure and function"
+    }
+  ],
+  "research_metadata": {
+    "search_terms_used": ["HER2", "ERBB2", "Human Epidermal growth factor Receptor 2", "P04626"],
+    "research_date": "2025-03-24",
+    "confidence_assessment": "HIGH - information verified from multiple authoritative sources including UniProt, PDB, and peer-reviewed literature"
+  }
+}

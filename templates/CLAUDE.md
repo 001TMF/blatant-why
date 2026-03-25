@@ -85,3 +85,4 @@ Only skip delegation for single-tool operations (one fold, one PDB lookup, one s
 | `/by:approve-lab` | Triple-gated lab submission approval |
 | `/by:set-profile` | Switch model profile (quality/balanced/budget) |
 | `/by:setup` | Discover/update available tools and compute |
+| `/by:view` | View protein structure in ProteinView (tmux split, FullHD) |

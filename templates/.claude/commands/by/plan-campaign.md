@@ -144,3 +144,38 @@ Success criteria  | Balanced (hit rate + diversity + confidence)
 Then say: **"Ready to launch. Say 'go' to start the full pipeline, or adjust any preference."**
 
 **Important:** Do NOT spawn sub-agents for the discussion. This entire flow runs in the main session. The goal is a focused, under-3-minute exchange that produces `campaign_context.json` for all downstream agents to consume.
+
+### Step 6: On user approval — launch the campaign pipeline
+
+When the user says "go", "yes", "launch", or similar:
+
+1. Show the campaign launch banner:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ BY ► LAUNCHING CAMPAIGN: {target_name}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+2. Follow the Agent Delegation (MANDATORY for campaigns) section in CLAUDE.md:
+   - Spawn `by-research` via Task() — passes campaign_context.json path, writes target_report.json
+   - Read target_report.json, build campaign_plan.json, present to user for final confirmation
+   - Spawn `by-design` via Task() — submits compute jobs, writes design_summary.json
+   - Spawn `by-screening` via Task() — scores all designs, writes ranked_results.json
+   - Spawn `by-verifier` via Task() — quality check, writes verification_report.json
+   - Present final ranked results using Display Patterns
+
+3. Each sub-agent call should:
+   - Use the model from the active profile (`.by/config.json`)
+   - Pass the campaign directory path
+   - Pass the input file path
+   - Receive a short summary string back (NOT raw JSON)
+
+4. Between each agent, show a progress update:
+```
+| Phase    | Status     | Time   | Details             |
+|----------|------------|--------|---------------------|
+| Research | ✓ Complete | 45s    | 3 PDB, 12 prior art |
+| Design   | ◆ Active   | —      | Spawning agent...   |
+| Screen   | ○ Pending  | —      |                     |
+| Rank     | ○ Pending  | —      |                     |
+```

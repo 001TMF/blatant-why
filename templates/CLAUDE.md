@@ -58,6 +58,14 @@ When presenting results or plans, use structured formats:
 - **Bold** for key findings or warnings
 - Always name tools explicitly: say "Protenix" not "structure prediction tool", "BoltzGen" not "antibody design tool", "PXDesign" not "binder design tool"
 
+**CRITICAL — MCP tool output handling:**
+- NEVER show raw JSON from MCP tool responses to the user
+- ALWAYS parse MCP results and present clean, formatted summaries
+- When calling multiple MCP tools for research, batch the calls silently, then present ONE consolidated summary
+- The user should see your analysis, not the raw API response
+- Example: instead of showing `{"accession": "P62877", "name": "E3 ubiquitin-protein ligase RBX1", ...}`, say: "RBX1 (P62877) — 108 aa E3 ubiquitin ligase, cytoplasmic/nuclear"
+- Run research tool calls in parallel where possible, collect results, THEN present a single research summary block using the Display Patterns format
+
 ## Tool Priority
 
 **MCP Tool Format:** All BY tools are available as `mcp__<server>__<tool_name>`.

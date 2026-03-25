@@ -284,23 +284,12 @@ synthesizer_result = Task(
 )
 ```
 
-After the synthesizer completes, write the research checkpoint (the synthesizer agent writes this too, but write it here as a safety net in case the synthesizer was interrupted before reaching that step):
+After the synthesizer completes, write the research checkpoint:
 
 ```bash
 mkdir -p {campaign_dir}/checkpoints
+echo '{"phase":"research","status":"complete","timestamp":"'$(date -Is)'"}' > {campaign_dir}/checkpoints/01_research_complete.json
 ```
-
-Write `{campaign_dir}/checkpoints/01_research_complete.json`:
-```json
-{
-  "checkpoint": "research_complete",
-  "timestamp": "<current ISO timestamp>",
-  "files_produced": ["target_structures.json", "target_sequence.json", "prior_art.json", "epitope_analysis.json", "target_report.json", "research_report.md"],
-  "next_phase": "campaign_planning"
-}
-```
-
-Only include files in `files_produced` that actually exist in the campaign directory.
 
 #### Step 6d: Build campaign plan from synthesized research
 
@@ -308,6 +297,11 @@ After the synthesizer completes:
 - Read `{campaign_dir}/target_report.json`
 - Spawn `by-campaign` via Task() to build `campaign_plan.json` from the synthesized research
 - Present the campaign plan to the user for final confirmation
+
+After the campaign plan is written:
+```bash
+echo '{"phase":"planning","status":"complete","timestamp":"'$(date -Is)'"}' > {campaign_dir}/checkpoints/02_planning_complete.json
+```
 
 #### Step 6e: Present research summary and plan to user
 
@@ -353,12 +347,22 @@ design_result = Agent(
 
 Do NOT let the orchestrator write YAML configs, run bash commands for pxdesign, or debug CUDA errors. That is the design agent's job.
 
+After the design agent returns:
+```bash
+echo '{"phase":"design","status":"complete","timestamp":"'$(date -Is)'"}' > {campaign_dir}/checkpoints/03_design_complete.json
+```
+
 #### Step 6g: Screening and verification (DELEGATED)
 
 After design completes:
    - Spawn `by-screening` via Task() — scores all designs, writes ranked_results.json
    - Spawn `by-verifier` via Task() — quality check, writes verification_report.json
    - Present final ranked results using Display Patterns
+
+After the screening agent returns:
+```bash
+echo '{"phase":"screening","status":"complete","timestamp":"'$(date -Is)'"}' > {campaign_dir}/checkpoints/04_screening_complete.json
+```
 
 Each sub-agent call should:
    - Use the model from the active profile (`.by/config.json`)

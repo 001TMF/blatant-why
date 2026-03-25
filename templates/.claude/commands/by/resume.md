@@ -134,10 +134,36 @@ On user confirmation ("go", "yes", "resume"):
 - Include `partial_results` so the agent knows what work is already done
 - Set `resume_mode: true` in the agent dispatch so it skips completed steps
 
+### Step 2b: Fallback — infer phase from output files
+
+If no checkpoint files are found in `$CAMPAIGN_DIR/checkpoints/`, scan the
+campaign directory for known output files and infer the completed phase:
+
+| File present | Inferred state | Resume from |
+|---|---|---|
+| `ranked_results.json` | Screening complete | Verification / final results |
+| `design_summary.json` | Design complete | Screening |
+| `campaign_plan.json` | Planning complete | Design |
+| `target_report.json` | Research complete | Campaign planning |
+| None of the above | Campaign not started | Research (or suggest new campaign) |
+
+Check files in **reverse order** (most advanced phase first). Use the first
+match as the resume point. When using this fallback, warn the user:
+
+```
+⚠ No checkpoint files found — inferring state from output files.
+  Detected: {file} → resuming from {phase}
+```
+
+Then continue with Step 3 (read checkpoint contents) by constructing a
+synthetic checkpoint from the detected file. Read the detected file's
+`timestamp` field if available; otherwise use the file's modification time.
+
 ### Error Handling
 
-- **No checkpoints found:** Report "No checkpoint files found. Campaign may not
-  have started. Use `/by:status` to check campaign state, or start a new campaign."
+- **No checkpoints found and no output files:** Report "No checkpoint files or
+  output files found. Campaign may not have started. Use `/by:status` to check
+  campaign state, or start a new campaign."
 - **Corrupted checkpoint:** If checkpoint JSON fails to parse, report the error
   and fall back to the previous valid checkpoint.
 - **Stale checkpoint (>24h old):** Warn the user that the checkpoint may be

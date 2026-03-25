@@ -22,13 +22,14 @@ for de novo binder design.
 
 ## 1. Prerequisites
 
-### Environment Variables (all three required)
+### Environment Variables (all four required)
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
 | `PROTENIX_DATA_ROOT_DIR` | `$PROTEUS_PROT_DIR/release_data/ccd_cache` | CCD chemical component dictionary cache |
 | `TOOL_WEIGHTS_ROOT` | `$PROTEUS_PROT_DIR/tool_weights` | PXDesign model weights |
 | `CUTLASS_PATH` | `$HOME/cutlass` | NVIDIA CUTLASS kernel library |
+| `CUDA_HOME` | Path to CUDA toolkit (e.g. conda env with `nvcc`) | Required by DeepSpeed for GPU architecture detection |
 
 ### Tool Path
 
@@ -119,6 +120,7 @@ Write tool -> /path/to/workdir/config.yaml
 PROTENIX_DATA_ROOT_DIR=$PROTEUS_PROT_DIR/release_data/ccd_cache \
 TOOL_WEIGHTS_ROOT=$PROTEUS_PROT_DIR/tool_weights \
 CUTLASS_PATH=$HOME/cutlass \
+CUDA_HOME=$CUDA_HOME \
 pxdesign pipeline \
   --preset preview \
   -i /path/to/workdir/config.yaml \
@@ -230,7 +232,7 @@ A design marked `ptx_success=True` passed Protenix strict. A design with
 
 ## 6. Common Mistakes
 
-1. **Missing environment variables.** All three env vars must be set in the
+1. **Missing environment variables.** All four env vars must be set in the
    same Bash command. If any are missing, `pxdesign` will fail with import or
    file-not-found errors.
 
@@ -278,6 +280,7 @@ A design marked `ptx_success=True` passed Protenix strict. A design with
 | `FileNotFoundError` for target | Wrong path in YAML config | Use absolute paths for `target.file` |
 | `fastfold_layer_norm_cuda` compilation failure | GPU arch not in gencode list (Blackwell sm_100+) | Use `--use_fast_ln False` |
 | `ValueError: Chain X does not exist` | Using `auth_asym_id` instead of `label_asym_id` | Parse CIF for `label_asym_id` chain letters; see pre-flight validation |
+| DeepSpeed import error | Missing `CUDA_HOME` | Set `CUDA_HOME` to the directory containing `bin/nvcc` (e.g. protenix conda env) |
 
 ---
 
@@ -302,6 +305,7 @@ Write to `/data/runs/il6r_binder/config.yaml`.
 PROTENIX_DATA_ROOT_DIR=$PROTEUS_PROT_DIR/release_data/ccd_cache \
 TOOL_WEIGHTS_ROOT=$PROTEUS_PROT_DIR/tool_weights \
 CUTLASS_PATH=$HOME/cutlass \
+CUDA_HOME=$CUDA_HOME \
 pxdesign pipeline \
   --preset preview \
   -i /data/runs/il6r_binder/config.yaml \
@@ -338,6 +342,7 @@ Write to `/data/runs/receptor_hotspot/config.yaml`.
 PROTENIX_DATA_ROOT_DIR=$PROTEUS_PROT_DIR/release_data/ccd_cache \
 TOOL_WEIGHTS_ROOT=$PROTEUS_PROT_DIR/tool_weights \
 CUTLASS_PATH=$HOME/cutlass \
+CUDA_HOME=$CUDA_HOME \
 pxdesign pipeline \
   --preset extended \
   -i /data/runs/receptor_hotspot/config.yaml \
@@ -374,6 +379,7 @@ Write to `/data/runs/large_target_crop/config.yaml`.
 PROTENIX_DATA_ROOT_DIR=$PROTEUS_PROT_DIR/release_data/ccd_cache \
 TOOL_WEIGHTS_ROOT=$PROTEUS_PROT_DIR/tool_weights \
 CUTLASS_PATH=$HOME/cutlass \
+CUDA_HOME=$CUDA_HOME \
 pxdesign pipeline \
   --preset extended \
   -i /data/runs/large_target_crop/config.yaml \

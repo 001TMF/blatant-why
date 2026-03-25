@@ -12,6 +12,7 @@ Self-contained: all tool detection and SSH logic is inlined. No proteus_cli depe
 from __future__ import annotations
 
 import json
+import shlex
 import os
 import shutil
 import subprocess
@@ -224,18 +225,18 @@ def _ssh_run_design_job(
                 f"cd {config.tools_path}/Protenix && "
                 f"PROTENIX_ROOT_DIR={config.tools_path}/Protenix "
                 f"protenix pred -i {remote_config} -o {remote_output} "
-                f"-n base_default --use_default_params true --dtype bf16 {extra_args}"
+                f"-n base_default --use_default_params true --dtype bf16 {_sanitize_extra_args_for_shell(extra_args)}"
             ),
             "pxdesign": (
                 f"cd {config.tools_path}/PXDesign && "
                 f"pxdesign pipeline --preset extended "
                 f"-i {remote_config} -o {remote_output} "
-                f"--N_sample 500 --dtype bf16 {extra_args}"
+                f"--N_sample 500 --dtype bf16 {_sanitize_extra_args_for_shell(extra_args)}"
             ),
             "boltzgen": (
                 f"cd {config.tools_path}/proteus-design && "
                 f"boltzgen run {remote_config} "
-                f"--output {remote_output} {extra_args}"
+                f"--output {remote_output} {_sanitize_extra_args_for_shell(extra_args)}"
             ),
         }
 
@@ -279,6 +280,20 @@ def _ssh_run_design_job(
 # ===========================================================================
 # MCP Server
 # ===========================================================================
+
+
+def _sanitize_extra_args(extra_args: str) -> list[str]:
+    """Safely split extra_args using shell-aware tokenization."""
+    if not extra_args:
+        return []
+    return shlex.split(extra_args)
+
+
+def _sanitize_extra_args_for_shell(extra_args: str) -> str:
+    """Safely quote extra_args for inclusion in a shell command string."""
+    if not extra_args:
+        return ""
+    return " ".join(shlex.quote(arg) for arg in shlex.split(extra_args))
 
 
 def _error(msg: str) -> str:
@@ -410,7 +425,7 @@ async def local_run_boltzgen(
         "--budget", str(budget),
     ]
     if extra_args:
-        cmd.extend(extra_args.split())
+        cmd.extend(_sanitize_extra_args(extra_args))
 
     env = dict(os.environ)
     env["PROTEUS_MODELS_DIR"] = os.getenv(
@@ -486,7 +501,7 @@ async def local_run_pxdesign(
         "--dtype", "bf16",
     ]
     if extra_args:
-        cmd.extend(extra_args.split())
+        cmd.extend(_sanitize_extra_args(extra_args))
 
     env = dict(os.environ)
     env["PROTENIX_DATA_ROOT_DIR"] = str(tool_path / "release_data" / "ccd_cache")
@@ -559,7 +574,7 @@ async def local_run_protenix(
         "--dtype", "bf16",
     ]
     if extra_args:
-        cmd.extend(extra_args.split())
+        cmd.extend(_sanitize_extra_args(extra_args))
 
     env = dict(os.environ)
     env["PROTENIX_ROOT_DIR"] = str(tool_path)

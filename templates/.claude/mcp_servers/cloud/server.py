@@ -221,7 +221,7 @@ def _ssh_connect(host_cfg: dict) -> paramiko.SSHClient:
     key_file (optional), password (optional).
     """
     client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.set_missing_host_key_policy(paramiko.WarningPolicy())
 
     connect_kwargs: dict[str, Any] = {
         "hostname": host_cfg["host"],

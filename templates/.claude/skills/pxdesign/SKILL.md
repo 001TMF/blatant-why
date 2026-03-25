@@ -317,7 +317,7 @@ A design marked `ptx_success=True` passed Protenix strict. A design with
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| `ModuleNotFoundError` on import | Missing `PROTENIX_DATA_ROOT_DIR` or `TOOL_WEIGHTS_ROOT` | Set all 3 env vars in the Bash command |
+| `ModuleNotFoundError` on import | Missing `PROTENIX_DATA_ROOT_DIR` or `TOOL_WEIGHTS_ROOT` | Set all 4 env vars in the Bash command |
 | CUDA OOM | Binder too long or target too large for GPU memory | Reduce `binder_length`, use crop ranges, or use a larger GPU |
 | Empty `summary.csv` | All designs filtered out | Lower thresholds or increase `--N_sample` |
 | No `summary.csv` found | Wrong output path or run crashed early | Check Bash stderr for errors; search recursively for any CSV |

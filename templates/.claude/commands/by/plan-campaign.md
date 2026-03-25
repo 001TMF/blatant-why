@@ -104,7 +104,8 @@ AskUserQuestion(
   header: "Compute",
   question: "How many designs to generate?",
   options: [
-    "Preview (~1,000)" — Fast test, a few minutes,
+    "Test batch (~50)" — Quick GPU validation, 5-15 minutes,
+    "Preview (~1,000)" — Exploratory run,
     "Standard (~5,000) (Recommended)" — Good sampling,
     "Production (~20,000)" — Thorough coverage
   ]
@@ -168,8 +169,8 @@ Write `campaign_context.json` to the campaign directory with this schema:
 | `modality` | string | `"VHH"`, `"scFv"`, `"de_novo"` | `"VHH"` |
 | `epitope.known` | boolean | `true` / `false` | `false` |
 | `epitope.residues` | array of int | residue numbers (label_seq_id) | `[]` |
-| `compute.tier` | string | `"preview"`, `"standard"`, `"production"`, `"exploratory"` | `"standard"` |
-| `compute.designs_per_scaffold` | int | 500 / 5000 / 20000 / custom | 5000 |
+| `compute.tier` | string | `"test"`, `"preview"`, `"standard"`, `"production"`, `"exploratory"` | `"standard"` |
+| `compute.designs_per_scaffold` | int | 50 / 500 / 5000 / 20000 / custom | 5000 |
 | `scaffolds` | array of string | scaffold names | modality defaults |
 | `success_criteria` | string | `"hit_rate"`, `"diversity"`, `"confidence"`, `"balanced"` | `"balanced"` |
 

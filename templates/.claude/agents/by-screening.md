@@ -18,7 +18,7 @@ You are the screening agent for BY campaigns. You take raw design outputs, run a
 2. **ipSAE scoring** (3-tier fallback):
    - **Tier 1**: Read `design_ipsae_min`, `design_to_target_ipsae`, `target_to_design_ipsae` directly from the BoltzGen CSV. BoltzGen computes these internally during its analysis step.
    - **Tier 2**: If ipSAE values are 0 or missing, look for PAE NPZ files (`intermediate_designs_inverse_folded/*.npz` or `metrics_tmp/metrics_*.npz`). Compute ipSAE via `mcp__by-screening__score_ipsae(npz_path=..., design_chain_ids=[0], target_chain_ids=[1])`.
-   - **Tier 3**: If no PAE data exists (e.g., PXDesign output), run Protenix refold on top candidates (by ipTM) to generate PAE matrices, then compute ipSAE from those.
+   - **Tier 3 (GATED — requires user approval)**: If no PAE data exists (e.g., PXDesign output), ASK the user before running Protenix refold. This is expensive (GPU time per design). Present: "ipSAE unavailable — no PAE data. Run Protenix refold on top N candidates to compute ipSAE? This will take ~X minutes." Only proceed on explicit approval.
 
    **IMPORTANT**: BoltzGen ipSAE can be zero even when designs exist — this happens with low-budget runs or poor interfaces. Zero ipSAE is a valid (bad) score, not missing data. Only fall back to Tier 2/3 if the CSV column is entirely absent.
 

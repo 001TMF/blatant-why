@@ -65,6 +65,7 @@ User wants to...
 |   +-- Protein binder (non-antibody, de novo)?
 |       +-- Quick exploration --> pxdesign  preset: preview
 |       +-- Production run    --> pxdesign  preset: extended
+|       +-- PXDesign failed?  --> boltzgen  protocol: protein-anything (fallback)
 |
 +-- VALIDATE or PREDICT a structure
 |   --> protenix  (Protenix v1, AF3-class, 368M params)
@@ -117,8 +118,13 @@ Target Prep --> Hotspot Analysis --> Design Generation --> Screening --> Ranking
 
 **Stage 3 -- Design Generation:**
 - *pxdesign:* Follow the `pxdesign` skill: Write YAML config → `Bash: pxdesign pipeline ...` → Read `summary.csv`.
-- *boltzgen:* Follow the `boltzgen` skill: Write entities YAML → `Bash: boltzgen run ...` → Read `final_designs_metrics_*.csv`.
+- *boltzgen (antibody/nanobody):* Follow the `boltzgen` skill: Write entities YAML → `Bash: boltzgen run ... --protocol nanobody-anything` → Read `final_designs_metrics_*.csv`.
+- *boltzgen (de novo fallback):* If PXDesign fails, use BoltzGen `protein-anything` protocol. Same entity YAML, same hotspot format. `Bash: boltzgen run spec.yaml --protocol protein-anything --num_designs 50`. This is a direct replacement producing 65-150 aa miniprotein binders.
 - *protenix (validation):* Follow the `protenix` skill: Write input JSON → `Bash: protenix pred ...` → Read `*_summary_confidence_sample_*.json`.
+
+**De novo tool selection order:**
+1. PXDesign (primary) — mature pipeline, AF2+Protenix filters, proven hit rates
+2. BoltzGen `protein-anything` (fallback) — if PXDesign has env/CUDA issues, use this immediately. Do NOT spend multiple attempts fixing PXDesign — switch to BoltzGen after 1 failed launch.
 
 **Stage 4 -- Screening Battery:**
 Run all screens via the screening MCP: structural confidence (ipTM, pTM, pLDDT), interface quality (ipSAE directional, DunbrackLab formula), refolding quality (CA-RMSD), PTM liabilities (deamidation NG/NS, isomerization DG, oxidation Met, free Cys, glycosylation NXS/T), developability (net charge, hydrophobic fraction, CDR length).

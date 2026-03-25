@@ -62,12 +62,37 @@ User wants a binder...
 |----------|--------|--------|-------------|-------------------|
 | `nanobody-anything` | VHH single-domain | 1 chain | Faster | 10–50 |
 | `antibody-anything` | VH/VL Fab pair | 2 chains | Slower | 20–100 |
+| `protein-anything` | De novo miniprotein binder | 1 chain | Fast | 10–100 |
+| `peptide-anything` | Peptide binder | 1 chain | Fastest | 20–100 |
+| `protein-redesign` | Redesign existing binder | 1 chain | Fast | 10–50 |
 
 **Choose nanobody** when: smaller binder preferred, tissue penetration needed,
 or faster iteration desired.
 
 **Choose antibody** when: Fc effector function needed, higher affinity
 required, or therapeutic antibody format mandated.
+
+**Choose protein-anything** when: de novo binder design (no scaffold template),
+miniprotein format (65-150 aa), or when PXDesign is unavailable/failing.
+BoltzGen generates completely novel binder structures without requiring a
+scaffold template. Same entity YAML format as nanobody — specify target chain
+with hotspot residues, BoltzGen generates de novo binder structures.
+
+### BoltzGen as PXDesign Fallback
+
+If PXDesign fails (CUDA incompatibility, env issues, missing deps), use
+BoltzGen `protein-anything` as a direct replacement for de novo design:
+
+```bash
+# Instead of: pxdesign pipeline -i config.yaml ...
+# Use:
+boltzgen run spec.yaml --protocol protein-anything --num_designs 50 --budget 10
+```
+
+The entity YAML spec is identical. BoltzGen's `protein-anything` produces
+65-150 aa miniprotein binders — same output class as PXDesign but using
+BoltzGen's diffusion model. Confidence metrics (ipTM, pLDDT) and screening
+are the same downstream.
 
 ---
 

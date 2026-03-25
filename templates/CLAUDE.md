@@ -20,7 +20,70 @@ When you first open in a BY project directory, immediately:
    - API keys present (without values)
    - Local GPU tools detected
 
-3. **Check for existing campaigns:**
+3. **Check for project config** — read `.by/config.json`:
+```bash
+cat .by/config.json 2>/dev/null
+```
+   - **If config.json does NOT exist (first run):** Run the setup questionnaire (see Step 3a below)
+   - **If config.json exists:** Read it and continue to step 4
+
+**Step 3a — First-Run Setup (only when .by/config.json is missing):**
+
+Ask these configuration questions before anything else. This mirrors how GSD configures projects.
+
+**Round 1 — Compute Setup:**
+
+Ask the user:
+
+1. **Preferred compute provider:**
+   - (a) Local GPU — I have NVIDIA GPU with tools installed (fastest, no cost)
+   - (b) Tamarind Bio — Cloud compute, free tier available (no GPU needed)
+   - (c) SSH Remote — I have cloud GPU instances (Lambda.ai, RunPod, HPC)
+   - (d) Auto-detect — check what's available and pick the best
+
+2. **Model profile for AI agents:**
+   - (a) Quality — Opus for research/design agents (deeper analysis, higher cost)
+   - (b) Balanced (Recommended) — Sonnet for most agents (good quality/cost ratio)
+   - (c) Budget — Haiku where possible (fastest, lowest cost)
+
+**Round 2 — Campaign Defaults:**
+
+3. **Default campaign tier:**
+   - (a) Preview — 500 designs (fast, exploratory, good for testing)
+   - (b) Standard (Recommended) — 5,000 designs per scaffold
+   - (c) Production — 20,000 designs (thorough coverage)
+
+4. **Fold validation before design?**
+   - (a) Yes (Recommended) — verify target folds correctly before spending compute
+   - (b) No — skip fold validation, go straight to design
+
+Write `.by/config.json` with all settings:
+```json
+{
+  "model_profile": "quality|balanced|budget",
+  "compute": {
+    "preferred_provider": "local|tamarind|ssh|auto",
+    "tamarind_tier": "free|paid",
+    "local_gpu_paths": {
+      "fold": "$PROTEUS_FOLD_DIR or null",
+      "design": "$PROTEUS_PROT_DIR or null",
+      "antibody": "$PROTEUS_AB_DIR or null"
+    }
+  },
+  "campaign_defaults": {
+    "tier": "preview|standard|production",
+    "fold_validation": true|false
+  },
+  "workflow": {
+    "auto_research": true,
+    "auto_screen": true
+  }
+}
+```
+
+Then show: "Configuration saved. Let's get started."
+
+4. **Check for existing campaigns:**
 ```bash
 ls .by/campaigns/*/campaign_log.json 2>/dev/null
 ```

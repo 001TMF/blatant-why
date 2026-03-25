@@ -714,6 +714,29 @@ I'll check back when the estimated time elapses, or you can ask me anytime.
 6. **For Tamarind jobs**: the job runs server-side. Just record the job_id and check with `cloud_get_status` when the user asks or when ETA has passed.
 7. **For checking progress**: read the log file tail or call status API -- one-shot check, not a loop.
 
+**SSH Remote Jobs:**
+SSH jobs (Lambda.ai, RunPod, HPC) behave like Tamarind -- they run server-side and survive terminal closure.
+- Submit via `cloud_submit_job(provider="ssh", host="lambda-gpu", ...)`
+- The cloud MCP server handles SSH connection, file upload, job launch, and status polling
+- Job runs in `nohup` on the remote automatically
+- Check status: `cloud_get_status(job_id=...)` -- one-shot SSH check, not continuous
+- Get results: `cloud_get_results(job_id=..., output_dir=...)` -- downloads output files via SFTP
+
+**The by-design agent owns job lifecycle** -- it:
+1. Selects provider (Tamarind / local / SSH) based on availability and user preference
+2. Submits the job with appropriate parameters
+3. Estimates completion time based on provider benchmarks
+4. Reports the job submission with ETA to the orchestrator
+5. Returns a short summary: "Submitted 10 designs to Lambda.ai GPU. ETA: ~45 minutes. Job ID: by_boltzgen_xyz"
+6. Does NOT wait for completion -- that is the orchestrator's decision
+
+**The orchestrator decides when to check back** -- it can:
+- Let the user ask (`/by:status`)
+- Check after ETA elapses
+- Spawn the by-design agent again to poll and collect results
+
+This is the fire-and-forget pattern. The agent deploys, reports, and exits. Context is preserved in checkpoint files.
+
 ## Core Tools (3)
 
 ### Protenix (Protenix v1)

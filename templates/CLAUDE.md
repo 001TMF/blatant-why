@@ -480,11 +480,26 @@ This log enables `/by:resume` to pick up where a session left off.
 
 ## Compute Provider Selection
 
-Auto-detect from environment:
-1. If TAMARIND_API_KEY set -> use Tamarind Bio (default, cloud, free tier available)
-2. If SSH hosts configured in `.by/config.json` -> offer SSH remote (Lambda.ai, RunPod)
-3. If PROTEUS_FOLD_DIR / PROTEUS_PROT_DIR / PROTEUS_AB_DIR set -> offer local GPU tools
-4. If nothing available -> prompt for TAMARIND_API_KEY (free tier: 10 jobs/month)
+Detect ALL available providers from environment, then select the best one:
+
+**Detection (check all, report what's available):**
+- Local GPU: `PROTEUS_AB_DIR` / `PROTEUS_PROT_DIR` / `PROTEUS_FOLD_DIR` env vars set
+- Tamarind Bio: `TAMARIND_API_KEY` set (call `mcp__by-cloud__cloud_list_providers` for quota)
+- SSH Remote: hosts configured in `.by/config.json`
+
+**Selection priority:**
+1. **Local GPU preferred** when `PROTEUS_*_DIR` vars are set — fastest, no quota limits, no cost
+2. **SSH Remote** when configured — your own infrastructure
+3. **Tamarind Bio** when API key set — cloud fallback, check quota before submitting
+4. If nothing available → guide user to set up a provider
+
+**IMPORTANT:** If local GPU tools are installed, USE THEM. Do not default to Tamarind when local tools are available. Tamarind is a cloud fallback for users without GPUs, not the primary path for users who have hardware.
+
+**Present to user:**
+```
+Compute: Local GPU ✓ (BoltzGen, Protenix) | Tamarind ✓ (7/10 jobs) | SSH ○
+Using: Local GPU (fastest, no quota)
+```
 
 ## Error Recovery
 

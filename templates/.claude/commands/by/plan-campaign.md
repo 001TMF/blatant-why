@@ -284,6 +284,24 @@ synthesizer_result = Task(
 )
 ```
 
+After the synthesizer completes, write the research checkpoint (the synthesizer agent writes this too, but write it here as a safety net in case the synthesizer was interrupted before reaching that step):
+
+```bash
+mkdir -p {campaign_dir}/checkpoints
+```
+
+Write `{campaign_dir}/checkpoints/01_research_complete.json`:
+```json
+{
+  "checkpoint": "research_complete",
+  "timestamp": "<current ISO timestamp>",
+  "files_produced": ["target_structures.json", "target_sequence.json", "prior_art.json", "epitope_analysis.json", "target_report.json", "research_report.md"],
+  "next_phase": "campaign_planning"
+}
+```
+
+Only include files in `files_produced` that actually exist in the campaign directory.
+
 #### Step 6d: Build campaign plan from synthesized research
 
 After the synthesizer completes:

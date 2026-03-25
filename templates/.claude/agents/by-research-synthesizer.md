@@ -71,6 +71,32 @@ You do NOT perform any new research. You do NOT call PDB, UniProt, SAbDab, or re
 
 9. **Store synthesis in knowledge base** -- Use `mcp__by-knowledge__*` to record this target analysis for future reference.
 
+10. **Write checkpoint file** -- After successfully producing both output files, write a checkpoint so the `/by:resume` command can detect that research is complete:
+
+   ```bash
+   mkdir -p {campaign_dir}/checkpoints
+   ```
+
+   Write `{campaign_dir}/checkpoints/01_research_complete.json`:
+
+   ```json
+   {
+     "checkpoint": "research_complete",
+     "timestamp": "2026-03-25T10:01:00Z",
+     "files_produced": [
+       "target_structures.json",
+       "target_sequence.json",
+       "prior_art.json",
+       "epitope_analysis.json",
+       "target_report.json",
+       "research_report.md"
+     ],
+     "next_phase": "campaign_planning"
+   }
+   ```
+
+   Use the actual current timestamp and verify each file exists before listing it in `files_produced`. If a research input was missing, still list only the files that were actually written.
+
 ## Output Contract
 
 **Writes two files:**

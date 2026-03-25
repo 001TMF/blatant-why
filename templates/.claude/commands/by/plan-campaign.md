@@ -279,12 +279,15 @@ synthesizer_result = Task(
 )
 ```
 
-After the synthesizer completes, write the research checkpoint:
+After the synthesizer completes:
 
+1. Write the research checkpoint:
 ```bash
 mkdir -p {campaign_dir}/checkpoints
 echo '{"phase":"research","status":"complete","timestamp":"'$(date -Is)'"}' > {campaign_dir}/checkpoints/01_research_complete.json
 ```
+
+2. Update `campaign_context.json` with corrected values from target_report.json. Read target_report.json and check if the PDB ID, chain, organism, or other key fields differ from the initial quick lookup values in campaign_context.json. If they differ, update campaign_context.json with the corrected values from the synthesized research. This prevents stale data (e.g., wrong PDB ID from initial lookup) from propagating to downstream agents.
 
 #### Step 6d: Build campaign plan from synthesized research
 

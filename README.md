@@ -20,7 +20,7 @@ BY gives you direct access through Claude Code. No platform fees. Your tools, yo
 ---
 
 <p align="center">
-  <img src="assets/by_timesaver.jpg" alt="Time comparison: traditional vs. agentic antibody design" width="500">
+  <img src="assets/by_timesaver.png" alt="Time comparison: traditional vs. agentic antibody design" width="400">
 </p>
 <p align="center"><sub>Source: trust us bro</sub></p>
 

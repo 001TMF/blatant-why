@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // BY env-loader hook — SessionStart
-// Loads .env from project root, detects compute providers, outputs context for Claude Code.
+// Loads .env from project root, detects compute providers, discovers existing
+// campaigns, and outputs rich context for Claude Code so the agent announces
+// itself and has immediate situational awareness.
 
 
 'use strict';
-const { readFileSync, existsSync } = require('fs');
-const { resolve, dirname } = require('path');
+const { readFileSync, readdirSync, existsSync } = require('fs');
+const { resolve, dirname, join } = require('path');
 
 // ---------------------------------------------------------------------------
 // 1. Locate the project root by walking up until we find .by/
@@ -64,24 +66,26 @@ for (const [key, value] of Object.entries(envVars)) {
 const providers = [];
 
 // Tamarind Bio — detected via API key
-if (process.env.TAMARIND_API_KEY) {
+const hasTamarind = !!process.env.TAMARIND_API_KEY;
+if (hasTamarind) {
   const tier = process.env.TAMARIND_TIER || 'Pro';
   providers.push(`Tamarind (${tier})`);
 }
-
 
 // Local GPU — detected via tool directories or CUDA env
 const localDirs = ['PROTEUS_FOLD_DIR', 'PROTEUS_PROT_DIR', 'PROTEUS_AB_DIR'];
 const hasLocalDirs = localDirs.some((k) => process.env[k] && existsSync(process.env[k]));
 const hasCuda = !!process.env.CUDA_VISIBLE_DEVICES;
+const hasLocalGpu = hasLocalDirs || hasCuda;
 
-if (hasLocalDirs || hasCuda) {
+if (hasLocalGpu) {
   const gpuLabel = process.env.PROTEUS_GPU_LABEL || 'GPU';
   providers.push(`Local GPU (${gpuLabel})`);
 }
 
 // SSH hosts — check for known config variables
-if (process.env.PROTEUS_SSH_HOST) {
+const hasSsh = !!process.env.PROTEUS_SSH_HOST;
+if (hasSsh) {
   providers.push(`SSH (${process.env.PROTEUS_SSH_HOST})`);
 }
 
@@ -89,15 +93,81 @@ if (process.env.PROTEUS_SSH_HOST) {
 const hasAdaptyv = !!process.env.ADAPTYV_API_KEY;
 
 // ---------------------------------------------------------------------------
-// 4. Build summary and output hook JSON
+// 4. Detect existing campaigns
+// ---------------------------------------------------------------------------
+const campaigns = [];
+if (root) {
+  const campaignsDir = resolve(root, '.by', 'campaigns');
+  if (existsSync(campaignsDir)) {
+    try {
+      const dirs = readdirSync(campaignsDir, { withFileTypes: true });
+      for (const d of dirs) {
+        if (!d.isDirectory()) continue;
+        const logPath = join(campaignsDir, d.name, 'campaign_log.json');
+        const statePath = join(campaignsDir, d.name, 'state.json');
+        // A campaign is detected if it has either a campaign_log.json or state.json
+        if (existsSync(logPath) || existsSync(statePath)) {
+          let name = d.name;
+          let status = 'unknown';
+          // Try to read state.json for campaign name and status
+          try {
+            const state = JSON.parse(readFileSync(statePath, 'utf-8'));
+            if (state.target) name = state.target;
+            if (state.phase) status = state.phase;
+            if (state.status) status = state.status;
+          } catch { /* use directory name */ }
+          campaigns.push({ id: d.name, name, status });
+        }
+      }
+    } catch { /* campaigns dir unreadable — skip */ }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5. Read config profile
+// ---------------------------------------------------------------------------
+let profile = 'balanced';
+if (root) {
+  try {
+    const config = JSON.parse(readFileSync(resolve(root, '.by', 'config.json'), 'utf-8'));
+    if (config.model_profile) profile = config.model_profile;
+    if (config.profile) profile = config.profile;
+  } catch { /* default balanced */ }
+}
+
+// ---------------------------------------------------------------------------
+// 6. Build rich additionalContext for agent session start
 // ---------------------------------------------------------------------------
 const providerSummary = providers.length > 0
   ? providers.join(', ')
   : 'none detected — set TAMARIND_API_KEY or PROTEUS_*_DIR';
 
-const parts = [`BY environment loaded. Providers: ${providerSummary}.`];
+// Build environment status line (symbol format matching BY display patterns)
+const envLine = `Tamarind ${hasTamarind ? '\u2713' : '\u25CB'} | Local GPU ${hasLocalGpu ? '\u2713' : '\u25CB'} | SSH ${hasSsh ? '\u2713' : '\u25CB'}`;
+
+const parts = [];
+
+// Identity line — tells the agent who it is
+parts.push('You are BY (Blatant-Why), a protein design agent.');
+parts.push(`Environment: ${envLine}.`);
+parts.push(`Providers: ${providerSummary}.`);
+parts.push(`Profile: ${profile}.`);
+
 if (hasAdaptyv) parts.push('Adaptyv Bio lab integration available.');
-if (!root) parts.push('Warning: .by/ directory not found — run /by:init.');
+
+// Campaign summary
+if (campaigns.length > 0) {
+  const campaignList = campaigns.map((c) => `${c.name} (${c.status})`).join(', ');
+  parts.push(`Existing campaigns (${campaigns.length}): ${campaignList}.`);
+  parts.push('Offer to resume an existing campaign or start a new one.');
+} else {
+  parts.push('No existing campaigns found. This may be a first session — show /by:welcome orientation.');
+}
+
+if (!root) parts.push('Warning: .by/ directory not found — run /by:setup to initialize.');
+
+// Suggested first action
+parts.push('On session start: display the BY banner, show environment status, and offer next steps per the "On Session Start" section in CLAUDE.md.');
 
 const output = {
   hookSpecificOutput: {

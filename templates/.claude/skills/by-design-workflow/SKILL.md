@@ -289,3 +289,69 @@ Always include in result presentation:
 5. Numbered next-step options for the user.
 
 **File conventions:** CIF preferred for structures. CSV for metrics. NPZ for PAE matrices. JSON for campaign state. FASTA for sequences with metrics in header: `>design_42 ipTM=0.82 pLDDT=87.3 ipSAE_min=0.71`.
+
+---
+
+## 9. Modality Detection
+
+Auto-detect modality from user language:
+
+| User Says | Modality | Protocol | Default Scaffolds |
+|-----------|----------|----------|-------------------|
+| "nanobody", "VHH", "single-domain", "sdAb" | VHH | nanobody-anything | caplacizumab, ozoralizumab |
+| "scFv", "antibody", "Fab", "IgG", "mAb" | scFv | antibody-anything | adalimumab, tezepelumab |
+| "binder", "miniprotein", "de novo protein" | De novo | protein-anything | None (fully generative) |
+| Ambiguous / unclear | VHH (default) | nanobody-anything | caplacizumab |
+
+### Campaign Sizing
+
+| User Request | Tier | Designs/Scaffold | Budget | Alpha |
+|-------------|------|-----------------|--------|-------|
+| "quick test" / "preview" | Preview | 500 | 10 | 0.001 |
+| Standard campaign | Standard | 5,000 | 50 | 0.001 |
+| "production" / "real campaign" | Production | 20,000 | 100 | 0.001 |
+| Novel/difficult target | Exploratory | 50,000 | 200 | 0.01 |
+
+De novo protein: double num_designs (harder problem).
+Multiple scaffolds: total = scaffolds x num_designs.
+
+### Scaffold Templates
+
+VHH (7): caplacizumab, vobarilizumab, gefurulimab, ozoralizumab, crizanlizumab, envafolimab, sugemalimab
+- Recommended: caplacizumab (most stable), ozoralizumab (best diversity)
+
+Fab (14, for scFv modality): adalimumab, belimumab, crenezumab, dupilumab, golimumab, guselkumab, mab1, necitumumab, nirsevimab, sarilumab, secukinumab, tezepelumab, tralokinumab, ustekinumab
+- Recommended: adalimumab (well-characterized), tezepelumab (modern framework)
+
+### scFv Conversion (from Fab Template)
+
+BoltzGen designs with Fab templates produce VH + VL chains separately. Post-design:
+- Extract VH from heavy chain variable region
+- Extract VL from light chain variable region
+- Join with flexible linker: (G4S)3 = GGGGSGGGGSGGGGS
+- Output format: VH-linker-VL single chain
+
+| Modality | BoltzGen Output | Final Format |
+|----------|----------------|--------------|
+| VHH | Single-domain ~120aa | VHH as-is |
+| scFv | Fab (VH + VL separate) | VH-(G4S)3-VL single chain |
+| De novo | Miniprotein 65-150aa | As-is |
+
+---
+
+## 10. Fold Validation
+
+Required before design. Before designing binders against a target:
+1. Run Protenix on the target structure to verify it folds correctly in silico
+2. If using a cropped epitope region, verify the crop maintains its fold (ipTM > 0.7, pLDDT > 70)
+3. If fold quality is poor, warn the user and suggest using the full structure or a different epitope region
+4. Include fold validation results in the campaign plan
+
+---
+
+## 11. Campaign Cost Reference
+
+- Minimum viable: ~$4,000 (10K designs + top 10 lab tests)
+- Standard full: ~$16,000-$19,000 (50K designs + top 50 tests)
+- Adaptyv Bio: $119-215/design, 2-4 weeks turnaround
+- Success rates: highly target-dependent (1-89%)

@@ -376,3 +376,41 @@ DIVERSITY CLUSTERING:
   Antibodies: 90% seq ID over CDRs
   Protein binders: 70% seq ID overall
 ```
+
+---
+
+## Screening Battery Summary
+
+Always run before presenting final candidates. Never present unscreened designs as final.
+
+### Liabilities
+- NG/NS deamidation sites
+- DG isomerization sites
+- Met oxidation (exposed methionines)
+- Free Cys (unpaired cysteines)
+- NXS/T glycosylation motifs (N-linked)
+
+### Developability
+- Net charge at pH 7.4
+- CDR loop lengths (flag outliers)
+- Hydrophobic fraction
+- Composition flags (unusual amino acid distributions)
+
+### Structure
+- ipTM > 0.5 (minimum pass)
+- pLDDT > 70 (minimum pass)
+- RMSD < 3.5A (minimum pass)
+
+---
+
+## Hotspot Identification
+
+When analyzing interface residues, classify each as:
+- **Core packing**: Hydrophobic, BSA > 100A^2
+- **Polar anchor**: Tyr/Trp/His forming H-bonds at interface
+- **Salt bridge**: Charged residues paired across interface
+- **H-bond network**: Polar residues (Asn/Gln/Ser/Thr)
+- **Buried contact**: BSA > 50A^2 at interface core
+- **Rim contact**: Peripheral, BSA < 50A^2
+
+Present as a residue table with AA, Type, BSA, Classification columns. End with recommended hotspot array and range notation for entities YAML.

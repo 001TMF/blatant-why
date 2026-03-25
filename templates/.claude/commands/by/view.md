@@ -56,8 +56,28 @@ File: {path or PDB ID}
 Controls: arrow keys to rotate, +/- to zoom, q to quit
 ```
 
-### Error handling
+### Prerequisites
 
-- If `proteinview` not found: `cargo install proteinview` or download from GitHub
-- If not in tmux: show the command for the user to run manually
+Check before running:
+
+```bash
+which proteinview >/dev/null 2>&1 || echo "NOT_INSTALLED"
+echo "$TMUX" | grep -q "/" && echo "IN_TMUX" || echo "NOT_TMUX"
+```
+
+- If `proteinview` not installed: tell the user it's a separate tool and how to get it:
+  ```
+  ProteinView is not installed. It's a separate terminal protein viewer.
+  Install: cargo install proteinview
+  GitHub: https://github.com/001TMF/proteinview
+  ```
+  Then stop. Do not proceed.
+
+- If not in tmux: tell the user this is a tmux feature:
+  ```
+  /by:view requires tmux (uses split panes for the viewer).
+  Start tmux first: tmux new -s by
+  ```
+  Then stop. Do not proceed.
+
 - If file not found: list available structure files in the campaign

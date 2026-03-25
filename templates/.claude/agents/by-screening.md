@@ -13,17 +13,20 @@ You are the screening agent for BY campaigns. You take raw design outputs, run a
 
 ## Workflow
 
-1. **Load designs** -- Read the design run summary and locate all output structure files. Parse per-design metrics: ipTM, pLDDT, PAE matrices.
+1. **Load designs** -- Read the design run output. For BoltzGen: parse `final_designs_metrics_*.csv` or `all_designs_metrics.csv`. For PXDesign: parse `summary.csv`. Extract per-design metrics: ipTM, pLDDT, RMSD, sequence.
 
-2. **Structural quality filter** -- Apply hard cutoffs via `mcp__by-screening__*`:
+2. **ipSAE scoring** (3-tier fallback):
+   - **Tier 1**: Read `design_ipsae_min`, `design_to_target_ipsae`, `target_to_design_ipsae` directly from the BoltzGen CSV. BoltzGen computes these internally during its analysis step.
+   - **Tier 2**: If ipSAE values are 0 or missing, look for PAE NPZ files (`intermediate_designs_inverse_folded/*.npz` or `metrics_tmp/metrics_*.npz`). Compute ipSAE via `mcp__by-screening__score_ipsae(npz_path=..., design_chain_ids=[0], target_chain_ids=[1])`.
+   - **Tier 3**: If no PAE data exists (e.g., PXDesign output), run Protenix refold on top candidates (by ipTM) to generate PAE matrices, then compute ipSAE from those.
+
+   **IMPORTANT**: BoltzGen ipSAE can be zero even when designs exist — this happens with low-budget runs or poor interfaces. Zero ipSAE is a valid (bad) score, not missing data. Only fall back to Tier 2/3 if the CSV column is entirely absent.
+
+3. **Structural quality filter** -- Apply hard cutoffs via `mcp__by-screening__*`:
    - ipTM > 0.5 (interface predicted TM-score)
    - pLDDT > 70 (per-residue confidence)
    - RMSD < 3.5 A (if reference structure available)
    - Reject designs failing any hard cutoff. Record rejection reasons.
-
-3. **Custom scoring** -- Compute advanced metrics:
-   - **ipSAE**: Interface predicted Structural Alignment Error (TM-align-inspired from PAE). Directional: dt_ipsae, td_ipsae, and min(both).
-   - **p_bind** (if model available): Binding probability from the 3-layer MLP ensemble.
 
 4. **Liability screening** -- Check each passing design for sequence liabilities:
    - NG/NS deamidation motifs in CDRs

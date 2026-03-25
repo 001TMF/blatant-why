@@ -378,20 +378,32 @@ Agents resolve model at spawn time based on the active profile in `.by/config.js
 | by-liability-engineer | sonnet | sonnet | haiku |
 | by-formatter | sonnet | haiku | haiku |
 
-### Agent Delegation
+### Agent Delegation (MANDATORY for campaigns)
 
-Use Task() to dispatch pipeline agents for complex campaigns. Not every campaign needs delegation -- use it when the workload justifies parallel agents.
+For any design campaign, you MUST delegate to specialized sub-agents via the Task tool.
+Do NOT do research, design, or screening inline in the main session.
 
-**When to delegate:**
-- Production tier campaigns (20K+ designs per scaffold)
-- Multi-scaffold campaigns (3+ scaffolds running in parallel)
-- Multi-round iterative campaigns
-- Full pipeline runs where research, design, screening, and verification run as distinct phases
+**Why:** Each agent has scoped MCP tool access, quality gates, and specific expertise.
+Running inline wastes turns and misses quality checks.
 
-**When NOT to delegate:**
-- Preview tier (500 designs, single scaffold) -- run inline
-- Quick tests or single fold validations
-- Single-tool operations (e.g., one screening call)
+**When a user requests a design campaign:**
+
+1. Spawn by-research via Task() -- it writes target_report.json
+2. Read target_report.json, build campaign_plan.json, present to user
+3. On approval: spawn by-design via Task() -- it writes design_summary.json
+4. Spawn by-screening via Task() -- it writes ranked_results.json
+5. Spawn by-verifier via Task() -- it writes verification_report.json
+6. Present final results to user
+
+Each Task() call should include:
+- The campaign directory path
+- Input file path
+- Model from profile resolution
+- Instruction to write output file and return short summary
+
+**Only skip delegation for:**
+- Quick tests or single fold validations (one tool call, no pipeline)
+- Single-tool operations (e.g., one screening call, one PDB lookup)
 
 **Model resolution:** Before spawning any agent, resolve the model from `.by/config.json`:
 - Read `.by/config.json` `profile` field (default: `balanced`)

@@ -441,7 +441,30 @@ reduce GPU memory usage and runtime for large targets.
 
 ---
 
-## 9. Post-Design Workflow
+## 9. Residue Numbering Utility
+
+PDB structures have two numbering schemes: `auth_asym_id`/`auth_seq_id` (from
+the original publication) and `label_asym_id`/`label_seq_id` (standardized by
+PDB). PXDesign uses the `label_*` scheme. Use this snippet to translate:
+
+```python
+# Parse CIF for label_asym_id mapping
+from Bio.PDB import MMCIFParser
+parser = MMCIFParser(QUIET=True)
+structure = parser.get_structure('target', 'target.cif')
+for model in structure:
+    for chain in model:
+        residues = list(chain.get_residues())
+        print(f"Chain {chain.id} (label_asym_id): {len(residues)} residues, range {residues[0].id[1]}-{residues[-1].id[1]}")
+```
+
+When the user provides hotspot residues in auth numbering (e.g. from UniProt or
+literature), use this script to find the matching `label_seq_id` values before
+writing the YAML config.
+
+---
+
+## 10. Post-Design Workflow
 
 After collecting PXDesign results:
 

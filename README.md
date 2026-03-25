@@ -6,6 +6,7 @@
   <img src="https://img.shields.io/badge/v0.1.0--beta-Live_Beta-orange?style=flat-square" alt="v0.1.0-beta">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
   <a href="https://github.com/001TMF/blatant-why/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt="PRs Welcome"></a>
+  <img src="https://img.shields.io/badge/Claude_Code-Agent-blueviolet?style=flat-square" alt="Claude Code Agent">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js 18+">
 </p>

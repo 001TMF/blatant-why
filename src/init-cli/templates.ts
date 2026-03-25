@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -103,48 +104,21 @@ export async function copyTemplates(
 }
 
 /**
- * Scan the mcp_servers/ directory for Python scripts and generate
- * .claude/settings.json with uv run --script commands.
+ * Generate .claude/settings.json for non-MCP settings (hooks, permissions, env).
+ * MCP servers are registered separately via `claude mcp add` (see registerMcpServers).
+ *
+ * If an existing settings.json contains an `mcpServers` key, it is removed
+ * since MCP servers now live in .mcp.json (managed by `claude mcp add -s project`).
  *
  * @param targetDir - The project root directory
- * @param mcpServerDir - Relative path to the MCP servers directory
- * @returns Number of MCP servers registered
  */
 export async function generateSettingsJson(
-  targetDir: string,
-  mcpServerDir: string
-): Promise<number> {
-  const serversPath = path.join(targetDir, mcpServerDir);
+  targetDir: string
+): Promise<void> {
   const settingsDir = path.join(targetDir, ".claude");
   const settingsFile = path.join(settingsDir, "settings.json");
 
   fs.mkdirSync(settingsDir, { recursive: true });
-
-  // Find all .py files in the MCP servers directory
-  const mcpServers: Record<
-    string,
-    { command: string; args: string[]; type: string }
-  > = {};
-
-  if (fs.existsSync(serversPath)) {
-    // Scan subdirectories for server.py (e.g. mcp_servers/pdb/server.py)
-    const dirs = fs.readdirSync(serversPath, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && !d.name.startsWith("_"));
-
-    for (const dir of dirs) {
-      const serverPy = path.join(serversPath, dir.name, "server.py");
-      if (!fs.existsSync(serverPy)) continue;
-
-      const serverKey = `by-${dir.name.replace(/_/g, "-")}`;
-      const scriptPath = path.join(mcpServerDir, dir.name, "server.py");
-
-      mcpServers[serverKey] = {
-        command: "uv",
-        args: ["run", "--script", scriptPath],
-        type: "stdio",
-      };
-    }
-  }
 
   const settings: Record<string, unknown> = {};
 
@@ -158,14 +132,57 @@ export async function generateSettingsJson(
     }
   }
 
-  // Merge MCP servers into settings
-  if (Object.keys(mcpServers).length > 0) {
-    const existingMcp =
-      (settings["mcpServers"] as Record<string, unknown>) ?? {};
-    settings["mcpServers"] = { ...existingMcp, ...mcpServers };
-  }
+  // Remove mcpServers — they now live in .mcp.json via `claude mcp add`
+  delete settings["mcpServers"];
 
   fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + "\n");
+}
 
-  return Object.keys(mcpServers).length;
+/**
+ * Scan the mcp_servers/ directory for Python server scripts and register
+ * each one with Claude Code via `claude mcp add -s project`.
+ *
+ * This writes to .mcp.json (the file Claude Code actually reads for MCP servers),
+ * instead of .claude/settings.json which Claude Code ignores for MCP config.
+ *
+ * @param targetDir - The project root directory
+ * @param mcpServerDir - Relative path to the MCP servers directory
+ * @returns Number of MCP servers successfully registered
+ */
+export async function registerMcpServers(
+  targetDir: string,
+  mcpServerDir: string
+): Promise<number> {
+  const serversPath = path.join(targetDir, mcpServerDir);
+  let registered = 0;
+
+  if (!fs.existsSync(serversPath)) {
+    return registered;
+  }
+
+  // Scan subdirectories for server.py (e.g. mcp_servers/pdb/server.py)
+  const dirs = fs.readdirSync(serversPath, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && !d.name.startsWith("_"));
+
+  for (const dir of dirs) {
+    const serverPy = path.join(serversPath, dir.name, "server.py");
+    if (!fs.existsSync(serverPy)) continue;
+
+    const serverName = `by-${dir.name.replace(/_/g, "-")}`;
+    const scriptPath = path.join(mcpServerDir, dir.name, "server.py");
+
+    try {
+      execSync(
+        `claude mcp add -s project "${serverName}" -- uv run --script "${scriptPath}"`,
+        { stdio: "pipe", cwd: targetDir }
+      );
+      console.log(`  ✓ Registered ${serverName}`);
+      registered++;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.log(`  ⚠ Failed to register ${serverName}: ${msg}`);
+    }
+  }
+
+  return registered;
 }

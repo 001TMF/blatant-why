@@ -1,5 +1,6 @@
 # BY (Blatant-Why)
 .claude/settings.local.json
+.mcp.json
 .by/knowledge.db
 .by/environment.json
 .by/campaigns/

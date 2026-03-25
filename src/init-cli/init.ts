@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { copyTemplates, generateSettingsJson } from "./templates.js";
+import { copyTemplates, generateSettingsJson, registerMcpServers } from "./templates.js";
 import { promptApiKeys } from "./api-keys.js";
 import { verifyMcpServers } from "./verify.js";
 
@@ -138,10 +138,16 @@ export async function runInit(options: InitOptions): Promise<void> {
   console.log(`  ${copied} file(s) copied`);
   console.log("");
 
-  // Step 3: Generate settings.json
+  // Step 3: Generate settings.json (non-MCP settings only)
   console.log("Generating .claude/settings.json...");
-  const serverCount = await generateSettingsJson(targetDir, ".claude/mcp_servers");
-  console.log(`  ${serverCount} MCP server(s) registered`);
+  await generateSettingsJson(targetDir);
+  console.log("  Settings written (mcpServers removed — now in .mcp.json)");
+  console.log("");
+
+  // Step 3b: Register MCP servers via `claude mcp add -s project`
+  console.log("Registering MCP servers...");
+  const serverCount = await registerMcpServers(targetDir, ".claude/mcp_servers");
+  console.log(`  ${serverCount} MCP server(s) registered via claude mcp add`);
   console.log("");
 
   // Step 4: Prompt for API keys
@@ -157,11 +163,10 @@ export async function runInit(options: InitOptions): Promise<void> {
   // Step 6: Ensure .by/ directory exists
   mkdirSync(join(targetDir, ".by", "campaigns"), { recursive: true });
 
-  // Step 7: Verify MCP servers
-  const mcpDir = join(targetDir, ".claude/mcp_servers");
-  if (existsSync(mcpDir)) {
+  // Step 7: Verify MCP servers via `claude mcp list`
+  {
     console.log("Verifying MCP servers...");
-    const { passed, failed } = verifyMcpServers(mcpDir);
+    const { passed, failed } = verifyMcpServers();
     console.log(`  ${passed} server(s) OK`);
     if (failed.length > 0) {
       console.log(`  ${failed.length} server(s) failed: ${failed.join(", ")}`);
@@ -182,7 +187,7 @@ export async function runInit(options: InitOptions): Promise<void> {
   console.log("  .by/campaigns/        Campaign data");
   console.log("");
   console.log("Next steps:");
-  console.log("  1. Review .claude/settings.json for MCP server registrations");
+  console.log("  1. Verify MCP servers: claude mcp list");
   console.log("  2. Set API keys if skipped: edit .claude/settings.local.json");
   console.log("  3. Open Claude Code in this directory");
   console.log("  4. Try: /by:status or /by:load <PDB_ID>");

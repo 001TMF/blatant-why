@@ -39,6 +39,10 @@ for de novo binder design.
 Requires a CUDA-capable GPU with bf16 support. Recommended: A100 40GB+ for
 extended preset. Preview preset fits on 24GB GPUs.
 
+**GPU Architecture Note:** Blackwell GPUs (sm_100+, e.g. RTX PRO 6000) must use
+`--use_fast_ln False`. The fastfold LayerNorm CUDA kernels only compile for
+sm_70/80/86/90 and will fail on sm_100+.
+
 ---
 
 ## 2. When to Use proteus-prot
@@ -133,7 +137,7 @@ pxdesign pipeline \
 | `-i` | Yes | -- | Path to YAML config file |
 | `--N_sample` | No | 10 | Number of design samples to generate |
 | `--dtype` | No | `bf16` | Data type. Always use `bf16` |
-| `--use_fast_ln` | No | `True` | Fast LayerNorm kernels. Always use `True` |
+| `--use_fast_ln` | No | `True` | Fast LayerNorm kernels. Use `True` for Ampere/Hopper (sm_80-sm_90). Use `False` for Blackwell (sm_100+) |
 | `-o` | No | auto | Output directory. If omitted, PXDesign chooses one |
 
 ### Step 3: Read Output
@@ -238,8 +242,9 @@ A design marked `ptx_success=True` passed Protenix strict. A design with
    not strings like `"A40"`. The chain letter comes from the YAML key, not the
    hotspot value. Wrong: `hotspots: ["A40"]`. Right: `hotspots: [40]`.
 
-4. **Forgetting `--use_fast_ln True`.** This flag enables optimized LayerNorm
-   kernels and should always be included. Omitting it works but is slower.
+4. **Setting `--use_fast_ln` incorrectly.** This flag enables optimized LayerNorm
+   kernels. Use `True` for Ampere/Hopper (sm_80-sm_90) and `False` for
+   Blackwell (sm_100+). Using `True` on Blackwell causes nvcc compilation failure.
 
 5. **Omitting `--dtype bf16`.** Always specify bf16 for correct GPU precision.
 
@@ -264,6 +269,7 @@ A design marked `ptx_success=True` passed Protenix strict. A design with
 | `cutlass` errors | Missing or wrong `CUTLASS_PATH` | Verify `$HOME/cutlass` exists and contains CUTLASS build |
 | Very slow on preview | GPU not detected, running on CPU | Verify CUDA is available; check `nvidia-smi` |
 | `FileNotFoundError` for target | Wrong path in YAML config | Use absolute paths for `target.file` |
+| `fastfold_layer_norm_cuda` compilation failure | GPU arch not in gencode list (Blackwell sm_100+) | Use `--use_fast_ln False` |
 
 ---
 

@@ -86,28 +86,65 @@ You are the screening agent for BY campaigns. You take raw design outputs, run a
 
 ## Output Format
 
+Use the **Ranked Results Table** display pattern for all screening output. Format as:
+
 ```markdown
-## Screening Summary
-- Designs screened: N
-- Passed structural filter: N (X%)
-- Passed liability screen: N (X%)
-- Final ranked candidates: N
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ BY ► RESULTS: {campaign_name} — {N} candidates ranked
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## Ranked Candidates
-| Rank | Design ID | ipTM  | ipSAE | pLDDT | p_bind | Liabilities | Composite |
-|------|-----------|-------|-------|-------|--------|-------------|-----------|
-| 1    | ...       | ...   | ...   | ...   | ...    | 0 crit / 1 warn | 0.87 |
+ #  Design       Composite  ipSAE   ipTM   pLDDT  Liabilities   Verdict
+─── ──────────── ────────── ─────── ────── ────── ───────────── ──────────
+ 1  {design_id}  {score}    {val}   {val}  {val}  {N} crit      ✓ LAB-READY
+ 2  {design_id}  {score}    {val}   {val}  {val}  {N} warn      ✓ LAB-READY
+ 3  {design_id}  {score}    {val}   {val}  {val}  {N} crit      ◆ FOLLOW-UP
+ 4  {design_id}  {score}    {val}   {val}  {val}  {N} crit      ✗ NOT VIABLE
+```
 
+Verdict values: `✓ LAB-READY` (composite >= 0.75), `◆ FOLLOW-UP` (0.60-0.75), `✗ NOT VIABLE` (< 0.60).
+
+After the ranked table, include the **Score Context** block with score bars for the top candidate:
+
+```markdown
+## Score Context
+ipSAE  {value}  {bar}  {label}  ({interpretation})
+ipTM   {value}  {bar}  {label}  ({interpretation})
+pLDDT  {value}  {bar}  {label}  ({interpretation})
+```
+
+Score bars: 10 blocks, `█` filled proportionally, `░` for empty. Labels per scoring skill thresholds.
+
+Then include:
+
+```markdown
+## Summary
+✓ {N} lab-ready candidates | ◆ {N} needs follow-up | ✗ {N} not viable
+
+**Attrition:** {N} generated → {N} passed structure → {N} passed liability → {N} final candidates
+```
+
+For rejected designs, include a collapsed section:
+
+```markdown
 ## Rejected Designs
-- [design_id]: reason (e.g., ipTM=0.38 below 0.5 cutoff)
+- {design_id}: {reason} (e.g., ipTM=0.38 below 0.5 cutoff)
+```
 
+For liability findings:
+
+```markdown
 ## Liability Report
-- Critical liabilities found: N designs
-- Most common liability: [type] in N designs
+- Critical liabilities found: {N} designs
+- Most common liability: {type} in {N} designs
+```
 
+End with recommendations and diversity cluster assignments:
+
+```markdown
 ## Recommendations
 - Top 3-5 candidates for user review
 - Diversity cluster assignments
+- Numbered next steps
 ```
 
 ## Quality Gates

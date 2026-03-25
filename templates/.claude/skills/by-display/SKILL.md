@@ -258,19 +258,75 @@ BY ► BATCH PROGRESS
 
 ---
 
-## Pipeline Stage Display
+## Inline Progress Updates (preferred over repeated tables)
 
-Five-stage pipeline with counters, elapsed time, and ETA.
+Claude Code output is append-only — tables cannot be updated in place.
+Instead, show one-line status updates as each phase completes. Print the
+full summary table only ONCE at the end.
 
 ```markdown
-Design Run: run_001
-  ✓ Generating backbones     BoltzGen             12/12  45s
-  ◆ Designing sequences      ProteinMPNN          8/12   30s
-  ○ Screening quality        ipSAE + liabilities  —      —
-  ○ Evaluating structures    Protenix refolding   —      —
-  ○ Filtering & ranking      Composite score      —      —
+◆ Structure: querying PDB...
+✓ Structure: 10 PDB hits, best 3DPL at 2.6Å (12s)
+✓ Sequence: P62877, 108 aa, RING domain (8s)
+✓ Prior Art: 0 known binders in SAbDab (15s)
+✓ Epitope: 2 druggable surfaces identified (18s)
+◆ Synthesizer: compiling report...
+✓ Synthesizer: druggability 0.89, de novo recommended (5s)
+◆ Design: submitting 1,000 designs to local GPU...
+```
 
-Progress: 8/12 designs | Elapsed: 1m 15s | ETA: ~30s
+Do NOT reprint the full phase table after every step — it clutters the chat.
+Use the one-line ✓/◆/✗ format between phases.
+
+## Live Progress from Compute Tools
+
+BoltzGen and Protenix output their own progress bars when run via Bash.
+Claude Code streams Bash output in real-time, so users see live progress:
+
+```
+[Step 1/5] design - Predicting DataLoader 0: : 50%|█████     | 5/10 [00:32<00:32, 0.15it/s]
+```
+
+**IMPORTANT:** For live progress to work, the design agent MUST run compute
+tools via the **Bash tool** (not MCP). MCP tools return results only after
+completion — no streaming. Bash streams output as it happens.
+
+Pattern for the design agent:
+```bash
+# Run BoltzGen via conda env — output streams live
+/home/user/.conda/envs/bg/bin/boltzgen run design_spec.yaml \
+  --output ./campaign_output \
+  --num_designs 10 \
+  --protocol nanobody-anything \
+  --budget 10
+```
+
+The 5-stage BoltzGen pipeline shows live progress for each step:
+1. `design` — backbone generation with diffusion progress bar
+2. `inverse_folding` — sequence design progress bar
+3. `folding` — Protenix refolding progress bar
+4. `analysis` — metrics computation
+5. `filtering` — ranking and output
+
+## Pipeline Summary Table (show ONCE at end)
+
+```markdown
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ BY ► CAMPAIGN COMPLETE: {target}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Phase       | Status     | Time   | Details                          |
+|-------------|------------|--------|----------------------------------|
+| Structure   | ✓ Complete | 12s    | 10 PDB hits, best 3DPL at 2.6Å  |
+| Sequence    | ✓ Complete | 8s     | P62877, 108 aa, RING domain      |
+| Prior Art   | ✓ Complete | 15s    | 0 known binders                  |
+| Epitope     | ✓ Complete | 18s    | 2 druggable surfaces             |
+| Synthesizer | ✓ Complete | 5s     | Druggability 0.89                |
+| Design      | ✓ Complete | 5m 20s | 1,000 designs, local GPU         |
+| Screen      | ✓ Complete | 45s    | 847 pass, 153 fail               |
+| Verify      | ✓ Complete | 10s    | 10 candidates verified           |
+
+Total: 7m 13s | Provider: Local GPU (RTX 6000)
 ```
 
 ---

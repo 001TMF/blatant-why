@@ -35,6 +35,17 @@ for de novo binder design.
 
 `$PROTEUS_PROT_DIR` -- all PXDesign files, weights, and release data live here.
 
+### PATH Requirements
+
+`PATH` must include the protenix conda env's bin directory for JAX/XLA
+compilation. The Protenix evaluation filters use JAX, which requires `ptxas`
+(PTX assembler) on PATH. `ptxas` is typically in the protenix env, not the
+pxdesign env.
+
+```bash
+export PATH=/path/to/conda/envs/protenix/bin:$PATH
+```
+
 ### Hardware
 
 Requires a CUDA-capable GPU with bf16 support. Recommended: A100 40GB+ for
@@ -117,6 +128,7 @@ Write tool -> /path/to/workdir/config.yaml
 ### Step 2: Run PXDesign CLI via Bash
 
 ```bash
+PATH=/path/to/conda/envs/protenix/bin:$PATH \
 PROTENIX_DATA_ROOT_DIR=$PROTEUS_PROT_DIR/release_data/ccd_cache \
 TOOL_WEIGHTS_ROOT=$PROTEUS_PROT_DIR/tool_weights \
 CUTLASS_PATH=$HOME/cutlass \
@@ -281,6 +293,7 @@ A design marked `ptx_success=True` passed Protenix strict. A design with
 | `fastfold_layer_norm_cuda` compilation failure | GPU arch not in gencode list (Blackwell sm_100+) | Use `--use_fast_ln False` |
 | `ValueError: Chain X does not exist` | Using `auth_asym_id` instead of `label_asym_id` | Parse CIF for `label_asym_id` chain letters; see pre-flight validation |
 | DeepSpeed import error | Missing `CUDA_HOME` | Set `CUDA_HOME` to the directory containing `bin/nvcc` (e.g. protenix conda env) |
+| `XlaRuntimeError: NOT_FOUND: ptxas` | `ptxas` not on PATH for JAX/XLA compilation | Add protenix conda env bin to PATH: `PATH=/path/to/protenix/bin:$PATH` |
 
 ---
 

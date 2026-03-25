@@ -252,7 +252,14 @@ A design marked `ptx_success=True` passed Protenix strict. A design with
    `<output_dir>/design_outputs/<task_name>/`. If not found, search
    recursively for `summary.csv` in the output directory tree.
 
-7. **Confusing presets.** `preview` is for exploration; `extended` is for
+7. **Using auth_asym_id instead of label_asym_id.** PXDesign uses `label_asym_id`
+   internally, NOT `auth_asym_id` from PDB. When you download a CIF from PDB,
+   the chain letters in `auth_asym_id` (e.g. R, H, L) may differ from
+   `label_asym_id` (e.g. A, B, C). Always parse the CIF to find the correct
+   `label_asym_id` chain letters before writing the YAML config. See the
+   pre-flight validation section for a parsing snippet.
+
+8. **Confusing presets.** `preview` is for exploration; `extended` is for
    production. Do not send preview results to experimental validation without
    re-running on extended.
 
@@ -270,6 +277,7 @@ A design marked `ptx_success=True` passed Protenix strict. A design with
 | Very slow on preview | GPU not detected, running on CPU | Verify CUDA is available; check `nvidia-smi` |
 | `FileNotFoundError` for target | Wrong path in YAML config | Use absolute paths for `target.file` |
 | `fastfold_layer_norm_cuda` compilation failure | GPU arch not in gencode list (Blackwell sm_100+) | Use `--use_fast_ln False` |
+| `ValueError: Chain X does not exist` | Using `auth_asym_id` instead of `label_asym_id` | Parse CIF for `label_asym_id` chain letters; see pre-flight validation |
 
 ---
 

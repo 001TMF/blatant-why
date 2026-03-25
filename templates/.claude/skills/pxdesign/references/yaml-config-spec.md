@@ -194,3 +194,37 @@ binder_length: 90
 4. Hotspot residue numbers must exist within the chain (and within crop ranges if crop is specified)
 5. Crop range format must be `"start-end"` where start <= end
 6. MSA directory must exist if specified
+
+---
+
+## Chain ID Convention: label_asym_id (NOT auth_asym_id)
+
+**Critical:** PXDesign uses `label_asym_id` internally, NOT `auth_asym_id`.
+
+When downloading a structure from PDB, CIF files contain two different chain ID
+schemes:
+- `auth_asym_id` — the chain letters from the original publication (e.g. R, H, L)
+- `label_asym_id` — standardized chain letters assigned by PDB (e.g. A, B, C)
+
+PXDesign reads the structure using `label_asym_id`. If you use `auth_asym_id`
+chain letters in the YAML config, PXDesign will fail with:
+```
+ValueError: Chain X does not exist in the structure file (available: [...])
+```
+
+### Validation Step
+
+Before writing the YAML config, parse the CIF to extract `label_asym_id` for
+each entity and use those as chain keys:
+
+```python
+from Bio.PDB import MMCIFParser
+parser = MMCIFParser(QUIET=True)
+structure = parser.get_structure('target', 'target.cif')
+for model in structure:
+    for chain in model:
+        residues = list(chain.get_residues())
+        print(f"Chain {chain.id} (label_asym_id): {len(residues)} residues")
+```
+
+Use the chain IDs printed by this script in your YAML `target.chains` keys.

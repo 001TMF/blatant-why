@@ -204,6 +204,8 @@ Then say: **"Ready to launch. Say 'go' to start the full pipeline, or adjust any
 
 When the user says "go", "yes", "launch", or similar:
 
+**Agent polling rule:** After spawning agents via the Agent tool, do NOT poll their output with sleep commands. The system notifies you when agents complete. While waiting, you can display status or spawn additional independent agents.
+
 1. Show the campaign launch banner:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

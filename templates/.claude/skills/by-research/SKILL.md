@@ -46,7 +46,7 @@ UltraDeep triggers when:
 - User explicitly requests "deep dive" or "thorough research"
 
 UltraDeep adds the following on top of Deep:
-- **Cross-species homolog search**: Find similar proteins in other organisms with known binders via `research_find_similar_targets`, expanding to orthologs across species
+- **Cross-species homolog search**: Find similar proteins in other organisms with known binders via `mcp__by-research__research_find_similar_targets`, expanding to orthologs across species
 - **Molecular docking literature review**: Targeted PubMed/bioRxiv search for docking studies on the target or homologs
 - **Patent landscape scan**: PubMed patent filter search to identify prior IP and freedom-to-operate considerations
 - **2-3 iterations of Phase 3-7**: Retrieve-critique loop runs 2-3 times (vs 1 for Deep) to maximize coverage
@@ -103,10 +103,10 @@ then existing binders, then homologs with known binders.
 
 Execute all searches. Run tools in parallel where possible:
 
-1. `research_get_target_info` — UniProt protein info + PDB structures
-2. `research_search_prior_art` — PubMed + bioRxiv literature
-3. `research_analyze_known_binders` — SAbDab antibody database
-4. `research_find_similar_targets` — homologs with known binders
+1. `mcp__by-research__research_get_target_info` — UniProt protein info + PDB structures
+2. `mcp__by-research__research_search_prior_art` — PubMed + bioRxiv literature
+3. `mcp__by-research__research_analyze_known_binders` — SAbDab antibody database
+4. `mcp__by-research__research_find_similar_targets` — homologs with known binders
 
 Save ALL results to `research/sources.json` with credibility scores:
 
@@ -416,9 +416,9 @@ For detailed credibility scoring and confidence criteria, read
 - `research_find_similar_targets(uniprot_accession, max_results)` — UniProt homolog search
 
 ### Database tools (for deep dives)
-- `pdb_search`, `pdb_fetch_structure`, `pdb_get_chains`, `pdb_interface_residues`
-- `uniprot_search`, `uniprot_fetch_protein`, `uniprot_get_domains`, `uniprot_get_variants`
-- `sabdab_search_antibodies`, `sabdab_get_structure`, `sabdab_cdr_sequences`, `sabdab_search_by_antigen`
+- `mcp__by-pdb__pdb_search`, `mcp__by-pdb__pdb_fetch_structure`, `mcp__by-pdb__pdb_get_chains`, `mcp__by-pdb__pdb_interface_residues`
+- `mcp__by-uniprot__uniprot_search`, `mcp__by-uniprot__uniprot_fetch_protein`, `mcp__by-uniprot__uniprot_get_domains`, `mcp__by-uniprot__uniprot_get_variants`
+- `mcp__by-sabdab__sabdab_search_antibodies`, `mcp__by-sabdab__sabdab_get_structure`, `mcp__by-sabdab__sabdab_cdr_sequences`, `mcp__by-sabdab__sabdab_search_by_antigen`
 
 For database tool usage patterns, see the `by-database` skill.
 

@@ -88,7 +88,7 @@ No external dependencies required beyond numpy. No BoltzGen dependency.
 
 ### How to Score via MCP
 
-Use the `score_ipsae` tool from the `by-screening` MCP server:
+Use the `mcp__by-screening__score_ipsae` tool from the `by-screening` MCP server:
 ```
 Tool: score_ipsae
 Args: { "npz_path": "/path/to/protenix_output.npz", "design_chain_ids": [0], "target_chain_ids": [1] }

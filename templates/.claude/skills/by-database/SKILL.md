@@ -45,7 +45,7 @@ Find binding interface residues between two chains. Returns `chain1_residues`, `
 pdb_interface_residues(pdb_id="7S4S", chain1="A", chain2="B", distance_cutoff=5.0)
 ```
 
-- `chain1`, `chain2`: author chain IDs from `pdb_get_chains`.
+- `chain1`, `chain2`: author chain IDs from `mcp__by-pdb__pdb_get_chains`.
 - `distance_cutoff`: Angstroms, default 5.0. Use 4.0 for strict contacts, 6.0 for extended interface.
 - **When to use:** Identifying hotspot residues for proteus-prot or boltzgen design specs.
 
@@ -62,7 +62,7 @@ pdb_download(pdb_id="7S4S", format="cif", output_dir="/tmp")
 ### PDB Best Practices
 
 - Prefer X-ray structures with resolution below 2.5 A.
-- Use `pdb_get_chains` to verify chain completeness and sequences before design.
+- Use `mcp__by-pdb__pdb_get_chains` to verify chain completeness and sequences before design.
 - Use mmCIF format — handles large structures and multi-character chain IDs.
 - When multiple entries exist, prefer best resolution, most complete chains, and bound state (holo over apo).
 - Verify organism matches your intended species.
@@ -181,30 +181,30 @@ sabdab_search_by_antigen(antigen_name="HER2", max_results=20)
 ### Target Characterization
 
 1. `pdb_search(query="<target>")` — find available structures.
-2. `pdb_fetch_structure` on top candidates — compare resolution and completeness.
-3. `pdb_get_chains` — identify target chain, binder, ligands.
-4. `uniprot_search(query="<gene> <organism>")` then `uniprot_fetch_protein` — function and sequence.
-5. `uniprot_get_domains` — map domain boundaries onto the PDB structure.
-6. `pdb_interface_residues` — identify binding epitope residues.
-7. `uniprot_get_variants` — flag polymorphic positions in the interface.
+2. `mcp__by-pdb__pdb_fetch_structure` on top candidates — compare resolution and completeness.
+3. `mcp__by-pdb__pdb_get_chains` — identify target chain, binder, ligands.
+4. `uniprot_search(query="<gene> <organism>")` then `mcp__by-uniprot__uniprot_fetch_protein` — function and sequence.
+5. `mcp__by-uniprot__uniprot_get_domains` — map domain boundaries onto the PDB structure.
+6. `mcp__by-pdb__pdb_interface_residues` — identify binding epitope residues.
+7. `mcp__by-uniprot__uniprot_get_variants` — flag polymorphic positions in the interface.
 8. `pdb_download(format="cif")` — prepare input for BY tools.
 
 ### Antibody Scaffold Selection
 
 1. `sabdab_search_by_antigen(antigen_name="<target>")` — find existing antibodies.
-2. `sabdab_get_structure` on promising hits — assess resolution, species, subclass.
-3. `sabdab_cdr_sequences` on top candidates — compare CDR architectures.
+2. `mcp__by-sabdab__sabdab_get_structure` on promising hits — assess resolution, species, subclass.
+3. `mcp__by-sabdab__sabdab_cdr_sequences` on top candidates — compare CDR architectures.
 4. Compare CDRH3: 10-15 residues for standard binding, 15-20+ for deep pockets, 8-10 for flat epitopes.
 5. Select a high-resolution human scaffold with appropriate CDR lengths.
-6. `pdb_fetch_structure` on chosen scaffold — verify structure quality.
+6. `mcp__by-pdb__pdb_fetch_structure` on chosen scaffold — verify structure quality.
 
 ### Competition Analysis
 
-1. `sabdab_search_by_antigen` — find all known antibodies against the target.
-2. `pdb_search` — find non-antibody binders too.
-3. `pdb_interface_residues` on key competitors — map their epitopes.
+1. `mcp__by-sabdab__sabdab_search_by_antigen` — find all known antibodies against the target.
+2. `mcp__by-pdb__pdb_search` — find non-antibody binders too.
+3. `mcp__by-pdb__pdb_interface_residues` on key competitors — map their epitopes.
 4. Compare interface residues across binders — identify conserved hotspots vs. novel epitope opportunities.
-5. `uniprot_get_variants` — check if escape mutations affect competitor binding sites.
+5. `mcp__by-uniprot__uniprot_get_variants` — check if escape mutations affect competitor binding sites.
 
 ---
 
@@ -214,19 +214,19 @@ sabdab_search_by_antigen(antigen_name="HER2", max_results=20)
 
 - **PDB residue numbering** (`resseq`) uses author-assigned numbers from the structure file.
 - **UniProt positions** use canonical sequence numbering.
-- To map between them: align PDB chain sequence (`pdb_get_chains`) against UniProt sequence (`uniprot_fetch_protein`). Account for tags, missing residues, and construct boundaries.
+- To map between them: align PDB chain sequence (`mcp__by-pdb__pdb_get_chains`) against UniProt sequence (`mcp__by-uniprot__uniprot_fetch_protein`). Account for tags, missing residues, and construct boundaries.
 - Shortcut: for well-annotated structures, PDB label_seq_id often matches UniProt numbering. Always verify with sequence comparison.
 
 ### Using Domains to Identify Binding Regions
 
-1. `uniprot_get_domains` returns domain start/end positions.
-2. Map interface residues from `pdb_interface_residues` onto domain boundaries.
+1. `mcp__by-uniprot__uniprot_get_domains` returns domain start/end positions.
+2. Map interface residues from `mcp__by-pdb__pdb_interface_residues` onto domain boundaries.
 3. This identifies which functional domain the binder targets (e.g. "IgV domain" for PD-L1).
 4. Use this to select or avoid specific domains in proteus-prot or boltzgen design specs.
 
 ### Mapping SAbDab CDRs to Design Templates
 
-1. `sabdab_cdr_sequences` for your chosen template — note CDRH3 length especially.
+1. `mcp__by-sabdab__sabdab_cdr_sequences` for your chosen template — note CDRH3 length especially.
 2. CDRH3 is the primary specificity region; boltzgen redesigns it most aggressively.
 3. Framework regions are largely preserved — choose scaffolds with good humanness.
 4. For nanobody (VHH) design, verify no light chain in the template.
@@ -236,16 +236,16 @@ sabdab_search_by_antigen(antigen_name="HER2", max_results=20)
 
 | Database | Identifier | Example | Source |
 |----------|-----------|---------|--------|
-| PDB | PDB ID (4-char) | 7S4S | `pdb_search` |
-| UniProt | Accession | Q9NZQ7 | `uniprot_search` |
-| SAbDab | PDB ID | 1ahw | `sabdab_search_antibodies` |
-| Chain | Auth chain ID | A, B, H, L | `pdb_get_chains` |
-| Residue | resseq (int) | 115 | `pdb_interface_residues` |
+| PDB | PDB ID (4-char) | 7S4S | `mcp__by-pdb__pdb_search` |
+| UniProt | Accession | Q9NZQ7 | `mcp__by-uniprot__uniprot_search` |
+| SAbDab | PDB ID | 1ahw | `mcp__by-sabdab__sabdab_search_antibodies` |
+| Chain | Auth chain ID | A, B, H, L | `mcp__by-pdb__pdb_get_chains` |
+| Residue | resseq (int) | 115 | `mcp__by-pdb__pdb_interface_residues` |
 
 ### Error Handling
 
-- Empty `pdb_search`: try alternative names or gene symbols.
-- "Chain not found" in `pdb_interface_residues`: verify IDs with `pdb_get_chains` first.
-- Zero `sabdab_search_by_antigen` results: target may lack antibody co-crystals; fall back to `pdb_search`.
+- Empty `mcp__by-pdb__pdb_search`: try alternative names or gene symbols.
+- "Chain not found" in `mcp__by-pdb__pdb_interface_residues`: verify IDs with `mcp__by-pdb__pdb_get_chains` first.
+- Zero `mcp__by-sabdab__sabdab_search_by_antigen` results: target may lack antibody co-crystals; fall back to `mcp__by-pdb__pdb_search`.
 - UniProt `reviewed: false`: may lack annotations; prefer Swiss-Prot entries.
 - SAbDab keyword searches are slow (full DB download); use PDB code lookups when possible.

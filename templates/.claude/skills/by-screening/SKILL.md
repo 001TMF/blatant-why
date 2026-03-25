@@ -65,13 +65,13 @@ Reference: Dunbrack et al., "Res ipSAE loquuntur" (2025)
 | 0.4 - 0.6 | Moderate, possible binder | Include only if other metrics are strong. Consider redesign. |
 | < 0.4 | Weak/poor, unlikely to bind | Reject unless retaining for diversity. |
 
-Use `score_ipsae` MCP tool or `proteus_cli.scoring.ipsae.score_npz()` with Protenix NPZ. Requires design_chain_ids and target_chain_ids (asym_id integers). When dt and td diverge (ratio > 2:1), the interface is asymmetric -- inspect manually but do not automatically disqualify.
+Use `mcp__by-screening__score_ipsae` MCP tool or `proteus_cli.scoring.ipsae.score_npz()` with Protenix NPZ. Requires design_chain_ids and target_chain_ids (asym_id integers). When dt and td diverge (ratio > 2:1), the interface is asymmetric -- inspect manually but do not automatically disqualify.
 
 ---
 
 ## PTM Liability Screening
 
-Sequence motifs causing chemical degradation. Scan every design before advancing. Use `screen_liabilities` MCP tool or `proteus_cli.screening.liabilities.scan_liabilities()`.
+Sequence motifs causing chemical degradation. Scan every design before advancing. Use `mcp__by-screening__screen_liabilities` MCP tool or `proteus_cli.screening.liabilities.scan_liabilities()`.
 
 ### Deamidation
 
@@ -123,7 +123,7 @@ When counting liabilities for ranking, weight by location: CDR = 3x, interface =
 
 ## Developability Assessment
 
-TAP-inspired filters predicting manufacturability and stability. Use `screen_developability` MCP tool or `proteus_cli.screening.developability.assess_developability()`.
+TAP-inspired filters predicting manufacturability and stability. Use `mcp__by-screening__screen_developability` MCP tool or `proteus_cli.screening.developability.assess_developability()`.
 
 ### TAP 5 Guidelines Summary
 

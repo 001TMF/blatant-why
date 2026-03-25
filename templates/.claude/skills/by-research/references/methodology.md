@@ -12,7 +12,7 @@ protein design decisions, so prioritize them when time is limited.
 5. **bioRxiv** — recent preprints (cutting-edge methods, may not be peer-reviewed)
 
 For Quick depth, search 1-3 only. For Standard, search all five. For Deep, search
-all five plus run homolog analysis via `research_find_similar_targets`.
+all five plus run homolog analysis via `mcp__by-research__research_find_similar_targets`.
 
 ---
 
@@ -45,7 +45,7 @@ Use the canonical antigen name as it appears in SAbDab:
 
 ### Similar targets (research_find_similar_targets)
 
-Requires a UniProt accession. Get this from `research_get_target_info` first.
+Requires a UniProt accession. Get this from `mcp__by-research__research_get_target_info` first.
 Returns sequence homologs that may have known binders even if the primary target does not.
 
 ---
@@ -105,9 +105,9 @@ depend on the accuracy of the research report.
 ### Identifiers
 
 - NEVER fabricate PDB IDs — every PDB ID cited must come from a tool response
-- NEVER fabricate UniProt accessions — must come from `research_get_target_info` or `uniprot_search`
-- NEVER fabricate PMIDs or DOIs — must come from `research_search_prior_art`
-- NEVER fabricate SAbDab entries — must come from `research_analyze_known_binders`
+- NEVER fabricate UniProt accessions — must come from `mcp__by-research__research_get_target_info` or `mcp__by-uniprot__uniprot_search`
+- NEVER fabricate PMIDs or DOIs — must come from `mcp__by-research__research_search_prior_art`
+- NEVER fabricate SAbDab entries — must come from `mcp__by-research__research_analyze_known_binders`
 
 ### Quantitative data
 

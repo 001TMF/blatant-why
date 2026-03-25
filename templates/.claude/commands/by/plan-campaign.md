@@ -36,10 +36,10 @@ Record the parsed target identifier for use in Step 2.
 
 Use MCP research tools to get basic target information:
 
-1. If PDB ID provided: `pdb_fetch_structure` to get name, organism, chains.
-2. If UniProt ID provided: `uniprot_fetch_protein` to get name, organism, length, function.
-3. If free text: `uniprot_search` then `pdb_search` to resolve to identifiers.
-4. `sabdab_search_by_antigen` to check for known antibodies/nanobodies.
+1. If PDB ID provided: `mcp__by-pdb__pdb_fetch_structure` to get name, organism, chains.
+2. If UniProt ID provided: `mcp__by-uniprot__uniprot_fetch_protein` to get name, organism, length, function.
+3. If free text: `mcp__by-uniprot__uniprot_search` then `mcp__by-pdb__pdb_search` to resolve to identifiers.
+4. `mcp__by-sabdab__sabdab_search_by_antigen` to check for known antibodies/nanobodies.
 
 Present a 3-line target summary:
 ```

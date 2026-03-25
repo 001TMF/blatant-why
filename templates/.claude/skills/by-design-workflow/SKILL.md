@@ -103,7 +103,7 @@ Target Prep --> Hotspot Analysis --> Design Generation --> Screening --> Ranking
 ```
 
 **Stage 1 -- Target Preparation:**
-1. Fetch target from PDB via `pdb_search` / `pdb_fetch_structure`. If no structure exists, predict with `protenix`.
+1. Fetch target from PDB via `mcp__by-pdb__pdb_search` / `mcp__by-pdb__pdb_fetch_structure`. If no structure exists, predict with `protenix`.
 2. Extract relevant chain(s), trim to binding region + 10A buffer.
 3. Remove waters, non-essential ligands, alternate conformations.
 4. Verify chain IDs and residue numbering (`label_seq_id`, 1-indexed).
@@ -111,7 +111,7 @@ Target Prep --> Hotspot Analysis --> Design Generation --> Screening --> Ranking
 6. **Checkpoint:** confirm target with user before proceeding.
 
 **Stage 2 -- Hotspot / Epitope Analysis:**
-1. Use `pdb_interface_residues` if a known partner exists; otherwise surface accessibility analysis.
+1. Use `mcp__by-pdb__pdb_interface_residues` if a known partner exists; otherwise surface accessibility analysis.
 2. Select 3-6 hotspot residues: prefer K, R, E, D (charged), W, Y, F (aromatic), spatially clustered within 10-15A, surface-exposed (SASA > 0.25).
 3. Record using `label_seq_id`. These become `hotspot_residues` (pxdesign) or `epitope_residues` (boltzgen).
 

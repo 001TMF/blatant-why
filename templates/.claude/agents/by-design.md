@@ -28,7 +28,7 @@ You are the design agent for BY campaigns. You generate protein or antibody desi
 
 6. **Collect results** -- When jobs complete, download output structures and confidence metrics. Parse ipTM, pLDDT, and PAE from output files. Store raw results in campaign directory.
 
-7. **Update campaign state** -- Write design results summary to campaign state via `mcp__by-campaign__*`. Update knowledge base with scaffold performance data: use `knowledge_store_campaign(...)` for successful outcomes and `knowledge_store_failure(...)` for failures.
+7. **Update campaign state** -- Write design results summary to campaign state via `mcp__by-campaign__*`. Update knowledge base with scaffold performance data: use `mcp__by-knowledge__knowledge_store_campaign(...)` for successful outcomes and `mcp__by-knowledge__knowledge_store_failure(...)` for failures.
 
 ## Input/Output Contract
 

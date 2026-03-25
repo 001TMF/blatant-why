@@ -11,12 +11,12 @@ producing residue selections for proteus-prot or boltzgen input.
 
 Use the PDB MCP tools in sequence to obtain and analyze the interface:
 
-1. `pdb_search` -- find a co-crystal structure of the target with a known binder.
+1. `mcp__by-pdb__pdb_search` -- find a co-crystal structure of the target with a known binder.
    Prefer resolution < 3.0 A, X-ray or cryo-EM.
-2. `pdb_get_chains` -- identify which chain is the target antigen and which is
+2. `mcp__by-pdb__pdb_get_chains` -- identify which chain is the target antigen and which is
    the binder (antibody heavy/light chain or protein partner).
-3. `pdb_download` -- download the structure as CIF for downstream tools.
-4. `pdb_interface_residues` -- detect contact residues between two chains.
+3. `mcp__by-pdb__pdb_download` -- download the structure as CIF for downstream tools.
+4. `mcp__by-pdb__pdb_interface_residues` -- detect contact residues between two chains.
 
 Call the interface tool with target and binder chains:
 ```
@@ -102,7 +102,7 @@ are scattered, focus on the largest connected cluster. Anchors contribute
 
 ### Output format
 Express hotspots as chain ID + `label_seq_id` matching `resseq` from
-`pdb_interface_residues`:
+`mcp__by-pdb__pdb_interface_residues`:
 
 - **proteus-prot**: `hotspot_residues: ["A45", "A72", "A98", "A101", "A156"]`
 - **boltzgen**: `epitope_residues: ["A45", "A72", "A98", "A101", "A156"]`

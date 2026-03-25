@@ -322,14 +322,14 @@ When a phase fails partially, apply compensation:
 ### 7.4 Knowledge Integration at Campaign Boundaries
 
 **Pre-campaign (during planning):**
-- Query `knowledge_query_similar` for same/similar targets
-- Query `knowledge_scaffold_rankings` for scaffold performance
-- Query `knowledge_get_recommendations` for parameter suggestions
+- Query `mcp__by-knowledge__knowledge_query_similar` for same/similar targets
+- Query `mcp__by-knowledge__knowledge_scaffold_rankings` for scaffold performance
+- Query `mcp__by-knowledge__knowledge_get_recommendations` for parameter suggestions
 - Cite all prior evidence in the campaign plan
 
 **Post-campaign (after ranking):**
-- Store outcomes via `knowledge_store_campaign`
-- Store failures via `knowledge_store_failure` (if hit rate < 15%)
+- Store outcomes via `mcp__by-knowledge__knowledge_store_campaign`
+- Store failures via `mcp__by-knowledge__knowledge_store_failure` (if hit rate < 15%)
 - Record design provenance (design_id -> job_id -> scaffold -> epitope -> tool)
 - Write round summary for cross-campaign comparison
 
@@ -337,7 +337,7 @@ When a phase fails partially, apply compensation:
 
 Track and report progress at each phase:
 
-- **Design phase**: Poll `cloud_get_batch_status` every 30s. Report designs
+- **Design phase**: Poll `mcp__by-cloud__cloud_get_batch_status` every 30s. Report designs
   returned and best ipTM so far. Screen individual designs as they arrive
   (scatter-gather pattern).
 - **Screening phase**: Report after every 5 designs scored. Show running pass

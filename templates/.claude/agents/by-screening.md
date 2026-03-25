@@ -47,7 +47,7 @@ You are the screening agent for BY campaigns. You take raw design outputs, run a
 
 7. **Diversity selection** -- From top-scoring candidates, select a diverse panel using sequence clustering (80% identity threshold) to avoid redundancy.
 
-8. **Update campaign** -- Write screening results to campaign state. Store successful outcomes via `knowledge_store_campaign(...)` and failures via `knowledge_store_failure(...)` for future learning.
+8. **Update campaign** -- Write screening results to campaign state. Store successful outcomes via `mcp__by-knowledge__knowledge_store_campaign(...)` and failures via `mcp__by-knowledge__knowledge_store_failure(...)` for future learning.
 
 ## Input/Output Contract
 

@@ -31,31 +31,57 @@ cat .by/config.json 2>/dev/null
 
 Ask these configuration questions before anything else. This mirrors how GSD configures projects.
 
-**Round 1 — Compute Setup:**
+**Round 1 — use AskUserQuestion for structured popups:**
 
-Ask the user:
+```
+AskUserQuestion(
+  header: "Compute Provider",
+  question: "Where should BY run design computations?",
+  options: [
+    "Auto-detect (Recommended)" — Detect what's available and pick the best,
+    "Local GPU" — I have NVIDIA GPU with tools installed (fastest, no cost),
+    "Tamarind Bio" — Cloud compute, free tier available (no GPU needed),
+    "SSH Remote" — I have cloud GPU instances (Lambda.ai, RunPod, HPC)
+  ]
+)
+```
 
-1. **Preferred compute provider:**
-   - (a) Local GPU — I have NVIDIA GPU with tools installed (fastest, no cost)
-   - (b) Tamarind Bio — Cloud compute, free tier available (no GPU needed)
-   - (c) SSH Remote — I have cloud GPU instances (Lambda.ai, RunPod, HPC)
-   - (d) Auto-detect — check what's available and pick the best
+```
+AskUserQuestion(
+  header: "AI Model Profile",
+  question: "Which AI models for sub-agents?",
+  options: [
+    "Balanced (Recommended)" — Sonnet for most agents, good quality/cost ratio,
+    "Quality" — Opus for research/design agents, deeper analysis,
+    "Budget" — Haiku where possible, fastest and lowest cost
+  ]
+)
+```
 
-2. **Model profile for AI agents:**
-   - (a) Quality — Opus for research/design agents (deeper analysis, higher cost)
-   - (b) Balanced (Recommended) — Sonnet for most agents (good quality/cost ratio)
-   - (c) Budget — Haiku where possible (fastest, lowest cost)
+**Round 2:**
 
-**Round 2 — Campaign Defaults:**
+```
+AskUserQuestion(
+  header: "Default Campaign Size",
+  question: "How many designs per campaign by default?",
+  options: [
+    "Preview (~500)" — Fast, exploratory, good for testing,
+    "Standard (~5,000) (Recommended)" — Good sampling per scaffold,
+    "Production (~20,000)" — Thorough coverage
+  ]
+)
+```
 
-3. **Default campaign tier:**
-   - (a) Preview — 500 designs (fast, exploratory, good for testing)
-   - (b) Standard (Recommended) — 5,000 designs per scaffold
-   - (c) Production — 20,000 designs (thorough coverage)
-
-4. **Fold validation before design?**
-   - (a) Yes (Recommended) — verify target folds correctly before spending compute
-   - (b) No — skip fold validation, go straight to design
+```
+AskUserQuestion(
+  header: "Fold Validation",
+  question: "Verify target structure before designing?",
+  options: [
+    "Yes (Recommended)" — Verify target folds correctly before spending compute,
+    "No" — Skip fold validation, go straight to design
+  ]
+)
+```
 
 Write `.by/config.json` with all settings:
 ```json

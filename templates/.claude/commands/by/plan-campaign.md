@@ -32,45 +32,81 @@ Determine the input type from the user's argument:
 
 Record the parsed target identifier for use in Step 2.
 
-### Step 2: Quick target lookup (automated, no questions yet)
+### Step 2: Quick target lookup (SILENT — no raw output to user)
 
-Use MCP research tools to get basic target information:
+Use a subagent (Task tool) to research the target in the background. The user should NOT see raw MCP tool responses.
 
-1. If PDB ID provided: `mcp__by-pdb__pdb_fetch_structure` to get name, organism, chains.
-2. If UniProt ID provided: `mcp__by-uniprot__uniprot_fetch_protein` to get name, organism, length, function.
-3. If free text: `mcp__by-uniprot__uniprot_search` then `mcp__by-pdb__pdb_search` to resolve to identifiers.
-4. `mcp__by-sabdab__sabdab_search_by_antigen` to check for known antibodies/nanobodies.
-
-Present a 3-line target summary:
 ```
-Target: [name] ([organism])
-Structures: [N] PDB entries (best resolution: [X.X]A)
-Known binders: [N] antibodies/nanobodies in SAbDab
+Task(
+  prompt="Research the target '[target]'. Call mcp__by-uniprot__uniprot_search, mcp__by-pdb__pdb_search, and mcp__by-sabdab__sabdab_search_by_antigen. Return a 3-line summary: target name/organism/length, PDB entry count with best resolution, and known binder count. Return ONLY the summary text, no JSON.",
+  model="sonnet"
+)
 ```
 
-### Step 3: Adaptive discussion
+If Task tool is not available, call the MCP tools directly but do NOT display the raw JSON responses. Parse results silently and present only:
 
-Ask questions **in a single message** as a numbered list. The user answers all at once.
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ BY ► PLAN-CAMPAIGN: [target name]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Full question set (ask 2-5 depending on what is already known):**
+Target: [name] ([organism]) — [length] aa
+Structures: [N] PDB entries (best: [ID] at [X.X]Å)
+Known binders: [N] in SAbDab
+```
 
-1. **Modality**: "What format? (1) VHH nanobody (2) scFv antibody (3) De novo binder -- or I'll default to VHH"
-2. **Epitope knowledge**: "Do you have a known epitope or binding site? If yes, provide residue numbers or description. If no, I'll identify candidates from structure analysis."
-3. **Compute budget**: "Compute tier? (1) Preview ~500 designs (2) Standard ~5,000 (3) Production ~20,000 -- or specify a number"
-4. **Scaffold preferences**: "Scaffold preference? For VHH: caplacizumab (stable) or ozoralizumab (diverse) or both. For Fab: adalimumab or tezepelumab. Or 'default' for recommended set."
-5. **Success criteria**: "What matters most? (1) Maximum hit rate (2) Diverse candidates for panel (3) Highest confidence scores (4) All of the above"
+### Step 3: Adaptive discussion using AskUserQuestion
 
-**Adaptive rules -- skip questions when answers are already provided:**
+Use the **AskUserQuestion** tool for structured multiple-choice popups. Do NOT present questions as inline text — use the popup UI.
 
-- If the user's initial message specifies modality (e.g., "design nanobodies against PD-L1"), skip question 1. Note the detected modality.
-- If the user mentions specific residues or epitopes (e.g., "target the RBD ACE2-binding face"), skip question 2.
-- If the user says "quick", "preview", or "just a quick test", skip question 3 and default to Preview tier.
-- If the user gives enough context to infer scaffold (e.g., names a specific scaffold), skip question 4.
-- **Minimum**: always ask at least 2 questions.
-- **Maximum**: 5 questions.
-- If the user gives terse answers ("1, no, 2, default, 4"), parse the numbers against the question order.
+**Determine which questions to ask** based on what the user already provided in their initial request:
+- If modality is stated (e.g., "de novo", "nanobody", "scFv"), skip modality question
+- If epitope is stated, skip epitope question
+- If compute tier is implied ("quick test", "production"), skip tier question
+- **Minimum**: always ask at least 1 question via AskUserQuestion
+- **Maximum**: 4 questions
 
-**Present the questions as a compact numbered list with clear defaults.** The entire exchange should take a single back-and-forth.
+**Use AskUserQuestion for each remaining question:**
+
+For epitope (if not already specified):
+```
+AskUserQuestion(
+  header: "Epitope",
+  question: "Which binding surface on [target]?",
+  options: [
+    "Structure-derived (Recommended)" — Let analysis identify the most druggable surface,
+    "[Known interface 1]" — [description based on PDB data],
+    "[Known interface 2]" — [description based on PDB data],
+    "Custom residues" — I'll provide specific residue numbers
+  ]
+)
+```
+
+For compute tier (if not already specified):
+```
+AskUserQuestion(
+  header: "Compute",
+  question: "How many designs to generate?",
+  options: [
+    "Preview (~1,000)" — Fast test, a few minutes,
+    "Standard (~5,000) (Recommended)" — Good sampling,
+    "Production (~20,000)" — Thorough coverage
+  ]
+)
+```
+
+For success criteria:
+```
+AskUserQuestion(
+  header: "Ranking",
+  question: "What matters most for the top 10?",
+  options: [
+    "Balanced (Recommended)" — Confidence + diversity + developability,
+    "Maximum confidence" — Highest ipSAE/ipTM scores,
+    "Diverse panel" — Structurally distinct candidates
+  ]
+)
+```
 
 ### Step 4: Store answers as campaign_context.json
 

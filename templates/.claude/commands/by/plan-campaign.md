@@ -23,6 +23,12 @@ Model lookup for this command (runs in main session, no agent spawn):
 |-------|---------|----------|--------|
 | main session | opus | sonnet | sonnet |
 
+Model lookup for research agents (spawned via Task):
+| Agent | quality | balanced | budget |
+|-------|---------|----------|--------|
+| researchers (x4) | opus | sonnet | haiku |
+| synthesizer (x1) | opus | sonnet | sonnet |
+
 ### Step 1: Parse target input
 
 Determine the input type from the user's argument:
@@ -157,8 +163,11 @@ Write `campaign_context.json` to the campaign directory with this schema:
 | `scaffolds` | array of string | scaffold names | modality defaults |
 | `success_criteria` | string | `"hit_rate"`, `"diversity"`, `"confidence"`, `"balanced"` | `"balanced"` |
 
-**Downstream consumption:** All agents read `campaign_context.json` when it exists:
-- **by-research** focuses on user-specified epitope regions if `epitope.known` is true.
+**Downstream consumption:** All research agents read `campaign_context.json` when it exists:
+- **by-structure-researcher** uses PDB ID and UniProt ID from context for focused search.
+- **by-sequence-researcher** uses UniProt ID and organism from context.
+- **by-prior-art-researcher** uses target name and modality preference to focus landscape analysis.
+- **by-epitope-researcher** respects `epitope.known` and `epitope.residues` if specified.
 - **by-design** uses the specified modality, scaffolds, and compute tier.
 - **by-screening** applies success criteria to weight composite scoring (e.g., diversity-weighted vs confidence-weighted ranking).
 
@@ -192,26 +201,138 @@ When the user says "go", "yes", "launch", or similar:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-2. Follow the Agent Delegation (MANDATORY for campaigns) section in CLAUDE.md:
-   - Spawn `by-research` via Task() — passes campaign_context.json path, writes target_report.json
-   - Read target_report.json, build campaign_plan.json, present to user for final confirmation
+#### Step 6a: Spawn 4 parallel research agents via Task()
+
+Spawn all four researchers **simultaneously** (do NOT wait for one to finish before starting the next). This is the GSD-style parallel research pattern — all four agents query independent data sources in parallel for maximum speed.
+
+```
+# All four run in parallel — spawn them in the same message
+structure_result = Task(
+  agent="by-structure-researcher",
+  prompt="Research target structures for '{target_name}'. Campaign dir: {campaign_dir}. PDB ID: {pdb_id or 'auto'}. UniProt: {uniprot_id or 'auto'}. Write target_structures.json to the campaign dir. Return a one-line summary.",
+  model=MODEL_PROFILE_AGENT
+)
+
+sequence_result = Task(
+  agent="by-sequence-researcher",
+  prompt="Research target sequence for '{target_name}'. Campaign dir: {campaign_dir}. UniProt: {uniprot_id or 'auto'}. PDB: {pdb_id or 'auto'}. Write target_sequence.json to the campaign dir. Return a one-line summary.",
+  model=MODEL_PROFILE_AGENT
+)
+
+prior_art_result = Task(
+  agent="by-prior-art-researcher",
+  prompt="Research prior art for '{target_name}'. Campaign dir: {campaign_dir}. UniProt: {uniprot_id or 'auto'}. Write prior_art.json to the campaign dir. Return a one-line summary.",
+  model=MODEL_PROFILE_AGENT
+)
+
+epitope_result = Task(
+  agent="by-epitope-researcher",
+  prompt="Analyze epitope landscape for '{target_name}'. Campaign dir: {campaign_dir}. PDB: {pdb_id or 'auto'}. UniProt: {uniprot_id or 'auto'}. Epitope preference: {epitope_pref or 'structure-derived'}. Write epitope_analysis.json to the campaign dir. Return a one-line summary.",
+  model=MODEL_PROFILE_AGENT
+)
+```
+
+Show progress while researchers are running:
+```
+| Phase         | Status     | Time   | Details                |
+|---------------|------------|--------|------------------------|
+| Structure     | ◆ Active   | —      | Querying PDB...        |
+| Sequence      | ◆ Active   | —      | Querying UniProt...    |
+| Prior Art     | ◆ Active   | —      | Querying SAbDab...     |
+| Epitope       | ◆ Active   | —      | Analyzing surfaces...  |
+| Synthesizer   | ○ Pending  | —      |                        |
+| Design        | ○ Pending  | —      |                        |
+| Screen        | ○ Pending  | —      |                        |
+```
+
+#### Step 6b: Wait for all 4 researchers to complete
+
+After all four return, show the updated progress with their summaries:
+```
+| Phase         | Status     | Time   | Details                           |
+|---------------|------------|--------|-----------------------------------|
+| Structure     | ✓ Complete | {Xs}   | {structure_result summary}        |
+| Sequence      | ✓ Complete | {Xs}   | {sequence_result summary}         |
+| Prior Art     | ✓ Complete | {Xs}   | {prior_art_result summary}        |
+| Epitope       | ✓ Complete | {Xs}   | {epitope_result summary}          |
+| Synthesizer   | ◆ Active   | —      | Compiling target report...        |
+| Design        | ○ Pending  | —      |                                   |
+| Screen        | ○ Pending  | —      |                                   |
+```
+
+If any researcher fails, log the error and continue — the synthesizer handles missing inputs gracefully.
+
+#### Step 6c: Spawn synthesizer to compile target_report.json
+
+The synthesizer reads all four research outputs, cross-validates, and produces the unified report:
+
+```
+synthesizer_result = Task(
+  agent="by-research-synthesizer",
+  prompt="Synthesize research outputs for campaign at {campaign_dir}. Read target_structures.json, target_sequence.json, prior_art.json, and epitope_analysis.json. Cross-validate, assess druggability, identify risks, and write target_report.json and research_report.md. Return a one-line summary.",
+  model=MODEL_PROFILE_SYNTHESIZER
+)
+```
+
+#### Step 6d: Build campaign plan from synthesized research
+
+After the synthesizer completes:
+- Read `{campaign_dir}/target_report.json`
+- Spawn `by-campaign` via Task() to build `campaign_plan.json` from the synthesized research
+- Present the campaign plan to the user for final confirmation
+
+#### Step 6e: Present research summary and plan to user
+
+Show the synthesizer's research summary, then the campaign plan table. Ask for user approval before proceeding to the design phase.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ BY ► RESEARCH COMPLETE: {target_name}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Display key findings from research_report.md]
+[Display campaign plan from campaign_plan.json]
+
+Ready to proceed with design? Say 'approve' to start compute.
+```
+
+#### Step 6f: Continue pipeline (on plan approval)
+
+After user approves the campaign plan:
    - Spawn `by-design` via Task() — submits compute jobs, writes design_summary.json
    - Spawn `by-screening` via Task() — scores all designs, writes ranked_results.json
    - Spawn `by-verifier` via Task() — quality check, writes verification_report.json
    - Present final ranked results using Display Patterns
 
-3. Each sub-agent call should:
+2. Each sub-agent call should:
    - Use the model from the active profile (`.by/config.json`)
    - Pass the campaign directory path
    - Pass the input file path
    - Receive a short summary string back (NOT raw JSON)
 
-4. Between each agent, show a progress update:
+3. Between each phase, show an updated progress table:
 ```
-| Phase    | Status     | Time   | Details             |
-|----------|------------|--------|---------------------|
-| Research | ✓ Complete | 45s    | 3 PDB, 12 prior art |
-| Design   | ◆ Active   | —      | Spawning agent...   |
-| Screen   | ○ Pending  | —      |                     |
-| Rank     | ○ Pending  | —      |                     |
+| Phase         | Status     | Time   | Details                           |
+|---------------|------------|--------|-----------------------------------|
+| Structure     | ✓ Complete | 12s    | 45 PDB hits, best 5JDR at 1.8A   |
+| Sequence      | ✓ Complete | 8s     | 290 aa, 4 glyc sites, druggable   |
+| Prior Art     | ✓ Complete | 15s    | 42 binders, 3 approved drugs      |
+| Epitope       | ✓ Complete | 18s    | 2 sites, best 0.85 druggability   |
+| Synthesizer   | ✓ Complete | 5s     | Druggability 0.89, VHH recommended|
+| Design        | ◆ Active   | —      | Spawning agent...                 |
+| Screen        | ○ Pending  | —      |                                   |
+| Rank          | ○ Pending  | —      |                                   |
 ```
+
+### Research Output Files
+
+The parallel research system produces these files in `{campaign_dir}/`:
+
+| File | Agent | Description |
+|------|-------|-------------|
+| `target_structures.json` | by-structure-researcher | PDB structures, chains, interfaces |
+| `target_sequence.json` | by-sequence-researcher | UniProt sequence, domains, PTMs, variants |
+| `prior_art.json` | by-prior-art-researcher | SAbDab binders, literature, landscape |
+| `epitope_analysis.json` | by-epitope-researcher | Druggable sites, hotspots, scores |
+| `target_report.json` | by-research-synthesizer | Unified report (machine-readable) |
+| `research_report.md` | by-research-synthesizer | Unified report (human-readable) |

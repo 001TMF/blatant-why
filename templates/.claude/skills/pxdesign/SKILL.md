@@ -57,6 +57,40 @@ sm_70/80/86/90 and will fail on sm_100+.
 
 ---
 
+## Pre-flight Validation (MANDATORY before first design launch)
+
+Run ALL checks before the first pxdesign command. Do NOT launch and debug one error at a time.
+
+```bash
+# 1. GPU architecture
+GPU_ARCH=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -1)
+echo "GPU arch: sm_${GPU_ARCH/./}"
+# If >= 10.0: MUST use --use_fast_ln False
+
+# 2. CUDA toolkit
+echo "nvcc: $(which nvcc 2>/dev/null || echo 'NOT FOUND — set CUDA_HOME')"
+echo "ptxas: $(which ptxas 2>/dev/null || echo 'NOT FOUND — add protenix env to PATH')"
+
+# 3. CUDA_HOME
+echo "CUDA_HOME: ${CUDA_HOME:-NOT SET}"
+
+# 4. Chain IDs in target CIF
+python3 -c "
+from Bio.PDB import MMCIFParser
+s = MMCIFParser(QUIET=True).get_structure('t', 'TARGET.cif')
+for chain in s[0]:
+    print(f'  Chain {chain.id}: {len(list(chain.get_residues()))} residues')
+"
+
+# 5. Hotspot residues exist in chain
+# Verify each hotspot residue number exists in the target chain
+```
+
+If ANY check fails, fix it before launching. After 1 failed pxdesign launch,
+switch to BoltzGen protein-anything as fallback.
+
+---
+
 ## 2. When to Use proteus-prot
 
 ```

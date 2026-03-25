@@ -346,6 +346,16 @@ design_result = Agent(
 
 Do NOT let the orchestrator write YAML configs, run bash commands for pxdesign, or debug CUDA errors. That is the design agent's job.
 
+**Error handling:** When a compute tool fails (non-zero exit), do NOT show the raw traceback. Read the error, diagnose it, and present a formatted error using the by-display error template:
+```
+╔══════════════════════════════════════════════════════╗
+║  ✗ PXDesign failed: [one-line diagnosis]             ║
+╠══════════════════════════════════════════════════════╣
+║  Cause: [what went wrong]                            ║
+║  Fix: [what to do]                                   ║
+╚══════════════════════════════════════════════════════╝
+```
+
 After the design agent returns:
 ```bash
 echo '{"phase":"design","status":"complete","timestamp":"'$(date -Is)'"}' > {campaign_dir}/checkpoints/03_design_complete.json

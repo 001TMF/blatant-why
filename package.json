@@ -1,7 +1,7 @@
 {
   "name": "blatant-why",
-  "version": "0.1.0",
-  "description": "BY (Blatant-Why) protein design agent for Claude Code — multi-agent antibody & protein binder design with cloud compute and lab integration",
+  "version": "0.1.0-beta",
+  "description": "BY (Blatant-Why) protein design agent for Claude Code \u2014 multi-agent antibody & protein binder design with cloud compute and lab integration",
   "type": "module",
   "bin": {
     "by": "./dist/index.js"

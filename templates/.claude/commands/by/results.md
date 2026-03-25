@@ -67,23 +67,60 @@ before displaying results.
 
 ### Step 5: Render results table
 
-Display designs ranked by composite score, descending:
+Use the **Ranked Results Table** display pattern. Format the output exactly as shown:
 
+```markdown
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ BY ► RESULTS: {campaign_name} — {N} candidates ranked
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ #  Design       Composite  ipSAE   ipTM   pLDDT  Liabilities   Verdict
+─── ──────────── ────────── ─────── ────── ────── ───────────── ──────────
+ 1  {design_id}  {score}    {val}   {val}  {val}  {N} crit      {verdict}
+ 2  ...          ...        ...     ...    ...    ...           ...
 ```
-Rank  Design ID       ipSAE   ipTM   pLDDT  p_bind  Liabilities  Status
-----  --------------  ------  -----  -----  ------  -----------  ------
-1     design_042      0.87    0.92   85.3   0.94    none         PASS
-2     design_017      0.84    0.89   82.1   0.91    NG@H3        WARN
-...
+
+Verdict values: `✓ LAB-READY` (composite >= 0.75), `◆ FOLLOW-UP` (0.60-0.75), `✗ NOT VIABLE` (< 0.60).
+
+Below the table, include **Score Context** with score bars for the top candidate:
+
+```markdown
+## Score Context
+ipSAE  {value}  {bar}  {label}  ({interpretation})
+ipTM   {value}  {bar}  {label}  ({interpretation})
+pLDDT  {value}  {bar}  {label}  ({interpretation})
 ```
 
-Columns: Rank, Design ID, ipSAE, ipTM, pLDDT, p_bind, Liabilities, Status.
+Score bars: 10 blocks, `█` filled proportionally, `░` for empty. Labels: EXCELLENT/STRONG/GOOD/MODERATE/WEAK per the scoring skill thresholds.
 
-### Step 6: Show summary stats
+### Step 6: Show summary and next steps
 
-Below the table, show:
-- Total designs: X passed, Y warned, Z failed
-- Score ranges (min/max/mean for ipSAE, ipTM, pLDDT)
-- Diversity: sequence clusters, redundancy rate, scaffold balance (from by-diversity agent)
-- Recommendation: diverse panel of top N designs for lab submission (from by-diversity agent)
-- Pareto front summary: designs on ipSAE vs ipTM Pareto front
+```markdown
+## Summary
+✓ {N} lab-ready candidates | ◆ {N} needs follow-up | ✗ {N} not viable
+
+## Next Steps
+1. {Primary recommendation based on results}
+2. {Secondary action}
+3. {Tertiary action}
+```
+
+Include diversity information from the by-diversity agent:
+- Sequence clusters, redundancy rate, scaffold balance
+- Diverse panel recommendation
+
+End with a **Next Up** block if lab-ready candidates exist:
+
+```markdown
+──────────────────────────────────────────────────────
+
+## ▶ Next Up
+
+**Lab submission** — {N} candidates ready for Adaptyv Bio
+
+`/by:approve-lab`
+
+<sub>Triple safety gate: MCP confirmation + campaign state + approval file</sub>
+
+──────────────────────────────────────────────────────
+```

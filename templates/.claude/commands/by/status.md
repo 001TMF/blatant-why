@@ -29,25 +29,35 @@ If no active campaign, show environment info only and note "No active campaign."
 
 ### Step 3: Render status summary
 
-Display a summary block:
+Use the **Campaign Status Banner** display pattern. Format the output exactly as shown:
 
+```markdown
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ BY ► CAMPAIGN: {campaign_name}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Phase    | Status     | Time   | Details              |
+|----------|------------|--------|----------------------|
+| Research | {status}   | {time} | {details}            |
+| Plan     | {status}   | {time} | {details}            |
+| Design   | {status}   | {time} | {details}            |
+| Screen   | {status}   | {time} | {details}            |
+| Rank     | {status}   | {time} | {details}            |
 ```
-Campaign:   {name}
-Phase:      {RESEARCH | COST | DESIGN | SCREENING | RANKING | LAB}
-Round:      {N}
-Created:    {timestamp}
-Provider:   {Tamarind Bio | Local GPU}
 
-Designs:    {generated} generated, {screened} screened, {passed} passed
-Cost:       ~${estimated_cost} ({seeds} seeds x {designs_per_seed} designs)
+Status values: `✓ Complete`, `◆ Active`, `○ Pending`.
+Time: elapsed time for completed/active phases, `—` for pending.
+Details: key metrics for each phase (design count, screening pass rate, etc.).
 
-Environment:
-  proteus-fold:  {version or "not found"}
-  proteus-prot:  {version or "not found"}
-  boltzgen:      {version or "not found"}
-  GPU:           {name or "none detected"}
-  Tamarind API:  {configured | missing}
+Below the table, show provider and environment info:
+
+```markdown
+**Provider:** {Tamarind Bio | Local GPU}
+**Environment:** proteus-fold {version} | proteus-prot {version} | boltzgen {version} | GPU: {name}
+**Tamarind API:** {configured | missing}
 ```
+
+If no active campaign, show environment info only with: `No active campaign. Run /by:load to start one.`
 
 ### Step 4: Show warnings
 

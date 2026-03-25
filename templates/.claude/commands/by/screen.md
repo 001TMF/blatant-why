@@ -58,10 +58,52 @@ After the agent completes, verify:
 - Every input design has a corresponding screening result
 - Pass/fail counts are reasonable (not 100% pass or 100% fail)
 
-### Step 5: Report summary
+### Step 5: Render screening summary
 
-Show a screening summary table:
-- Total designs screened
-- Passed / failed per filter stage
-- Top 5 designs by composite score
+Use the **Screening Battery** display pattern for each design. For the overall summary, format as:
+
+```markdown
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ BY ► SCREENING COMPLETE — {N} designs processed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+For each top candidate, show the per-design screening battery:
+
+```markdown
+BY ► SCREENING {design_id}
+
+Liabilities:
+  {✓/✗} Deamidation     {N} sites
+  {✓/✗} Isomerization   {N} sites
+  {✓/✗} Oxidation       {N} sites
+  {✓/✗} Free Cys        {N} unpaired
+  {✓/✗} Glycosylation   {N} NXS/T motifs
+
+Developability:
+  Charge pH 7.4    {value}   {✓/✗} {assessment}
+  Hydrophobic      {value}%  {✓/✗} {assessment}
+  CDR3 length      {value} aa {✓/✗} {assessment}
+
+Structure:
+  ipSAE   {value}   {bar}   {label}
+  ipTM    {value}   {bar}   {label}
+  pLDDT   {value}   {bar}   {label}
+  RMSD    {value}   {bar}   {label}
+
+VERDICT: {✓ PASS | ✗ FAIL} — composite score {value}
+```
+
+Score bars: 10 blocks (`█` filled, `░` empty), filled proportionally to value.
+Labels: EXCELLENT / STRONG / GOOD / MODERATE / WEAK per scoring skill thresholds.
+
+Below individual reports, show the attrition funnel:
+
+```markdown
+**Attrition:** {N} generated → {N} passed structure → {N} passed liability → {N} final candidates
+```
+
+End with recommendations:
+- Top 3-5 candidates for user review
 - Any liability flags to investigate
+- Diversity cluster assignments

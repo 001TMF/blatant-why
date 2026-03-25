@@ -324,33 +324,49 @@ Show the synthesizer's research summary, then the campaign plan table. Ask for u
 Ready to proceed with design? Say 'approve' to start compute.
 ```
 
-#### Step 6f: Continue pipeline (on plan approval)
+#### Step 6f: Design phase (DELEGATED — do NOT run pxdesign/boltzgen directly)
 
-After user approves the campaign plan:
-   - Spawn `by-design` via Task() — submits compute jobs, writes design_summary.json
+**CRITICAL: The orchestrator MUST NOT write YAML configs, run bash commands for pxdesign/boltzgen, or debug CUDA errors. All design execution is the design agent's job.**
+
+Spawn the design agent. Pass compute config from `.by/config.json` explicitly:
+
+```
+design_result = Agent(
+  prompt="You are the BY design agent. Load the pxdesign skill (or boltzgen skill for antibody/de novo fallback).
+
+  Campaign dir: {campaign_dir}
+  Target report: {campaign_dir}/target_report.json
+  Campaign plan: {campaign_dir}/campaign_plan.json
+  Campaign context: {campaign_dir}/campaign_context.json
+
+  Compute: LOCAL GPU ONLY (from config)
+  - PXDesign: path={path}, conda_env={env}
+  - BoltzGen fallback: path={path}, conda_env=bg
+  - CUDA_HOME={cuda_home}
+  - GPU: {gpu_name} ({vram}GB)
+
+  Run pre-flight validation FIRST. If pxdesign fails once, switch to boltzgen protein-anything.
+  Write design_summary.json when complete. Return one-line summary.",
+  description="Design: {target_name}"
+)
+```
+
+Do NOT let the orchestrator write YAML configs, run bash commands for pxdesign, or debug CUDA errors. That is the design agent's job.
+
+#### Step 6g: Screening and verification (DELEGATED)
+
+After design completes:
    - Spawn `by-screening` via Task() — scores all designs, writes ranked_results.json
    - Spawn `by-verifier` via Task() — quality check, writes verification_report.json
    - Present final ranked results using Display Patterns
 
-2. Each sub-agent call should:
+Each sub-agent call should:
    - Use the model from the active profile (`.by/config.json`)
    - Pass the campaign directory path
    - Pass the input file path
    - Receive a short summary string back (NOT raw JSON)
 
-3. Between each phase, show an updated progress table:
-```
-| Phase         | Status     | Time   | Details                           |
-|---------------|------------|--------|-----------------------------------|
-| Structure     | ✓ Complete | 12s    | 45 PDB hits, best 5JDR at 1.8A   |
-| Sequence      | ✓ Complete | 8s     | 290 aa, 4 glyc sites, druggable   |
-| Prior Art     | ✓ Complete | 15s    | 42 binders, 3 approved drugs      |
-| Epitope       | ✓ Complete | 18s    | 2 sites, best 0.85 druggability   |
-| Synthesizer   | ✓ Complete | 5s     | Druggability 0.89, VHH recommended|
-| Design        | ◆ Active   | —      | Spawning agent...                 |
-| Screen        | ○ Pending  | —      |                                   |
-| Rank          | ○ Pending  | —      |                                   |
-```
+Between each phase, print a ONE-LINE status update (e.g., `✓ Design: 50 binders generated, best ipSAE 0.82 (5m 20s)`). Do NOT reprint the full phase table. Print the full summary table ONCE at campaign end only.
 
 ### Research Output Files
 

@@ -242,7 +242,7 @@ epitope_result = Task(
 )
 ```
 
-Show progress while researchers are running:
+Show the progress table ONCE when all four are launched:
 ```
 | Phase         | Status     | Time   | Details                |
 |---------------|------------|--------|------------------------|
@@ -257,18 +257,11 @@ Show progress while researchers are running:
 
 #### Step 6b: Wait for all 4 researchers to complete
 
-After all four return, show the updated progress with their summaries:
+After each research agent completes, print a ONE-LINE status update:
 ```
-| Phase         | Status     | Time   | Details                           |
-|---------------|------------|--------|-----------------------------------|
-| Structure     | ✓ Complete | {Xs}   | {structure_result summary}        |
-| Sequence      | ✓ Complete | {Xs}   | {sequence_result summary}         |
-| Prior Art     | ✓ Complete | {Xs}   | {prior_art_result summary}        |
-| Epitope       | ✓ Complete | {Xs}   | {epitope_result summary}          |
-| Synthesizer   | ◆ Active   | —      | Compiling target report...        |
-| Design        | ○ Pending  | —      |                                   |
-| Screen        | ○ Pending  | —      |                                   |
+✓ Structure: 10 PDB hits, best 3DPL at 2.6Å (12s)
 ```
+Do NOT reprint the full phase table. Print the full table ONCE at campaign end only.
 
 If any researcher fails, log the error and continue — the synthesizer handles missing inputs gracefully.
 

@@ -85,7 +85,7 @@ User wants to...
 |------|----------------|-------------|-------------|
 | **protenix** | Protenix v1 | `protenix pred -i input.json` | Structure prediction and validation |
 | **pxdesign** | PXDesign | `pxdesign pipeline --preset extended` | De novo protein binder design |
-| **boltzgen** | Proteus-AB | `boltzgen run spec.yaml` | Antibody/nanobody design |
+| **boltzgen** | BoltzGen | `boltzgen run spec.yaml` | Antibody/nanobody design |
 
 If the user is unsure, ask: (1) Is your target a protein, peptide, or small molecule?
 (2) Do you need an antibody or is a de novo binder acceptable? (3) Do you have a
@@ -227,7 +227,7 @@ This differs from `auth_seq_id` (author PDB numbering with gaps/insertion codes)
 
 **Mistakes to avoid:** > 6 hotspots (over-constrains). Buried hotspot residues. Uncleaned PDB. Skipping preview.
 
-### 6.3 boltzgen (Proteus-AB)
+### 6.3 boltzgen (BoltzGen)
 
 **Purpose:** Antibody/nanobody design using BoltzGen all-atom diffusion + Protenix refolding.
 

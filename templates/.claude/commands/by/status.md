@@ -44,7 +44,7 @@ Cost:       ~${estimated_cost} ({seeds} seeds x {designs_per_seed} designs)
 Environment:
   proteus-fold:  {version or "not found"}
   proteus-prot:  {version or "not found"}
-  proteus-ab:    {version or "not found"}
+  boltzgen:      {version or "not found"}
   GPU:           {name or "none detected"}
   Tamarind API:  {configured | missing}
 ```

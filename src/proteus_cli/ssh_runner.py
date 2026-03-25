@@ -181,7 +181,7 @@ def ssh_run_design_job(
         ),
         "boltzgen": (
             f"cd {config.tools_path}/boltzgen && "
-            f"proteus-ab run {remote_config} --output {remote_output} "
+            f"boltzgen run {remote_config} --output {remote_output} "
             f"{extra_args}"
         ),
     }

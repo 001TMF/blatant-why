@@ -16,7 +16,7 @@ You are the environment discovery agent for BY. You run on first session startup
 1. **Check local tools** -- Scan for installed protein design tools:
    - Protenix (structure prediction): check `$PROTEUS_FOLD_DIR` env var, scan PATH for `protenix`
    - PXDesign (de novo binder design): check `$PROTEUS_PROT_DIR` env var, scan PATH for `pxdesign`
-   - Proteus-AB (antibody design): check `$PROTEUS_AB_DIR` env var, scan PATH for `proteus-ab`
+   - BoltzGen (antibody design): check `$PROTEUS_AB_DIR` env var, scan PATH for `boltzgen`
    - For each tool: verify the binary/script exists, check version if possible
 
 2. **Probe GPU access** -- Determine available compute hardware:

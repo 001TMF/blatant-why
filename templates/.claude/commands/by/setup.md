@@ -39,7 +39,7 @@ Delegate to a **by-environment** agent (model per profile table above):
 > **Local tools** — check env vars and PATH for installed tools:
 > - proteus-fold (Protenix): `$PROTEUS_FOLD_DIR` or `which protenix`
 > - proteus-prot (PXDesign): `$PROTEUS_PROT_DIR` or `which pxdesign`
-> - proteus-ab (Proteus-AB): `$PROTEUS_AB_DIR` or `which proteus-ab`
+> - boltzgen: `$PROTEUS_AB_DIR` or `which boltzgen`
 >
 > **GPU** — run `nvidia-smi` if available. Report:
 > - GPU model, VRAM, driver version, CUDA version

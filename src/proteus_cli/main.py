@@ -41,7 +41,7 @@ def protein(config, preset, nproc, gpu):
 @click.argument("spec", type=click.Path(exists=True))
 @click.option("--gpu", default="0", help="GPU device IDs")
 def ab(spec, gpu):
-    """Run antibody/nanobody design with Proteus-AB."""
+    """Run antibody/nanobody design with BoltzGen."""
     from proteus_cli.antibody import run_antibody_design
 
     result = run_antibody_design(spec)

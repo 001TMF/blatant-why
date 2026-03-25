@@ -513,6 +513,6 @@ Ranked table (Rank, Design, ipTM, ipSAE, Liabilities, Status) -> next steps
 - **Purpose**: De novo protein binder design (17-82% experimental hit rates)
 - **CLI**: `pxdesign pipeline --preset extended -i config.yaml -o outdir --N_sample 500 --dtype bf16`
 
-### BoltzGen (Proteus-AB)
+### BoltzGen
 - **Purpose**: Antibody/nanobody design with BoltzGen diffusion + Protenix refolding
-- **CLI**: `proteus-ab run spec.yaml --output dir --num_designs 50 --protocol nanobody-anything --msa-mode none --budget 10`
+- **CLI**: `boltzgen run spec.yaml --output dir --num_designs 50 --protocol nanobody-anything --msa-mode none --budget 10`

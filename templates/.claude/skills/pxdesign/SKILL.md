@@ -4,7 +4,7 @@ description: >
   De novo protein binder design using PXDesign. Use this skill when designing
   non-antibody protein binders against a target structure. Covers YAML config
   creation, CLI invocation, output parsing, and result interpretation.
-  For antibody/nanobody binders, use proteus-ab instead.
+  For antibody/nanobody binders, use boltzgen instead.
   For structure prediction only, use proteus-fold.
   For scoring and screening, use by-scoring and by-screening.
 category: tool

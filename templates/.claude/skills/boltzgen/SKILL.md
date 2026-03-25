@@ -1,18 +1,18 @@
 ---
 name: boltzgen
 description: >
-  Antibody and nanobody binder design using Proteus-AB (BoltzGen diffusion +
+  Antibody and nanobody binder design using BoltzGen (BoltzGen diffusion +
   Protenix refolding). Covers entity YAML specification, CLI invocation,
   protocol selection (nanobody-anything / antibody-anything), MSA modes, and
   output parsing. Use this skill whenever the user needs to design an antibody
   or nanobody binder against a protein target.
 category: tool
-tags: [antibody, nanobody, binder-design, boltzgen, proteus-ab, diffusion]
+tags: [antibody, nanobody, binder-design, boltzgen, diffusion]
 ---
 
-# proteus-ab — Antibody / Nanobody Binder Design
+# BoltzGen — Antibody / Nanobody Binder Design
 
-You are an expert at running Proteus-AB for antibody and nanobody design.
+You are an expert at running BoltzGen for antibody and nanobody design.
 This skill teaches the exact Write → Bash → Read pattern for invoking the
 tool via CLI. **Never call MCP functions directly** — always use the Write
 tool to create the entities YAML, the Bash tool to run the CLI, and the
@@ -25,27 +25,27 @@ Read tool to parse results.
 | Requirement | Details |
 |-------------|---------|
 | Tool path | Set via `PROTEUS_AB_DIR` or `BOLTZGEN_DIR` env var |
-| CLI binary | `proteus-ab` (on PATH after env setup) |
+| CLI binary | `boltzgen` (on PATH after env setup) |
 | GPU | Required — CUDA-capable, ≥24 GB VRAM recommended |
-| Env: `PROTEUS_MODELS_DIR` | `~/.cache/proteus-ab` (model weights) |
+| Env: `PROTEUS_MODELS_DIR` | `~/.cache/boltzgen` (model weights) |
 | Env: `LAYERNORM_TYPE` | `openfold` (required for correct inference) |
 | Target structure | CIF or PDB file with clean chain IDs |
 
 ---
 
-## 2. When to Use proteus-ab
+## 2. When to Use BoltzGen
 
 ```
 User wants a binder...
 │
 ├── Antibody or nanobody format required?
 │   ├── YES, nanobody (VHH / single-domain)
-│   │   └── proteus-ab  protocol: nanobody-anything
+│   │   └── boltzgen  protocol: nanobody-anything
 │   ├── YES, full antibody (VH/VL Fab)
-│   │   └── proteus-ab  protocol: antibody-anything
+│   │   └── boltzgen  protocol: antibody-anything
 │   └── NO, any format acceptable
 │       └── Consider proteus-prot (de novo miniprotein) first;
-│           switch to proteus-ab if proteus-prot fails
+│           switch to boltzgen if proteus-prot fails
 │
 ├── Need to validate an existing antibody structure?
 │   └── Use proteus-fold instead
@@ -104,9 +104,9 @@ To include scaffold templates, add a second entity pointing to a scaffold YAML:
 ### Step 2: Run the CLI via Bash
 
 ```bash
-PROTEUS_MODELS_DIR="$HOME/.cache/proteus-ab" \
+PROTEUS_MODELS_DIR="$HOME/.cache/boltzgen" \
 LAYERNORM_TYPE="openfold" \
-proteus-ab run /path/to/workspace/design_spec.yaml \
+boltzgen run /path/to/workspace/design_spec.yaml \
   --protocol nanobody-anything \
   --num_designs 20 \
   --msa-mode none \
@@ -208,7 +208,7 @@ RMSD < 3.5 A. Then rank by composite score (see by-scoring skill).
 
 ## 9. Pipeline Stages
 
-Proteus-AB runs a 6-stage internal pipeline. See `references/pipeline-stages.md`
+BoltzGen runs a 6-stage internal pipeline. See `references/pipeline-stages.md`
 for details.
 
 ```
@@ -227,7 +227,7 @@ before the expensive Protenix refolding step. Recommended for production runs
 |---------|------------|-----|
 | Using `auth_seq_id` instead of `label_seq_id` for binding residues | Wrong epitope, wasted campaign | Always convert author numbering to label_seq_id first |
 | Missing `LAYERNORM_TYPE=openfold` env var | Silent numerical errors or crashes | Always set both env vars |
-| Missing `PROTEUS_MODELS_DIR` env var | Model weights not found | Set to `~/.cache/proteus-ab` |
+| Missing `PROTEUS_MODELS_DIR` env var | Model weights not found | Set to `~/.cache/boltzgen` |
 | Budget too low (< 32) | Poor diversity, repetitive designs | Use ≥ 48 for preview, ≥ 96 for production |
 | Skipping `--prefilter` on large runs | Wastes GPU time refolding bad designs | Enable for num_designs ≥ 50 |
 | Using antibody protocol when nanobody suffices | Slower, needs more designs | Match protocol to actual format need |
@@ -240,7 +240,7 @@ before the expensive Protenix refolding step. Recommended for production runs
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| `FileNotFoundError` on model weights | `PROTEUS_MODELS_DIR` not set or wrong path | Verify `~/.cache/proteus-ab` exists with weights |
+| `FileNotFoundError` on model weights | `PROTEUS_MODELS_DIR` not set or wrong path | Verify `~/.cache/boltzgen` exists with weights |
 | CUDA out of memory | GPU VRAM insufficient | Reduce `--num_designs` or `--budget`; use smaller batch |
 | All designs have ipTM < 0.4 | Bad epitope selection or target issue | Re-examine binding residues; verify target with proteus-fold |
 | No CSV output found | Run failed silently or wrong output path | Check stderr; look recursively for `final_designs_metrics_*.csv` |
@@ -275,9 +275,9 @@ entities:
 
 ```bash
 # 2. Run CLI (via Bash tool)
-PROTEUS_MODELS_DIR="$HOME/.cache/proteus-ab" \
+PROTEUS_MODELS_DIR="$HOME/.cache/boltzgen" \
 LAYERNORM_TYPE="openfold" \
-proteus-ab run workspace/nb_design_spec.yaml \
+boltzgen run workspace/nb_design_spec.yaml \
   --protocol nanobody-anything \
   --num_designs 20 \
   --msa-mode none \
@@ -309,9 +309,9 @@ entities:
 ```
 
 ```bash
-PROTEUS_MODELS_DIR="$HOME/.cache/proteus-ab" \
+PROTEUS_MODELS_DIR="$HOME/.cache/boltzgen" \
 LAYERNORM_TYPE="openfold" \
-proteus-ab run workspace/ab_design_spec.yaml \
+boltzgen run workspace/ab_design_spec.yaml \
   --protocol antibody-anything \
   --num_designs 50 \
   --msa-mode none \
@@ -380,7 +380,7 @@ Pre-built scaffold YAMLs for antibody framework selection. Located at:
 
 ### Default Behavior
 
-If no scaffold entity is added to the entities YAML, proteus-ab uses its
+If no scaffold entity is added to the entities YAML, boltzgen uses its
 built-in default scaffolds. Explicit scaffolds are useful when:
 - A specific antibody framework is required (e.g., adalimumab for anti-TNF)
 - The user requests a humanized template from a known therapeutic

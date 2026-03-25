@@ -271,7 +271,7 @@ Add to `.env`:
 PROTEUS_PROT_DIR=/path/to/pxdesign
 ```
 
-**BoltzGen / Proteus-AB (antibody/nanobody design):**
+**BoltzGen (antibody/nanobody design):**
 ```bash
 git clone https://github.com/jostorge/boltzgen
 cd boltzgen && pip install -e .

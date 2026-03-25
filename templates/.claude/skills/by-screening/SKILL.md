@@ -1,6 +1,6 @@
 # BY Screening Skill
 
-Comprehensive screening battery for evaluating protein binder and antibody designs produced by proteus-prot (PXDesign) and proteus-ab (Proteus-AB). This skill encodes all quality filters, scoring thresholds, liability checks, and developability assessments used to triage designs before experimental validation.
+Comprehensive screening battery for evaluating protein binder and antibody designs produced by proteus-prot (PXDesign) and boltzgen (BoltzGen). This skill encodes all quality filters, scoring thresholds, liability checks, and developability assessments used to triage designs before experimental validation.
 
 Always run the full screening pipeline before presenting final candidates to the user. Never present unscreened designs as ready for validation.
 
@@ -175,7 +175,7 @@ Fraction of hydrophobic amino acids (A, I, L, M, F, W, V, P) in the design chain
 
 ### Hydrophobic Patches (Advanced)
 
-When structural coordinates are available, use DBSCAN clustering on solvent-accessible hydrophobic atoms. A single patch exceeding 600 A^2 is a strong aggregation signal. Reported in proteus-ab results CSV.
+When structural coordinates are available, use DBSCAN clustering on solvent-accessible hydrophobic atoms. A single patch exceeding 600 A^2 is a strong aggregation signal. Reported in boltzgen results CSV.
 
 ---
 
@@ -272,7 +272,7 @@ When screening eliminates all or most designs, do not simply report failure. Dia
 The target-design interface is not forming a confident complex. Recovery:
 1. Re-examine the target structure -- epitope accessibility, crystal packing, missing cofactors.
 2. Try different hotspot residues. Current hotspots may not be druggable.
-3. For proteus-ab: switch between nanobody-anything and antibody-anything protocols.
+3. For boltzgen: switch between nanobody-anything and antibody-anything protocols.
 4. For proteus-prot: try the extended preset with more backbone samples.
 5. Check whether the target is intrinsically disordered at the binding site (AlphaFold pLDDT).
 

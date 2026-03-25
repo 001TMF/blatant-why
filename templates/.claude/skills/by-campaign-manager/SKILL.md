@@ -53,10 +53,10 @@ plan at least two rounds with parameter variation.
 | Goal | Tool | CLI | Notes |
 |------|------|-----|-------|
 | De novo protein binder | **proteus-prot** | `pxdesign pipeline --preset extended -i config.yaml` | See `proteus-prot` skill |
-| Antibody / nanobody | **proteus-ab** | `proteus-ab run spec.yaml --protocol <proto>` | See `proteus-ab` skill |
+| Antibody / nanobody | **boltzgen** | `boltzgen run spec.yaml --protocol <proto>` | See `boltzgen` skill |
 | Structure validation | **proteus-fold** | `protenix pred -i input.json` | See `proteus-fold` skill |
 
-If the user wants an antibody or nanobody scaffold, always use proteus-ab. For
+If the user wants an antibody or nanobody scaffold, always use boltzgen. For
 general protein binders (non-immunoglobulin), use proteus-prot. Use proteus-fold
 for independent structure validation of top candidates.
 
@@ -136,7 +136,7 @@ Vary one axis at a time to diagnose improvements:
 | Run 4 | Different protocol (e.g., nanobody to antibody) | Scaffold architecture change |
 
 For proteus-prot, vary: hotspot residues, num_designs, preset (preview vs extended).
-For proteus-ab, vary: protocol, budget, diversity_alpha, MSA mode, prefilter toggle.
+For boltzgen, vary: protocol, budget, diversity_alpha, MSA mode, prefilter toggle.
 
 ### 3.3 Aggregating Cross-Run Results
 
@@ -158,9 +158,9 @@ For proteus-ab, vary: protocol, budget, diversity_alpha, MSA mode, prefilter tog
 | **proteus-prot** | Preview (5-10 designs) | 10-30 min | 24-40 GB |
 | **proteus-prot** | Extended (20-50 designs) | 1-4 hr | 24-40 GB |
 | **proteus-prot** | Production (100+ designs) | 4-12 hr | 24-40 GB |
-| **proteus-ab** | Nanobody (10-20 designs) | 30-60 min | 24-40 GB |
-| **proteus-ab** | Antibody (20-50 designs) | 1-2 hr | 40-80 GB |
-| **proteus-ab** | Large (50-100 designs) | 2-4 hr | 40-80 GB |
+| **boltzgen** | Nanobody (10-20 designs) | 30-60 min | 24-40 GB |
+| **boltzgen** | Antibody (20-50 designs) | 1-2 hr | 40-80 GB |
+| **boltzgen** | Large (50-100 designs) | 2-4 hr | 40-80 GB |
 
 ### 4.2 Screening Overhead
 
@@ -221,8 +221,8 @@ Progress: 12/30 designs | ETA: ~45 min
 |------|-------------|----------|-------|
 | **proteus-prot** | Well-studied | 30-60% | < 15% |
 | **proteus-prot** | Novel | 10-30% | < 5% |
-| **proteus-ab** (nanobody) | Standard | 20-40% | < 10% |
-| **proteus-ab** (antibody) | Standard | 15-35% | < 8% |
+| **boltzgen** (nanobody) | Standard | 20-40% | < 10% |
+| **boltzgen** (antibody) | Standard | 15-35% | < 8% |
 
 Pass = ipTM > 0.5, pLDDT > 70, RMSD < 3.5A, no high-severity CDR liabilities.
 
@@ -262,7 +262,7 @@ Do NOT abort if:
 
 0. Run `/by:plan-campaign` to capture preferences (`campaign_context.json`).
 1. Classify target difficulty (well-studied / moderate / novel).
-2. Select tool (proteus-prot or proteus-ab) and protocol.
+2. Select tool (proteus-prot or boltzgen) and protocol.
 3. Choose campaign tier (preview first, then escalate).
 4. Identify hotspot residues from epitope analysis.
 5. Estimate compute time and confirm GPU availability.

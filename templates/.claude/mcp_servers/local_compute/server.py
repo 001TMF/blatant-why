@@ -55,7 +55,7 @@ def _detect_local_tools() -> dict[str, dict]:
         cli_names = {
             "protenix": "protenix",
             "pxdesign": "pxdesign",
-            "boltzgen": "proteus-ab",
+            "boltzgen": "boltzgen",
         }
         cli = cli_names.get(name, name)
         tools[name]["cli_available"] = shutil.which(cli) is not None
@@ -234,7 +234,7 @@ def _ssh_run_design_job(
             ),
             "boltzgen": (
                 f"cd {config.tools_path}/proteus-design && "
-                f"proteus-ab run {remote_config} "
+                f"boltzgen run {remote_config} "
                 f"--output {remote_output} {extra_args}"
             ),
         }
@@ -404,7 +404,7 @@ async def local_run_boltzgen(
         return _error(f"Spec file not found: {spec}")
 
     cmd = [
-        "proteus-ab", "run", str(spec),
+        "boltzgen", "run", str(spec),
         "--output", str(output_dir),
         "--num_designs", str(num_designs),
         "--budget", str(budget),
@@ -414,7 +414,7 @@ async def local_run_boltzgen(
 
     env = dict(os.environ)
     env["PROTEUS_MODELS_DIR"] = os.getenv(
-        "PROTEUS_MODELS_DIR", str(Path.home() / ".cache" / "proteus-ab")
+        "PROTEUS_MODELS_DIR", str(Path.home() / ".cache" / "boltzgen")
     )
     env["LAYERNORM_TYPE"] = "openfold"
 

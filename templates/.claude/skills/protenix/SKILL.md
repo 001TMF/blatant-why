@@ -6,7 +6,7 @@ description: >
   designed binders by refolding, (3) Generating confidence metrics (ipTM, pTM, pLDDT),
   (4) Multi-seed ensemble validation, (5) Predicting protein-ligand complexes.
 
-  For design generation, use proteus-prot or proteus-ab instead.
+  For design generation, use proteus-prot or boltzgen instead.
   For scoring existing predictions, use by-scoring.
   For full pipeline orchestration, use by-design-workflow.
 category: tool
@@ -49,7 +49,7 @@ User wants to...
 |   --> proteus-fold with ligand entity type
 |
 +-- Design a NEW binder
-|   --> NOT this skill. Use proteus-prot or proteus-ab
+|   --> NOT this skill. Use proteus-prot or boltzgen
 ```
 
 ---

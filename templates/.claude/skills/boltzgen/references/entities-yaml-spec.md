@@ -1,6 +1,6 @@
-# Entities YAML Specification — proteus-ab
+# Entities YAML Specification — BoltzGen
 
-Full specification for the entities YAML file consumed by `proteus-ab run`.
+Full specification for the entities YAML file consumed by `boltzgen run`.
 This file defines the target protein, binding residues (epitope), and optional
 scaffold templates.
 

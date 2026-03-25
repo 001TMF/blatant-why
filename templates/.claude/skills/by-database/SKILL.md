@@ -47,7 +47,7 @@ pdb_interface_residues(pdb_id="7S4S", chain1="A", chain2="B", distance_cutoff=5.
 
 - `chain1`, `chain2`: author chain IDs from `pdb_get_chains`.
 - `distance_cutoff`: Angstroms, default 5.0. Use 4.0 for strict contacts, 6.0 for extended interface.
-- **When to use:** Identifying hotspot residues for proteus-prot or proteus-ab design specs.
+- **When to use:** Identifying hotspot residues for proteus-prot or boltzgen design specs.
 
 ### pdb_download
 
@@ -144,7 +144,7 @@ Detailed antibody structure summary. Returns all search fields plus `antigen_typ
 sabdab_get_structure(pdb_id="1ahw")
 ```
 
-**When to use:** Evaluating a specific antibody as scaffold or template. Subclass and CDR lengths assess proteus-ab compatibility. PDBs with multiple chain pairings return a `chain_pairings` array.
+**When to use:** Evaluating a specific antibody as scaffold or template. Subclass and CDR lengths assess boltzgen compatibility. PDBs with multiple chain pairings return a `chain_pairings` array.
 
 ### sabdab_cdr_sequences
 
@@ -154,7 +154,7 @@ Extract CDR sequences (Chothia numbering). Returns per CDR (H1-H3, L1-L3): `sequ
 sabdab_cdr_sequences(pdb_id="1ahw")
 ```
 
-**When to use:** Template selection for proteus-ab. Compare CDRH3 length and composition across candidates — this is the primary specificity determinant.
+**When to use:** Template selection for boltzgen. Compare CDRH3 length and composition across candidates — this is the primary specificity determinant.
 
 ### sabdab_search_by_antigen
 
@@ -222,12 +222,12 @@ sabdab_search_by_antigen(antigen_name="HER2", max_results=20)
 1. `uniprot_get_domains` returns domain start/end positions.
 2. Map interface residues from `pdb_interface_residues` onto domain boundaries.
 3. This identifies which functional domain the binder targets (e.g. "IgV domain" for PD-L1).
-4. Use this to select or avoid specific domains in proteus-prot or proteus-ab design specs.
+4. Use this to select or avoid specific domains in proteus-prot or boltzgen design specs.
 
 ### Mapping SAbDab CDRs to Design Templates
 
 1. `sabdab_cdr_sequences` for your chosen template — note CDRH3 length especially.
-2. CDRH3 is the primary specificity region; proteus-ab redesigns it most aggressively.
+2. CDRH3 is the primary specificity region; boltzgen redesigns it most aggressively.
 3. Framework regions are largely preserved — choose scaffolds with good humanness.
 4. For nanobody (VHH) design, verify no light chain in the template.
 5. For Fab designs, confirm both H-chain and L-chain CDR sequences are available.

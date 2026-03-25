@@ -3,7 +3,7 @@
 You are an expert structural biologist performing epitope analysis and hotspot
 residue selection for protein and antibody binder design. This skill covers
 interface identification, residue classification, hotspot scoring, and
-producing residue selections for proteus-prot or proteus-ab input.
+producing residue selections for proteus-prot or boltzgen input.
 
 ---
 
@@ -105,7 +105,7 @@ Express hotspots as chain ID + `label_seq_id` matching `resseq` from
 `pdb_interface_residues`:
 
 - **proteus-prot**: `hotspot_residues: ["A45", "A72", "A98", "A101", "A156"]`
-- **proteus-ab**: `epitope_residues: ["A45", "A72", "A98", "A101", "A156"]`
+- **boltzgen**: `epitope_residues: ["A45", "A72", "A98", "A101", "A156"]`
 
 ### How many hotspots to select
 
@@ -137,10 +137,10 @@ longest dimension.
 Estimate from residue count: each interface residue contributes ~40-60 A^2 of
 buried surface area.
 
-- **Small (< 800 A^2):** Nanobody or small binder. Use proteus-ab with
+- **Small (< 800 A^2):** Nanobody or small binder. Use boltzgen with
   nanobody-anything protocol.
 - **Medium (800-1500 A^2):** Standard territory. Use proteus-prot (extended)
-  or proteus-ab (antibody-anything).
+  or boltzgen (antibody-anything).
 - **Large (> 1500 A^2):** May need multi-domain or bispecific. Consider
   splitting into sub-patches.
 
@@ -151,7 +151,7 @@ deeply buried high-contact residues. BY-prot excels -- RFdiffusion
 generates complementary convex protrusions. Place hotspots at pocket bottom.
 
 **Convex (dome/ridge):** Residues spread broadly with few deeply buried
-contacts. Antibody CDR loops wrap convex surfaces well. Prefer proteus-ab.
+contacts. Antibody CDR loops wrap convex surfaces well. Prefer boltzgen.
 Emphasize polar anchors capping the convexity and aromatics packing the dome.
 
 **Flat:** Many residues with similar moderate contacts, large area, no dominant
@@ -218,7 +218,7 @@ TOOL_WEIGHTS_ROOT=$PROTEUS_PROT_DIR/tool_weights \
 pxdesign pipeline --preset extended -i /tmp/pdl1_config.yaml -o /tmp/pdl1_design --N_sample 30 --dtype bf16
 ```
 
-For antibody design (see `proteus-ab` skill for full entities spec):
+For antibody design (see `boltzgen` skill for full entities spec):
 ```bash
 # Write entities YAML
 cat > /tmp/pdl1_spec.yaml << 'EOF'
@@ -234,9 +234,9 @@ entities:
         binding: 54..58,61..63,68
 EOF
 
-# Run Proteus-AB
-PROTEUS_MODELS_DIR=~/.cache/proteus-ab LAYERNORM_TYPE=openfold \
-proteus-ab run /tmp/pdl1_spec.yaml --protocol nanobody-anything --num_designs 50 --budget 10 --output /tmp/pdl1_ab
+# Run BoltzGen
+PROTEUS_MODELS_DIR=~/.cache/boltzgen LAYERNORM_TYPE=openfold \
+boltzgen run /tmp/pdl1_spec.yaml --protocol nanobody-anything --num_designs 50 --budget 10 --output /tmp/pdl1_ab
 ```
 
 ---

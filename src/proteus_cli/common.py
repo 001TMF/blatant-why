@@ -118,7 +118,7 @@ def get_tool_env(tool_name: str) -> dict[str, str]:
         base["TOOL_WEIGHTS_ROOT"] = str(tool_dir / "tool_weights")
         base.setdefault("CUTLASS_PATH", str(Path.home() / "cutlass"))
     elif tool_name == "boltzgen":
-        base["PROTEUS_MODELS_DIR"] = str(Path.home() / ".cache" / "proteus-ab")
+        base["PROTEUS_MODELS_DIR"] = str(Path.home() / ".cache" / "boltzgen")
         base["LAYERNORM_TYPE"] = "openfold"
 
     return base

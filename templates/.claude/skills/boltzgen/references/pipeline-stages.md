@@ -1,6 +1,6 @@
-# Pipeline Stages — proteus-ab
+# Pipeline Stages — BoltzGen
 
-Proteus-AB runs a 6-stage internal pipeline. Each stage transforms the output
+BoltzGen runs a 6-stage internal pipeline. Each stage transforms the output
 of the previous stage. The `--prefilter` flag controls whether stage 3 is active.
 
 ```

@@ -1,4 +1,4 @@
-"""Wrapper for proteus-ab (Proteus-AB antibody/nanobody design)."""
+"""Wrapper for boltzgen (BoltzGen antibody/nanobody design)."""
 from __future__ import annotations
 
 import csv
@@ -46,10 +46,10 @@ def build_design_spec(
     scaffold_paths: list[str] | None = None,
     output_dir: str | Path | None = None,
 ) -> Path:
-    """Create a YAML design spec file for proteus-ab and return its path.
+    """Create a YAML design spec file for boltzgen and return its path.
 
     The spec follows the ``entities`` list format expected by
-    ``proteus-ab run <spec.yaml>``.
+    ``boltzgen run <spec.yaml>``.
 
     Parameters
     ----------
@@ -126,7 +126,7 @@ def run_antibody_design(
     prefilter: bool = False,
     budget: int = 10,
 ) -> ToolResult:
-    """Run ``proteus-ab run`` for antibody/nanobody design.
+    """Run ``boltzgen run`` for antibody/nanobody design.
 
     Parameters
     ----------
@@ -187,15 +187,15 @@ def run_antibody_design(
 
 
 def parse_antibody_results(output_dir: str | Path) -> list[dict]:
-    """Parse proteus-ab ``final_designs_metrics_*.csv`` into a list of design dicts.
+    """Parse boltzgen ``final_designs_metrics_*.csv`` into a list of design dicts.
 
-    Proteus-AB writes results to
+    BoltzGen writes results to
     ``<output_dir>/final_ranked_designs/final_designs_metrics_*.csv``.
 
     Parameters
     ----------
     output_dir:
-        Root output directory of a proteus-ab run.
+        Root output directory of a boltzgen run.
 
     Returns
     -------

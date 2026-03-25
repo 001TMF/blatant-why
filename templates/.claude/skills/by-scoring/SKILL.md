@@ -213,6 +213,58 @@ Follow this sequence for every batch of new designs:
 | 0.45-0.60 | **Borderline** | Include only for diversity; do not prioritize. |
 | Below 0.45 | **Below threshold** | Do not advance. Redesign or discard. |
 
+### Score Bar Display Format
+
+When presenting individual metric scores, use the score bar format:
+
+```
+{metric}  {value}  {bar}  {label}
+```
+
+Where `{bar}` is 10 Unicode blocks filled proportionally to the value:
+- `█` (U+2588, FULL BLOCK) for filled portion
+- `░` (U+2591, LIGHT SHADE) for empty portion
+
+Each `█` represents 10%. Round to nearest whole block. Examples:
+
+| Value | Bar | Label |
+|-------|-----|-------|
+| 0.85 | `████████░░` | EXCELLENT |
+| 0.72 | `███████░░░` | STRONG |
+| 0.50 | `█████░░░░░` | MODERATE |
+| 0.30 | `███░░░░░░░` | WEAK |
+| 91.2 (pLDDT) | `█████████░` | VERY HIGH |
+
+**Label mapping for ipSAE:**
+- >= 0.85: EXCEPTIONAL
+- 0.70-0.85: STRONG
+- 0.50-0.70: MODERATE
+- 0.30-0.50: WEAK
+- < 0.30: POOR
+
+**Label mapping for ipTM:**
+- >= 0.85: HIGH
+- 0.70-0.85: GOOD
+- 0.50-0.70: MARGINAL
+- < 0.50: LOW
+
+**Label mapping for pLDDT (0-100 scale, divide by 100 for bar):**
+- >= 90: VERY HIGH
+- 70-90: GOOD
+- 50-70: LOW
+- < 50: VERY LOW
+
+**Full example (Score Context block after results table):**
+
+```markdown
+## Score Context
+ipSAE  0.85  ████████░░  EXCELLENT  (top 5% of approved therapeutics)
+ipTM   0.82  ████████░░  STRONG     (confident interface prediction)
+pLDDT  91.2  █████████░  VERY HIGH  (reliable fold prediction)
+```
+
+Always include the Score Context block with score bars after any ranked results table or individual design screening report.
+
 ### Presenting Results -- Required Elements
 
 When presenting a ranked results table, ALWAYS include these three elements after the table:

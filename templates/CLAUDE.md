@@ -681,6 +681,39 @@ Always show at the end of major phase completions.
 - Never use random emoji — stick to the status symbols above
 - Never skip the Next Up block after phase completions
 
+## Long-Running Job Handling
+
+Design and folding jobs can take minutes to days depending on scale. NEVER hold the terminal with bash sleep loops or continuous polling.
+
+**Pattern for long-running compute:**
+
+1. **Submit the job** -- call `cloud_submit_job` or run local CLI. Record the job_id / process ID.
+2. **Estimate completion time** -- based on num_designs, budget, provider speed:
+   - BoltzGen local: ~6 seconds per design (RTX 6000 class GPU)
+   - BoltzGen Tamarind: ~30-60 seconds per design
+   - Protenix refolding: ~10 seconds per design per seed
+   - PXDesign: ~1-5 minutes per design depending on target size
+3. **Report to user with ETA:**
+```
+BY ► JOB SUBMITTED
+
+Job: by_boltzgen_abc123
+Provider: Local GPU (RTX PRO 6000)
+Designs: 5,000 x 2 scaffolds = 10,000 total
+Estimated time: ~16 hours
+
+The job is running in the background. You can:
+  /by:status    — check progress anytime
+  /by:watch     — tail the output log
+  /by:results   — view results when complete
+
+I'll check back when the estimated time elapses, or you can ask me anytime.
+```
+4. **Do NOT** use `sleep` loops, continuous bash polling, or hold the conversation waiting.
+5. **For local jobs**: launch with `nohup` or in a `tmux`/`screen` session so the job survives terminal closure.
+6. **For Tamarind jobs**: the job runs server-side. Just record the job_id and check with `cloud_get_status` when the user asks or when ETA has passed.
+7. **For checking progress**: read the log file tail or call status API -- one-shot check, not a loop.
+
 ## Core Tools (3)
 
 ### Protenix (Protenix v1)

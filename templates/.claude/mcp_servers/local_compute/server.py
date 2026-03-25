@@ -116,7 +116,7 @@ class SSHConfig:
 
     def _ssh_base_cmd(self) -> list[str]:
         """Build base SSH command with options."""
-        cmd = ["ssh", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=10"]
+        cmd = ["ssh", "-o", "StrictHostKeyChecking=accept-new", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
         if self.key_path:
             cmd.extend(["-i", self.key_path])
         if self.port != 22:
@@ -200,7 +200,7 @@ def _ssh_run_design_job(
     local_output.mkdir(parents=True, exist_ok=True)
 
     # Build SCP base
-    scp_opts = ["-o", "StrictHostKeyChecking=no"]
+    scp_opts = ["-o", "StrictHostKeyChecking=accept-new", "-o", "BatchMode=yes"]
     if config.key_path:
         scp_opts.extend(["-i", config.key_path])
     if config.port != 22:

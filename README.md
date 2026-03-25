@@ -26,17 +26,60 @@ BY gives you direct access through Claude Code. No platform fees. Your tools, yo
 
 ---
 
-## Quick Start
+## Quick Start (5 minutes)
+
+You don't need to be a developer. If you can open a terminal and paste commands, you can run BY.
+
+### 1. Install prerequisites
+
+| Tool | Install | Check |
+|------|---------|-------|
+| **Node.js 18+** | [nodejs.org](https://nodejs.org/) | `node --version` |
+| **Python 3.11+** | [python.org](https://www.python.org/) | `python3 --version` |
+| **uv** | `curl -LsSf https://astral.sh/uv/install.sh \| sh` | `uv --version` |
+| **Claude Code** | `npm install -g @anthropic-ai/claude-code` | `claude --version` |
+
+### 2. Create your project
 
 ```bash
+mkdir my-campaign && cd my-campaign
 npx blatant-why init
+```
+
+This scaffolds everything: 11 MCP servers, 16 agents, 14 skills, 11 slash commands, and a CLAUDE.md orchestration file. Takes about 30 seconds.
+
+### 3. Add your API key
+
+```bash
+cp .env.example .env
+# Open .env and add your Tamarind key (see Compute Setup below)
+```
+
+### 4. Start designing
+
+```bash
 claude
+```
+
+Then just tell it what you want:
+
+```
 > "Design VHH nanobodies against PD-L1"
 ```
 
-`blatant-why init` scaffolds everything Claude Code needs -- 11 MCP servers, 16 agents, 14 skills, 11 slash commands, and a CLAUDE.md orchestration file. Open Claude Code in the same directory and start designing.
+Or use the guided workflow:
 
-**Prerequisites:** [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [uv](https://docs.astral.sh/uv/), Python 3.11+, Node.js 18+
+```
+> /by:plan-campaign
+```
+
+Or if it's your first time:
+
+```
+> /by:welcome
+```
+
+That's it. Claude Code handles the rest -- research, design, screening, and ranking.
 
 ---
 
@@ -180,6 +223,129 @@ After `npx blatant-why init`:
 | **Tamarind Paid** | Pay per job | Same API key | Production campaigns |
 | **Local GPU** | Your hardware | Install tools + set env vars | Power users with GPUs |
 | **SSH Remote** | Your infrastructure | Configure in `.by/config.json` | HPC clusters, cloud GPUs |
+
+<details>
+<summary><strong>Setting up Tamarind Bio (recommended -- no GPU needed)</strong></summary>
+
+1. Create a free account at [tamarind.bio](https://tamarind.bio)
+2. Go to Settings → API Keys → Generate new key
+3. Copy the key and add to `.env`:
+   ```
+   TAMARIND_API_KEY=your-key-here
+   ```
+4. That's it. BY will use Tamarind for all compute jobs.
+
+**Free tier:** 10 jobs/month. Enough for a preview campaign (~5-10 designs).
+**Paid tiers:** Contact Tamarind for production pricing.
+
+Tamarind provides access to 200+ structural biology tools including:
+- **BoltzGen** -- antibody/nanobody design (Boltzmann generator diffusion)
+- **Protenix v1** -- AlphaFold3-class structure prediction (368M params)
+- **PXDesign** -- de novo protein binder design (17-82% hit rates)
+- **TAP/TNP** -- developability profiling
+- **AbLang2** -- humanness scoring
+
+</details>
+
+<details>
+<summary><strong>Setting up local GPU compute</strong></summary>
+
+Requires an NVIDIA GPU with CUDA support. Install the tools you need:
+
+**Protenix (structure prediction):**
+```bash
+git clone https://github.com/bytedance/protenix
+cd protenix && pip install -e .
+```
+Add to `.env`:
+```
+PROTEUS_FOLD_DIR=/path/to/protenix
+```
+
+**PXDesign (de novo binder design):**
+```bash
+# Follow PXDesign installation guide
+```
+Add to `.env`:
+```
+PROTEUS_PROT_DIR=/path/to/pxdesign
+```
+
+**BoltzGen / Proteus-AB (antibody/nanobody design):**
+```bash
+git clone https://github.com/jostorge/boltzgen
+cd boltzgen && pip install -e .
+```
+Add to `.env`:
+```
+PROTEUS_AB_DIR=/path/to/boltzgen
+```
+
+BY will detect these automatically and offer local compute as an option.
+
+</details>
+
+<details>
+<summary><strong>Setting up SSH remote compute (Lambda.ai, RunPod, HPC)</strong></summary>
+
+For cloud GPU instances or HPC clusters:
+
+1. Ensure SSH key-based authentication is set up
+2. Add host configuration to `.by/config.json`:
+   ```json
+   {
+     "compute": {
+       "ssh_hosts": [
+         {
+           "name": "lambda-gpu",
+           "host": "your-instance.cloud.lambdalabs.com",
+           "user": "ubuntu",
+           "key": "~/.ssh/lambda_key",
+           "gpu": "A100",
+           "tools": ["protenix", "boltzgen"]
+         }
+       ]
+     }
+   }
+   ```
+3. BY will detect SSH hosts and offer them as compute options.
+
+</details>
+
+---
+
+## Your First Campaign
+
+After setup, here's what to expect when you run your first design campaign.
+
+**Start Claude Code:**
+```bash
+claude
+```
+
+**Tell it what you want:**
+```
+> "Design VHH nanobodies against PD-L1"
+```
+
+**What happens next:**
+
+1. **Research** (~1-2 min) -- BY searches PDB, UniProt, and SAbDab for your target. It pulls crystal structures, known binders, epitope data, and literature context.
+2. **Campaign plan** (~30 sec) -- You get a plan showing how many designs will be generated, which models will be used, and estimated compute cost. You approve before anything runs.
+3. **Design generation** (~5-15 min) -- Compute jobs run on Tamarind Bio (or your local GPU). BY monitors progress and reports back.
+4. **Screening** (~2-5 min) -- Every design is scored for structural quality (ipSAE), binding confidence (ipTM), and sequence liabilities. Problem candidates are flagged.
+5. **Ranking** -- You get a ranked table of candidates with composite scores, ready for lab ordering.
+
+**Typical first campaign:** 5-10 nanobody designs, ~20 minutes end-to-end, zero GPU required (Tamarind free tier).
+
+You can also use slash commands for more control:
+
+| Command | What it does |
+|---------|--------------|
+| `/by:welcome` | Guided walkthrough for first-time users |
+| `/by:plan-campaign` | Generate and review a campaign plan before running |
+| `/by:status` | Check progress on a running campaign |
+| `/by:results` | View ranked results table |
 
 ---
 

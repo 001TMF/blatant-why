@@ -30,13 +30,19 @@ Use MCP research tools FIRST. Never default to web search when structured databa
 
 ## Compute Provider Selection
 
-Detect ALL available providers, then select the best one:
-1. **Local GPU** (preferred) -- `PROTEUS_FOLD_DIR` / `PROTEUS_PROT_DIR` / `PROTEUS_AB_DIR` env vars set -- fastest, no cost
-2. **SSH Remote** -- configured in `.by/config.json` -- your own infrastructure
-3. **Tamarind Bio** -- `TAMARIND_API_KEY` set -- cloud fallback, check quota first
-4. If nothing available, guide user to set up a provider
+Read `.by/config.json` for the user's chosen provider. **Respect their choice — no silent fallback.**
 
-**IMPORTANT:** If local GPU tools are installed, USE THEM. Tamarind is a fallback for users without GPUs.
+- If `compute.preferred_provider` is `"local"` — use local GPU tools ONLY. If a local tool fails, report the error. Do NOT silently switch to Tamarind.
+- If `compute.preferred_provider` is `"tamarind"` — use Tamarind ONLY.
+- If `compute.preferred_provider` is `"auto"` — detect and pick the best available.
+- If `compute.fallback_allowed` is `false` — NEVER switch providers without asking.
+
+**Local GPU paths** are in `config.json` under `compute.local.{boltzgen,protenix,pxdesign}` with `path`, `conda_env`, and `binary` fields. Pass these to sub-agents in Task() prompts.
+
+When spawning design agents, include the compute config explicitly:
+```
+"Use LOCAL GPU only. BoltzGen at {path}, conda env {env}. Do NOT use Tamarind."
+```
 
 ## Safety Gates
 

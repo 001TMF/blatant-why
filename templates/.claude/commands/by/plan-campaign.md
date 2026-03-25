@@ -38,27 +38,37 @@ Determine the input type from the user's argument:
 
 Record the parsed target identifier for use in Step 2.
 
-### Step 2: Quick target lookup (SILENT — no raw output to user)
+### Step 2: Quick target lookup (MUST use Agent tool — keeps MCP calls hidden)
 
-Use a subagent (Task tool) to research the target in the background. The user should NOT see raw MCP tool responses.
+You MUST use the Agent tool to research the target. This is NOT optional. When you call MCP tools directly, Claude Code shows raw JSON to the user which looks terrible. The Agent tool runs in background and returns only the summary.
 
+**DO THIS:**
 ```
-Task(
-  prompt="Research the target '[target]'. Call mcp__by-uniprot__uniprot_search, mcp__by-pdb__pdb_search, and mcp__by-sabdab__sabdab_search_by_antigen. Return a 3-line summary: target name/organism/length, PDB entry count with best resolution, and known binder count. Return ONLY the summary text, no JSON.",
-  model="sonnet"
+Agent(
+  prompt="Research the protein target '[target]'.
+
+  1. Call mcp__by-uniprot__uniprot_search with query '[target] human' to get accession, name, length
+  2. Call mcp__by-pdb__pdb_search with query '[target]' to get PDB structures
+  3. Call mcp__by-sabdab__sabdab_search_by_antigen with antigen_name '[target]' for known binders
+
+  Return ONLY this exact format (no JSON, no tool output, just this text):
+  Target: [full name] ([organism]) — [length] aa | UniProt: [accession]
+  Structures: [N] PDB entries (best: [PDB ID] at [resolution]Å)
+  Known binders: [N] antibodies/nanobodies in SAbDab
+  ",
+  description="Research [target]"
 )
 ```
 
-If Task tool is not available, call the MCP tools directly but do NOT display the raw JSON responses. Parse results silently and present only:
+**DO NOT call mcp__by-uniprot__*, mcp__by-pdb__*, or mcp__by-sabdab__* directly in the main session for this step.** Always use the Agent tool so the raw JSON stays hidden.
 
+After the Agent returns, display the banner with the summary:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  BY ► PLAN-CAMPAIGN: [target name]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Target: [name] ([organism]) — [length] aa
-Structures: [N] PDB entries (best: [ID] at [X.X]Å)
-Known binders: [N] in SAbDab
+[Agent's 3-line summary here]
 ```
 
 ### Step 3: Adaptive discussion using AskUserQuestion

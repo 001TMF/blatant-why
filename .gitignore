@@ -103,3 +103,4 @@ docs/superpowers/
 # Additional env patterns
 *.env
 .env.*
+mcp_servers

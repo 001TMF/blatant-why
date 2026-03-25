@@ -160,6 +160,31 @@ export async function registerMcpServers(
     return registered;
   }
 
+  // Read .env if it exists — MCP servers need env vars to connect to services
+  const envFile = path.join(targetDir, ".env");
+  const envVars: Record<string, string> = {};
+  if (fs.existsSync(envFile)) {
+    const envContent = fs.readFileSync(envFile, "utf-8");
+    for (const line of envContent.split("\n")) {
+      const match = line.match(/^([A-Z_]+)=(.+)$/);
+      if (match && !match[2].startsWith("#")) {
+        envVars[match[1]] = match[2];
+      }
+    }
+  }
+
+  // Map which servers need which env vars
+  const serverEnvMap: Record<string, string[]> = {
+    cloud: [
+      "TAMARIND_API_KEY",
+      "PROTEUS_FOLD_DIR",
+      "PROTEUS_PROT_DIR",
+      "PROTEUS_AB_DIR",
+    ],
+    tamarind: ["TAMARIND_API_KEY"],
+    local_compute: ["PROTEUS_FOLD_DIR", "PROTEUS_PROT_DIR", "PROTEUS_AB_DIR"],
+  };
+
   // Scan subdirectories for server.py (e.g. mcp_servers/pdb/server.py)
   const dirs = fs.readdirSync(serversPath, { withFileTypes: true })
     .filter((d) => d.isDirectory() && !d.name.startsWith("_"));
@@ -171,9 +196,16 @@ export async function registerMcpServers(
     const serverName = `by-${dir.name.replace(/_/g, "-")}`;
     const scriptPath = path.join(mcpServerDir, dir.name, "server.py");
 
+    // Build -e flags for env vars this server needs
+    const neededVars = serverEnvMap[dir.name] || [];
+    const envFlags = neededVars
+      .filter((key) => envVars[key])
+      .map((key) => `-e ${key}="${envVars[key]}"`)
+      .join(" ");
+
     try {
       execSync(
-        `claude mcp add -s project "${serverName}" -- uv run --script "${scriptPath}"`,
+        `claude mcp add -s project ${envFlags} "${serverName}" -- uv run --script "${scriptPath}"`,
         { stdio: "pipe", cwd: targetDir }
       );
       console.log(`  ✓ Registered ${serverName}`);

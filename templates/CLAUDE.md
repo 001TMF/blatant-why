@@ -68,6 +68,7 @@ Only skip delegation for single-tool operations (one fold, one PDB lookup, one s
 | Command | Description |
 |---------|-------------|
 | `/by:plan-campaign` | Guided campaign setup -- capture preferences into campaign_context.json |
+| `/by:campaign-auto` | Full autonomous campaign -- only asks about compute, everything else auto |
 | `/by:welcome` | First-run orientation |
 | `/by:resume` | Resume interrupted campaign from last checkpoint |
 | `/by:watch` | Live pipeline progress |

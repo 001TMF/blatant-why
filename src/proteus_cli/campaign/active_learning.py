@@ -138,7 +138,6 @@ def suggest_from_campaign(campaign_dir: str, min_designs: int = 10) -> Optimizat
 # most score dicts -- net_charge and hydrophobic_fraction are kept for
 # extraction but excluded from the RF because they are rarely populated).
 _RF_FEATURE_NAMES = [
-    "ipsae",
     "iptm",
     "plddt",
     "rmsd",
@@ -196,7 +195,7 @@ def _ml_suggest(designs: list[dict]) -> OptimizationResult:
             zip(_RF_FEATURE_NAMES, rf.feature_importances_)
         ):
             if imp > 0.1:  # only features with significant importance
-                if feat in ("ipsae", "iptm", "plddt"):
+                if feat in ("iptm", "plddt"):
                     recommendations[f"min_{feat}"] = round(
                         float(good_means[i] * 0.9), 3
                     )

@@ -56,10 +56,11 @@ check ".claude/mcp_servers/cloud/server.py"
 
 # Skills — verify all 17 shipped skills exist
 for skill in boltzgen protenix pxdesign \
-             by-campaign-manager by-campaign-optimizer by-database \
-             by-deploy-compute by-design-workflow by-display \
-             by-epitope-analysis by-failure-diagnosis by-hypothesis-debate \
-             by-knowledge by-research by-scoring by-screening by-session; do
+             by-campaign-manager by-campaign-optimizer by-causal-reasoning \
+             by-database by-deploy-compute by-design-workflow by-display \
+             by-epitope-analysis by-experiment-results by-failure-diagnosis \
+             by-hypothesis-debate by-knowledge by-research by-scoring \
+             by-screening by-session; do
   check ".claude/skills/${skill}/SKILL.md"
 done
 

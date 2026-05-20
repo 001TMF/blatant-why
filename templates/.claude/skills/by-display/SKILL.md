@@ -1,21 +1,124 @@
 ---
-name: by-display
-description: >
-  Standard display formats and conversational patterns for BY output.
-  Use this skill when: (1) Presenting campaign status, progress, or results,
-  (2) Formatting screening reports,
-  (3) Displaying error messages or checkpoints,
-  (4) Presenting research findings or target lookups,
-  (5) Showing long-running job progress.
-category: display
-tags: [display, formatting, output, patterns, conversational]
+id: "skill_927c0230b96941e0ada299a50ccee03c"
+name: "by-display"
+display-name: "BY Display"
+short-description: "Canonical display formats and conversational patterns for BY terminal output — banners, score bars, status tables, progress, errors, and checkpoints. Use when rendering any user-facing output so every skill speaks with the same voice."
+category: "display"
+keywords: "display, formatting, output, terminal, banner, progress bar, score bar, status table, screening report, error message, checkpoint, conversational pattern, ANSI, unicode, box drawing"
+version: "1.0"
+last-updated: "2026-05-20"
 ---
 
 # BY Display Patterns
 
-Use these standard display formats for all campaign output. They use Unicode
-box-drawing characters and markdown that render natively in Claude Code's terminal.
-Never use ANSI escape codes in response text.
+Standard display formats for **all** campaign output. They use Unicode box-drawing
+characters and markdown that render natively in Claude Code's terminal. **Never
+use ANSI escape codes in response text** — they render as literal characters.
+
+Every other BY skill (research, screening, scoring, campaign-manager, ...) calls
+into these templates when it is time to talk to the user. This file is the
+canonical source; the literal templates live in
+[`references/output-format-spec.md`](references/output-format-spec.md) so other
+skills can copy them verbatim.
+
+---
+
+## When to Use This Skill
+
+Use this skill when you are:
+
+- ✅ **Rendering campaign status** for `/by:status`, `/by:watch`, or phase transitions
+- ✅ **Formatting screening reports** (liabilities, developability, structure scores)
+- ✅ **Showing ranked results** for `/by:results` or any final campaign output
+- ✅ **Displaying errors or quota warnings** that need user attention
+- ✅ **Presenting a checkpoint or safety gate** that requires explicit user approval
+- ✅ **Streaming progress** during long-running design/fold jobs
+- ✅ **Closing a phase** — every major phase ends with a "Next Up" block
+
+Do NOT use this skill when:
+
+- ❌ **You need to compute scores** — that is `by-scoring`; this skill only renders them
+- ❌ **You need to run a screening battery** — that is `by-screening`
+- ❌ **You need to decide what to do next** — that is `by-campaign-manager` / `by-design-workflow`
+- ❌ **You need raw machine-readable JSON output** for another tool — emit JSON directly, not the human-facing templates here
+- ❌ **You want to invent a new visual style** — extend the templates here instead of forking them
+
+---
+
+## Inputs
+
+This skill is consumed by other skills. Inputs are the data objects to be rendered:
+
+**Required (one of):**
+- **Campaign checkpoint object** — `{ campaign_id, target, phases: [{name, status, time, details}, ...], current_phase }`. Source: `by-campaign-manager` (campaign_state.json).
+- **Ranked design list** — `[{ design_id, composite, ipSAE, ipTM, pLDDT, liabilities, verdict }, ...]`. Source: `by-scoring` / `by-screening`.
+- **Screening report object** — `{ design_id, liabilities: {...}, developability: {...}, structure: {...}, verdict }`. Source: `by-screening`.
+- **Progress event** — `{ phase, status (◆/✓/✗), message, elapsed }`. Source: any long-running skill.
+- **Error object** — `{ title, details, suggested_next }`.
+
+**Optional:**
+- **Score scale overrides** — non-default thresholds for the `EXCELLENT/STRONG/...` labels on score bars (see `references/output-format-spec.md` §Score Bars).
+- **Provider context** — `{ provider, tool, protocol, scaffold, budget }` shown in design-launch banners.
+
+---
+
+## Outputs
+
+Markdown strings printed to the terminal. No files written by this skill itself.
+
+| Output | When | Template ID |
+|--------|------|-------------|
+| Campaign status banner | `/by:status`, phase transitions | `banner.campaign-status` |
+| Progress-during-design line | `/by:watch`, mid-pipeline | `progress.design` |
+| Ranked results table | `/by:results`, campaign close | `table.ranked-results` |
+| Screening battery report | `/by:screen`, per-design report | `report.screening` |
+| Score bar | Any 0-1 metric display | `bar.score` |
+| Error box | Quota / failure / warning | `box.error` |
+| Checkpoint box | Lab gate, approval gate | `box.checkpoint` |
+| Next-Up block | End of every major phase | `block.next-up` |
+| Long-running job submission | SSH / Tamarind dispatch | `block.job-submitted` |
+| Batch progress | Multi-job tracking | `block.batch-progress` |
+| Pipeline summary table | Campaign complete | `table.pipeline-summary` |
+| Inline progress (✓/◆/✗) | Between phases | `inline.progress` |
+
+For the literal Unicode/ASCII templates, see
+[`references/output-format-spec.md`](references/output-format-spec.md).
+
+---
+
+## Clarification Questions
+
+⚠️ **CRITICAL: ASK THIS FIRST** — confirm there is something to render before invoking this skill.
+
+1. **What are you trying to render? (ASK THIS FIRST)** — A campaign status, a ranked results table, a screening report, an error, or a checkpoint? Each maps to a different template. Without this, do not generate any output.
+2. **Which data object do you have?** — Pass the campaign checkpoint, the ranked design list, or the screening report object. The skill cannot make up values; if a field is missing, leave it blank or mark `—` (em-dash).
+3. **What is the audience?** — User-facing terminal output (this skill) vs. machine-readable JSON for another tool (do NOT use this skill).
+4. **Is this an end-of-phase rendering?** — If yes, append the Next-Up block. If mid-phase, use the inline `◆/✓` progress format instead.
+5. **Are there units to clarify?** — pLDDT is 0-100 (divide by 100 for the score bar); ipSAE and ipTM are 0-1 (use directly). RMSD is in Å, lower is better.
+6. **Is a safety gate involved?** — If lab submission or any irreversible action is next, use the checkpoint box and require explicit user approval. Never auto-proceed past a checkpoint.
+7. **Provider context available?** — Local GPU / HPC / Tamarind affects what shows in the design-launch banner. If unknown, fall back to "compute provider: see `.by/config.json`".
+
+---
+
+## Standard Workflow
+
+🚨 **MANDATORY: COPY TEMPLATES FROM `references/output-format-spec.md` VERBATIM — DO NOT IMPROVISE LAYOUT** 🚨
+
+1. **Identify the render type.** Match the data object to one of the templates above.
+2. **Load the template** from `references/output-format-spec.md`.
+3. **Fill the slots** with values from the input object. Use `—` (em-dash) for missing values; never invent numbers.
+4. **Pick the right status symbol** from the table below.
+5. **Render the score bars** at 10-block resolution. Round the filled count to the nearest integer; for ambiguous cases below 0.9, prefer the conservative (lower) count.
+6. **Append the Next-Up block** if this is the end of a major phase.
+
+Anti-patterns:
+
+- ❌ Writing ANSI escape codes (`\033[...`) in response text → they render literally in Claude Code chat
+- ❌ Varying the banner width — always 53 `━` characters
+- ❌ Using `GSD ►` or any prefix other than `BY ►`
+- ❌ Reprinting the full phase table on every progress update — use inline `◆/✓` lines, print the summary table ONCE at the end
+- ❌ Showing raw JSON from MCP tools — always parse and present clean summaries
+- ❌ Exposing API keys, tokens, or secrets in any rendered output
 
 ---
 
@@ -28,6 +131,8 @@ Never use ANSI escape codes in response text.
 ○  Pending
 ⚠  Warning
 ```
+
+Use ONLY these symbols. Random emoji break skimmability.
 
 ---
 
@@ -49,6 +154,13 @@ Use for `/by:status` and phase transitions.
 | Rank     | ○ Pending  | —      |                      |
 ```
 
+A drop-in CLI renderer is provided at `scripts/render_campaign_status.py`:
+
+```bash
+python3 scripts/render_campaign_status.py \
+  --checkpoint campaigns/anti-HER2/campaign_20260520_001/campaign_state.json
+```
+
 ---
 
 ## Progress During Design
@@ -58,7 +170,7 @@ Use for `/by:watch` and mid-pipeline updates.
 ```markdown
 BY ► DESIGNING ████████░░ 80% (8/10 designs)
 
-Provider: Tamarind Bio (free tier, 7/10 jobs remaining)
+Provider: Local GPU (RTX 6000)
 Tool: BoltzGen | Protocol: nanobody-anything
 Scaffold: caplacizumab | Budget: 10
 ```
@@ -148,6 +260,9 @@ Scale: each `█` represents 10%. Round to nearest block. Examples:
 
 For pLDDT (0-100 scale), divide by 100 first: pLDDT 91.2 = 0.912 = `█████████░`.
 
+Canonical thresholds and labels for ipSAE / ipTM / pLDDT / RMSD live in
+[`references/output-format-spec.md`](references/output-format-spec.md) §Score Bars.
+
 ---
 
 ## Error Display
@@ -206,7 +321,7 @@ Always show at the end of major phase completions.
 
 ## Long-Running Job Display
 
-Use for SSH remote jobs and Tamarind cloud jobs that take minutes to hours.
+Use for SSH remote jobs, HPC dispatch, and Tamarind cloud jobs that take minutes to hours.
 
 ### Fire-and-Forget Pattern
 
@@ -216,7 +331,7 @@ For jobs submitted to remote compute:
 BY ► JOB SUBMITTED
 
   Job ID:    tmr_abc123
-  Provider:  Tamarind Bio (free tier)
+  Provider:  Local GPU (RTX 6000)
   Tool:      BoltzGen | Protocol: nanobody-anything
   Submitted: 2026-03-25 14:32 UTC
   Est. time: ~45 min
@@ -350,17 +465,104 @@ monitoring hints (`/by:watch`, `/by:status`).
 
 ### Results
 
-Ranked table (Rank, Design, ipTM, ipSAE, Liabilities, Status), followed by
+Ranked table (Rank, Design, ipSAE, ipTM, Liabilities, Status), followed by
 Score Context bars, Summary line, and Next Steps.
 
 ---
 
-## Anti-Patterns
+## When Scripts Fail
 
-- Never use ANSI escape codes in response text (they render as literal characters)
-- Never vary banner widths (always use the same `━` line length)
-- Always use `BY ►` prefix in banners (not `GSD ►` or any other prefix)
-- Never use random emoji -- stick to the status symbols above (✓ ✗ ◆ ○ ⚠)
-- Never skip the Next Up block after phase completions
-- Never show raw JSON from MCP tool responses -- always parse and present clean summaries
-- Never expose API key values in any display
+This skill ships one script: `scripts/render_campaign_status.py`. It only depends on
+Python stdlib (`json`, `argparse`, `pathlib`). Standard failure hierarchy:
+
+1. **Fix and Retry (90%)** — Wrong checkpoint path, malformed JSON, or missing
+   `phases` array. Inspect the checkpoint, fix, re-run.
+2. **Modify Script (5%)** — Add a new column or sparkline variant. Keep the
+   `--checkpoint` CLI signature stable.
+3. **Use as Reference (4%)** — If a campaign needs an entirely different layout,
+   read the script and inline the rendering. Still copy the literal templates
+   from `references/output-format-spec.md` — do not reinvent them.
+4. **Write from Scratch (1%)** — Only if the checkpoint schema has changed and
+   the script cannot be repaired. Document why in the campaign's `notes.md`.
+
+If you need a template that does not yet exist (e.g., a new "kinetics report"
+view), extend `references/output-format-spec.md` rather than improvising.
+
+---
+
+## Common Issues
+
+| Issue | Cause | Solution | Details |
+|-------|-------|----------|---------|
+| ANSI escape codes show as literal `\033[31m` | Used terminal color codes in response text | Claude Code does not interpret ANSI in chat — use status symbols (✓ ✗ ◆) and unicode bars only | SKILL.md Anti-Patterns |
+| Banner width misaligned (some `━` lines longer than others) | Hand-typed banner lines drifted | Always 53 `━` characters; copy from `references/output-format-spec.md` §Banners | references/output-format-spec.md |
+| Score bar shows 11 blocks instead of 10 | Off-by-one when filling proportionally | Bar is exactly 10 blocks; use `int(round(value * 10))` for fill count, capped at 10 | references/output-format-spec.md §Score Bars |
+| pLDDT score bar shows 0.91 → 9 blocks → label "EXCELLENT" but pLDDT is on 0-100 scale | Forgot to divide pLDDT by 100 before rendering | Divide pLDDT by 100 for the bar; show the raw 0-100 value as the displayed number | SKILL.md Score Bar Format |
+| Status table reprinted after every progress event | Treating the table as a live dashboard | Print the summary table ONCE at the end; use inline `◆/✓` lines between phases | SKILL.md Inline Progress |
+| Box-drawing characters look broken (▒▓ instead of ░█) | Font does not support U+2588 / U+2591, or fallback failed | Most modern terminals render these; if user reports breakage, fall back to ASCII `#` for filled and `-` for empty | references/output-format-spec.md §Fallbacks |
+| Long-running job displays no progress | Compute tool launched via MCP instead of Bash | MCP returns only on completion; launch BoltzGen/Protenix via the Bash tool so output streams live | SKILL.md Live Progress |
+| `GSD ►` prefix appearing instead of `BY ►` | Carried over from another agent's display patterns | BY uses `BY ►` exclusively — search-and-replace any `GSD ►` occurrences | SKILL.md Anti-Patterns |
+| Raw MCP JSON dumped into chat | Skipped the parse step | Parse the JSON object, render via the appropriate template, never `print(json.dumps(...))` to chat | CLAUDE.md Communication Style |
+| API keys / tokens visible in design-launch banner | Provider config printed verbatim | Strip secrets; show only provider name (`Local GPU`, `Tamarind Bio`) and tool name | SKILL.md Anti-Patterns |
+| Next-Up block missing after phase completes | Forgot the closing block | Every major phase ends with the Next-Up block (template `block.next-up`); enforce in skill exit | SKILL.md Next Up Block |
+| Em-dash `—` shown as `-` or `--` | Wrong character (hyphen / double-hyphen instead of U+2014) | Use the actual em-dash U+2014 for missing values; many editors auto-replace `--` → `—` | references/output-format-spec.md §Typography |
+| Checkpoint box rendered without action prompt | Used the box template but forgot the `→ {ACTION}` footer | Checkpoint boxes are gated; ALWAYS include the action prompt below the box | SKILL.md Checkpoint |
+
+---
+
+## Best Practices
+
+1. 🚨 **CRITICAL: Always use `BY ►` as the banner prefix.** Never `GSD ►` or any other variant.
+2. 🚨 **CRITICAL: Never emit ANSI escape codes in response text.** They render as literal characters in Claude Code chat.
+3. ✅ **REQUIRED: Copy templates verbatim from `references/output-format-spec.md`.** Do not improvise widths or symbols.
+4. ✅ **REQUIRED: Print the full phase summary table ONCE.** Between phases, use one-line `◆/✓/✗` updates.
+5. ✅ **REQUIRED: End every major phase with a Next-Up block.** It is the user's hand-off cue.
+6. ✅ Use the canonical status symbols (✓ ✗ ◆ ○ ⚠) — no random emoji.
+7. ✅ Divide pLDDT by 100 before computing the score bar fill; show the raw 0-100 value alongside.
+8. ✅ Stream long-running progress via Bash, not MCP (MCP returns only on completion).
+9. ❌ Do NOT dump raw MCP JSON into chat — parse and render via a template.
+10. ❌ Do NOT include API keys, tokens, or full file paths with secrets in any rendered output.
+11. ✨ **Optional:** When a new view type emerges (e.g., kinetics, dose-response), add a new template to `references/output-format-spec.md` rather than improvising once.
+
+---
+
+## Suggested Next Steps
+
+This skill is a **render layer** — every other skill calls into it. After invoking
+`by-display`, the typical continuation depends on the render type:
+
+1. **After a results table** → invoke `by-experiment-results` (lab readouts) or `by-campaign-optimizer` (active-learning round N+1) for what happens next.
+2. **After a screening report** → invoke `by-failure-diagnosis` if anything failed, or `by-campaign-manager` to advance the campaign state.
+3. **After a checkpoint** → wait for explicit user approval; on approval, hand back to the calling skill (e.g., `by-campaign-manager` for lab submission).
+4. **After a status banner mid-pipeline** → continue the running phase; do not auto-advance.
+5. **After a campaign-complete summary** → invoke `by-knowledge` to persist learnings, then `by-campaign-optimizer` if iterating.
+
+---
+
+## Related Skills
+
+**Upstream (feed data into this skill):**
+- `by-campaign-manager` — supplies campaign checkpoint objects.
+- `by-scoring` — supplies composite / ipSAE / ipTM / pLDDT values.
+- `by-screening` — supplies per-design liability and developability data.
+- `by-research` — supplies target-lookup data and prior-art counts.
+
+**Downstream (consumed by user, not other skills):**
+- The user reads the rendered output and invokes the next slash command.
+
+**Alternative / complementary:**
+- None — this is the single canonical render layer. If a different style is needed, extend `references/output-format-spec.md`.
+
+---
+
+## References
+
+**Detailed documentation:**
+- [`references/output-format-spec.md`](references/output-format-spec.md) — canonical Unicode/ASCII templates for every render type listed in Outputs, plus typography rules, fallback policy, and score-bar threshold tables.
+
+**Scripts:**
+- [`scripts/render_campaign_status.py`](scripts/render_campaign_status.py) — CLI: reads a campaign checkpoint JSON and prints the formatted banner + phase table + score distribution sparkline + recent events.
+
+**External references:**
+- Unicode box-drawing block: https://www.unicode.org/charts/PDF/U2500.pdf
+- Unicode block elements (▀ ▌ █ ░ ▒ ▓): https://www.unicode.org/charts/PDF/U2580.pdf

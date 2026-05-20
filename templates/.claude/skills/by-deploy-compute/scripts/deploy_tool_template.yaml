@@ -1,0 +1,186 @@
+# =============================================================================
+# deploy_tool_template.yaml — BY Deploy Compute manifest
+# =============================================================================
+#
+# Purpose:
+#   A single 6-field manifest that drives deployment of any BY tool to any
+#   supported surface (local GPU, RunPod, Modal, HPC). Copy this file to
+#   <workdir>/<tool>/deploy.yaml, fill in the fields, and feed it to the
+#   per-target scripts.
+#
+# The six required fields:
+#   tool           : str   one of the Tool Catalog names in SKILL.md
+#                          (protenix, boltzgen, pxdesign, alphafold2,
+#                           alphafold3, rfantibody, immunebuilder,
+#                           thermompnn, boltz2)
+#   target         : str   one of: local | runpod | modal | hpc
+#   image          : str   container image (runpod/modal/hpc) OR conda spec (local)
+#   weights_url    : str   upstream HuggingFace repo OR direct download URL
+#   entry_command  : str   exact CLI invocation the tool exposes
+#                          may use ${INPUT} and ${OUTPUT} substitutions
+#   volumes        : list  persistent paths for weights, outputs, scratch
+#                          each entry has host: and container: keys
+#
+# Optional fields (per-target):
+#   gpu            : str   GPU type when target in {runpod, modal} (e.g., A100-40GB)
+#   region         : str   RunPod region (e.g., us-east-1)
+#   timeout_s      : int   Modal function timeout in seconds
+#   conda_env      : str   for target=local, name of the conda env
+#   slurm          : map   for target=hpc, SLURM-specific knobs (partition, time, mem)
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Example 1: Protenix on RunPod
+# -----------------------------------------------------------------------------
+# Filename suggestion: <workdir>/protenix/deploy.yaml
+# How to apply: python3 scripts/runpod_deploy.py <workdir>/protenix/deploy.yaml
+# -----------------------------------------------------------------------------
+
+example_protenix_runpod:
+  tool: protenix
+  target: runpod
+  image: "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
+  weights_url: "https://huggingface.co/ByteDance/Protenix"
+  entry_command: "python -m protenix.predict --input ${INPUT} --output ${OUTPUT} --device cuda"
+  volumes:
+    - host: "/runpod-volume/weights"
+      container: "/workspace/protenix/weights"
+    - host: "/runpod-volume/outputs"
+      container: "/workspace/protenix/outputs"
+  gpu: "A40"
+  region: "us-east-1"
+
+# -----------------------------------------------------------------------------
+# Example 2: BoltzGen on local GPU
+# -----------------------------------------------------------------------------
+# Filename suggestion: <workdir>/boltzgen/deploy.yaml
+# How to apply: follow references/local-gpu-setup.md §Smoke Tests
+#   1. mamba env create -n by-boltzgen ...
+#   2. git clone the repo
+#   3. download weights
+#   4. run the entry_command on a smoke input
+# -----------------------------------------------------------------------------
+
+example_boltzgen_local:
+  tool: boltzgen
+  target: local
+  image: "conda:by-boltzgen"               # conda env, not a container
+  weights_url: "https://huggingface.co/boltz-community/boltz1"
+  entry_command: "boltz design --config ${INPUT} --out ${OUTPUT} --device cuda"
+  volumes:
+    # On local, host == container; the design agent reads these to set $HF_HOME
+    # and the output directory. Both must exist before the entry_command runs.
+    - host: "${HOME}/by/cache/huggingface"
+      container: "${HOME}/by/cache/huggingface"
+    - host: "${HOME}/by/outputs/boltzgen"
+      container: "${HOME}/by/outputs/boltzgen"
+  conda_env: "by-boltzgen"
+
+# -----------------------------------------------------------------------------
+# Example 3: ImmuneBuilder on Modal
+# -----------------------------------------------------------------------------
+# Filename suggestion: <workdir>/immunebuilder/deploy.yaml
+# How to apply: write a modal_app.py per references/modal-setup.md and
+#   `modal deploy modal_app.py` — the YAML below is consumed by that script
+#   to fill in the @app.function decorator.
+# -----------------------------------------------------------------------------
+
+example_immunebuilder_modal:
+  tool: immunebuilder
+  target: modal
+  image: "nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04"
+  weights_url: "pip:ImmuneBuilder"          # bundled in pip wheel; no separate download
+  entry_command: "python -m ImmuneBuilder.predict --fasta ${INPUT} --output ${OUTPUT}"
+  volumes:
+    - host: "by-hf-cache"                   # Modal volume name
+      container: "/cache/huggingface"
+  gpu: "T4"                                 # 16 GB is plenty for ImmuneBuilder
+  timeout_s: 600
+
+# =============================================================================
+# Field-by-field reference
+# =============================================================================
+#
+# tool:
+#   The canonical BY name. Determines:
+#     - which repo to clone
+#     - which weights to download
+#     - which conda env name (by-<tool>) is conventional
+#   Must match one of the Tool Catalog rows in SKILL.md.
+#
+# target:
+#   The deployment surface. Drives which script consumes this YAML:
+#     local  → references/local-gpu-setup.md (manual clone+install)
+#     runpod → scripts/runpod_deploy.py
+#     modal  → references/modal-setup.md (manual modal_app.py write)
+#     hpc    → references/local-gpu-setup.md but inside a SLURM submission
+#
+# image:
+#   For container targets (runpod, modal, hpc-with-singularity), the full
+#   image tag. For target=local, use "conda:<env-name>" as a marker — the
+#   skill treats this as "no container, use the conda env".
+#
+#   Recommended pinning:
+#     runpod → runpod/pytorch:<torch>-py<py>-cuda<cuda>-{devel,runtime}-ubuntu22.04
+#     modal  → nvidia/cuda:<cuda>-cudnn-devel-ubuntu22.04  (add_python in modal.Image)
+#
+# weights_url:
+#   How and where to fetch weights. Accepted forms:
+#     https://huggingface.co/<org>/<repo>          → snapshot_download
+#     https://<full-url>                            → wget / aria2c
+#     pip:<package>                                 → weights bundled in the pip wheel
+#     gated-hf:<org>/<repo>                         → HF token required; see modal-setup.md
+#
+# entry_command:
+#   Exact CLI string. Use ${INPUT} and ${OUTPUT} as placeholders — the
+#   per-target scripts substitute them with real paths at invocation time.
+#   For server-style tools (uvicorn endpoints), use the full command:
+#     "uvicorn <tool>.serve:app --host 0.0.0.0 --port 8000"
+#
+# volumes:
+#   List of mount points. Each entry:
+#     - host:      path on the host (or volume name for Modal/RunPod)
+#       container: path inside the runtime where the tool expects it
+#
+#   Conventional layout:
+#     /workspace/weights  (HF cache, shared across tools)
+#     /workspace/outputs  (tool outputs; pulled back via rsync at end of run)
+#     /workspace/inputs   (optional; if the tool reads inputs from a directory)
+#
+# =============================================================================
+# Optional fields by target
+# =============================================================================
+#
+# target=runpod:
+#   gpu        : str   GPU type from RunPod catalog (A40, A6000, A100-40GB, A100-80GB, H100)
+#   region     : str   us-east-1, us-west-1, eu-central-1 (must match the network volume's region)
+#   spot       : bool  use spot pricing (default: false)
+#
+# target=modal:
+#   gpu        : str   T4, L4, A10G, A100-40GB, A100-80GB, H100
+#   timeout_s  : int   function timeout in seconds (default: 3600)
+#   keep_warm  : int   number of containers to keep alive (default: 0)
+#
+# target=local:
+#   conda_env  : str   env name; mandatory for target=local (the agent activates it before entry_command)
+#   device     : str   cuda (default) or cpu — only set cpu for tools with a CPU fallback
+#
+# target=hpc:
+#   slurm:
+#     partition : str   GPU partition name (e.g., gpu, a100, h100)
+#     time      : str   wall-time limit (e.g., "04:00:00")
+#     mem       : str   CPU memory (e.g., "64G")
+#     gres      : str   GPU resource (e.g., "gpu:a100:1")
+#
+# =============================================================================
+# Anti-patterns to avoid
+# =============================================================================
+#
+# ❌ Hardcoding absolute paths in entry_command — use ${INPUT} / ${OUTPUT}
+# ❌ Mixing two tools in one manifest — one tool per file
+# ❌ Omitting volumes — without persistent mounts, weights re-download every time
+# ❌ Using "latest" tags in image — pin a specific tag for reproducibility
+# ❌ Putting RUNPOD_API_KEY or HF_TOKEN inside this YAML — use env vars / secrets
+#
+# =============================================================================

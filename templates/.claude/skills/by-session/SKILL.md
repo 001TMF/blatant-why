@@ -1,359 +1,341 @@
 ---
-name: by-session
-description: >
-  Session initialization and configuration for BY projects.
-  Use this skill when: (1) Opening a new session in a BY project directory,
-  (2) Running first-time setup (config questionnaire),
-  (3) Checking environment and compute availability,
-  (4) Reading or updating .by/config.json or .by/environment.json.
-category: session
-tags: [session, config, environment, setup, initialization]
+id: "skill_c83b4ac84baf4c5e8810cdd0f53a5153"
+name: "by-session"
+display-name: "BY Session"
+short-description: "Session initialization, environment discovery, and first-run configuration for BY projects. Use when opening a new session, running first-time setup, refreshing environment.json, or auditing the active compute provider."
+category: "session"
+keywords: "session start, config questionnaire, environment.json, config.json, compute provider, local GPU, RunPod, HPC, Tamarind, resume, campaign detection, banner"
+version: "1.0"
+last-updated: "2026-05-20"
 ---
 
-# BY Session & Config Skill
+# BY Session Skill
 
-This skill defines the full session start sequence and the first-run configuration
-questionnaire for BY projects. It is NOT optional -- it runs every time a new
-session opens in a BY project directory.
+Session initialization and configuration for BY projects. This skill defines the full
+session-start sequence (banner, environment check, status display) and the first-run
+configuration questionnaire that writes `.by/config.json`. It is **not optional** — it
+runs every time a new session opens in a BY project directory.
+
+The session skill is the single source of truth for **which compute provider BY will
+use this session**. Every downstream skill (by-design-workflow, by-screening, the
+design engines) reads `.by/config.json` written here.
 
 ---
 
-## 1. First-Run Setup (when .by/config.json does NOT exist)
+## When to Use This Skill
 
-When `.by/config.json` is missing, run the full setup questionnaire before anything
-else. Use `AskUserQuestion` for all structured choices.
+Use this skill when you have:
 
-### Round 1 -- Compute Provider
+- ✅ **A new session opening** in a BY project directory — the SessionStart hook fires this skill automatically
+- ✅ **No `.by/config.json` yet** — run the first-run questionnaire to capture compute provider, model profile, campaign defaults
+- ✅ **A request to refresh environment discovery** — re-scan local tools, conda envs, GPU, API keys
+- ✅ **A request to switch compute provider** — update `compute.default_provider` cleanly without overwriting unrelated fields
+- ✅ **An in-progress campaign** to detect and surface (`campaigns/*/campaign_log.json` with status not `complete`)
+- ✅ **Staleness checks** — `.by/environment.json` older than 24h should prompt a refresh
 
-```
-AskUserQuestion(
-  header: "Compute Provider",
-  question: "Where should BY run design computations?",
-  options: [
-    "Auto-detect (Recommended)" -- Check what's available and pick the best,
-    "Local GPU" -- NVIDIA GPU with tools installed (fastest, no cost),
-    "Tamarind Bio" -- Cloud compute, free tier available (no GPU needed),
-    "SSH Remote" -- Cloud GPU instances (Lambda.ai, RunPod, HPC)
-  ]
-)
-```
+Do NOT use this skill when:
 
-#### If user selects "Auto-detect"
+- ❌ **You are mid-campaign and just want status** → use the `status` skill (it reads but does not re-questionnaire)
+- ❌ **You need to deploy compute on RunPod / HPC** → use `by-deploy-compute` (this skill only records the *choice* of HPC)
+- ❌ **You are scoring designs or running design engines** → use `by-scoring`, `boltzgen`, `pxdesign`, or `protenix`
+- ❌ **You want to inspect a specific campaign's state** → use `by-campaign-manager`
+- ❌ **The user is editing `.by/config.json` by hand** → read it back with `validate_config.py`, do not re-run the questionnaire
 
-Run the same checks as "Local GPU" silently. If local tools are found, use them.
-If not, check for Tamarind API key. Report what was found and which provider was
-selected.
+---
 
-#### If user selects "Local GPU" -- follow-up questions
+## Quick Start
 
-**BoltzGen path:**
-```
-AskUserQuestion(
-  header: "BoltzGen Path",
-  question: "Where is BoltzGen installed?",
-  options: [
-    "Auto-detect" -- Search PATH and common locations,
-    "Custom path" -- I'll provide the path
-  ]
-)
-```
-If "Custom path" is selected, ask inline for the path. Validate the path exists.
+```text
+User opens a new terminal in a BY project directory.
 
-**Protenix path:**
-```
-AskUserQuestion(
-  header: "Protenix Path",
-  question: "Where is Protenix installed?",
-  options: [
-    "Auto-detect" -- Search PATH and common locations,
-    "Custom path" -- I'll provide the path
-  ]
-)
-```
-Same flow -- if "Custom path", ask inline and validate.
-
-**PXDesign path:**
-```
-AskUserQuestion(
-  header: "PXDesign Path",
-  question: "Where is PXDesign installed?",
-  options: [
-    "Auto-detect" -- Search PATH and common locations,
-    "Custom path" -- I'll provide the path
-  ]
-)
-```
-Same flow -- if "Custom path", ask inline and validate.
-
-**After collecting paths, run environment checks:**
-
-1. Which conda envs exist?
-   ```bash
-   conda env list 2>/dev/null | grep -E 'bg|protenix|pxdesign'
-   ```
-
-2. Are the tools actually runnable? Quick `--help` check for each:
-   ```bash
-   conda run -n bg boltzgen --help 2>/dev/null | head -1
-   conda run -n protenix protenix --help 2>/dev/null | head -1
-   conda run -n pxdesign pxdesign --help 2>/dev/null | head -1
-   ```
-
-3. Are model weights downloaded? Check for expected weight directories:
-   - BoltzGen: `{path}/weights/` or `{path}/models/`
-   - Protenix: `{path}/model_data/` or `{path}/release/`
-   - PXDesign: `{path}/weights/`
-
-4. GPU detection:
-   ```bash
-   nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
-   ```
-
-**Report findings in this format:**
-```
-Local GPU Setup:
-  BoltzGen  ✓ /data/proteus/proteus-design (conda: bg, weights: ✓)
-  Protenix  ✓ /data/proteus/Protenix (conda: protenix, model: 2025 base)
-  PXDesign  ✓ /data/proteus/PXDesign (conda: pxdesign, weights: ✓)
-  GPU       NVIDIA RTX PRO 6000 (98GB VRAM)
+Agent (by-session):
+  1. Banner    → BY ► Protein Design Agent
+  2. Check     → .by/config.json exists?
+  3a. NO       → run init_questionnaire.py (or its inline AskUserQuestion equivalent)
+                 → writes .by/config.json with local-first defaults
+  3b. YES      → read config + environment, no questions asked
+  4. Resume    → check campaigns/*/campaign_log.json for in-progress work
+  5. Status    → print compute + profile + campaign count
+  6. Done      → "Ready" prompt with suggested actions
 ```
 
-Use `✗` and a reason for any tool that fails validation:
-```
-  PXDesign  ✗ not found (conda env 'pxdesign' does not exist)
-```
+Total time: ~1 second when config exists; ~30 seconds for first-run questionnaire.
 
-#### If user selects "Tamarind Bio"
+---
 
-1. Check if `TAMARIND_API_KEY` is set in environment or `.env` file:
-   ```bash
-   grep -q TAMARIND_API_KEY .env 2>/dev/null && echo "found" || echo "missing"
-   ```
+## Inputs
 
-2. If not found, guide the user:
-   ```
-   Tamarind Bio API key not found.
+**Required:**
+- **Working directory** — the BY project root (current directory by default).
+- **User input** (first run only) — answers to the 3-round questionnaire (compute provider, model profile, campaign defaults).
 
-   To get a free key:
-   1. Go to https://tamarind.bio
-   2. Sign up / log in
-   3. Copy your API key from the dashboard
-   4. Add to .env: TAMARIND_API_KEY=your_key_here
-   ```
+**Optional (auto-detected):**
+- **`.by/config.json`** — if present, skip questionnaire entirely.
+- **`.by/environment.json`** — written by `/by:setup`; used to confirm tools and GPU.
+- **Environment variables** — `RUNPOD_API_KEY`, `TAMARIND_API_KEY`, etc. for provider detection.
+- **`campaigns/*/campaign_log.json`** — used to surface in-progress campaigns.
 
-3. If found, check quota via `mcp__by-cloud__cloud_list_providers` and report:
-   ```
-   Tamarind Bio: ✓ connected
-     Tier: free | GPU-hours remaining: 87
-     Models: BoltzGen, Protenix, PXDesign available
-   ```
+See `references/config-schema.md` for the full schema of both JSON files.
 
-#### If user selects "SSH Remote"
+---
 
-Ask for connection details inline:
-- Host: hostname or IP
-- User: SSH username
-- Key path: path to SSH private key (default: `~/.ssh/id_rsa`)
-- GPU type: what GPU is on the remote (for VRAM estimation)
+## Outputs
 
-Test the SSH connection:
+All outputs land under `.by/` in the project root.
+
+| File | Type | When written | Purpose |
+|------|------|--------------|---------|
+| `.by/config.json` | JSON | First run, or on user-driven update | User preferences: compute provider, providers_priority, model_profile, campaign defaults |
+| `.by/environment.json` | JSON | First run + `/by:setup` refresh | Auto-detected hardware/tools snapshot (GPU model, VRAM, conda envs, tool paths, API keys present) |
+| Terminal banner | Text | Every session | Branded session header |
+| Status block | Text | Every session | Compute provider in use, profile, campaign count, next-step prompts |
+
+The `.by/config.json` schema is canonical and downstream-critical: every BY skill that
+selects a compute provider reads this file. See `references/config-schema.md`.
+
+---
+
+## Clarification Questions
+
+⚠️ **CRITICAL: ASK THIS FIRST** — Confirm `.by/config.json` does not already exist
+before running the questionnaire. Re-running the questionnaire would overwrite the
+user's saved preferences.
+
+1. **Config file presence (ASK THIS FIRST)** — Does `.by/config.json` already exist? If yes, skip the questionnaire and go straight to the session banner. If no, proceed to Q2. (You can check this silently — only ask the user if there's ambiguity, e.g., the file exists but is corrupted.)
+2. **Compute provider** — Where should BY run design computations? Options: `local` (recommended default — uses local GPU), `hpc` (RunPod or other HPC target deployed via `by-deploy-compute`), `tamarind` (Tamarind Bio cloud), `auto` (detect best available in priority order). **The default is `local`.**
+3. **Local GPU tool paths** (only if provider is `local` or `auto`) — Where are BoltzGen, Protenix, and PXDesign installed? Auto-detect from `PATH` and common locations, or accept a custom path per tool. Validate each path exists.
+4. **HPC target** (only if provider is `hpc`) — Which HPC target? Default `runpod`. The actual deployment is handled by `by-deploy-compute`; this skill only records the choice and the `api_key_env` variable name.
+5. **Tamarind API key** (only if provider is `tamarind`) — Is `TAMARIND_API_KEY` set in `.env` or the shell environment? If missing, point the user to https://tamarind.bio for a free key before continuing.
+6. **Model profile** — Which AI model profile for sub-agents? `balanced` (Sonnet, recommended), `quality` (Opus for research/design agents), `budget` (Haiku where possible).
+7. **Default campaign tier** — Default designs per campaign? `preview` (~500, fast feasibility checks), `standard` (~5,000, recommended), `production` (~20,000, thorough coverage).
+
+See `references/config-schema.md` for the exact field names each answer maps to.
+
+---
+
+## Standard Workflow
+
+🚨 **MANDATORY: USE THE TWO PROVIDED SCRIPTS — DO NOT WRITE INLINE PYTHON** 🚨
+
+This skill ships two scripts that codify the questionnaire and validation logic:
+
+- `scripts/init_questionnaire.py` — interactive or `--defaults` first-run setup; writes `.by/config.json`.
+- `scripts/validate_config.py` — reads `.by/config.json`, validates against the documented schema, prints issues.
+
+When a script does not fit (e.g., the user wants to flip a single field), edit the
+JSON directly and re-run `validate_config.py` to confirm correctness. Do not invent a
+new questionnaire flow inline.
+
+### Step 1 — Detect first-run vs returning session
+
 ```bash
-ssh -o ConnectTimeout=5 -o BatchMode=yes user@host echo "ok" 2>/dev/null
+test -f .by/config.json && echo "returning" || echo "first-run"
 ```
 
-Report success or failure. Write connection details to config.
+✅ **VERIFICATION:** Output is exactly `returning` or `first-run`.
 
-### Round 2 -- Model Profile
+### Step 2a — First-run: run the questionnaire
 
-```
-AskUserQuestion(
-  header: "AI Model Profile",
-  question: "Which AI models for sub-agents?",
-  options: [
-    "Balanced (Recommended)" -- Sonnet for most agents, good quality/cost ratio,
-    "Quality" -- Opus for research/design agents, deeper analysis,
-    "Budget" -- Haiku where possible, fastest and lowest cost
-  ]
-)
+```bash
+python3 .claude/skills/by-session/scripts/init_questionnaire.py
 ```
 
-### Round 3 -- Campaign Defaults
+Or for a non-interactive default install (CI, automated scaffolding):
 
-```
-AskUserQuestion(
-  header: "Default Campaign Size",
-  question: "Default designs per campaign?",
-  options: [
-    "Preview (~500)" -- Fast testing, feasibility checks,
-    "Standard (~5,000)" -- Good sampling per scaffold (Recommended),
-    "Production (~20,000)" -- Thorough coverage, difficult targets
-  ]
-)
+```bash
+python3 .claude/skills/by-session/scripts/init_questionnaire.py --defaults
 ```
 
-### Write config.json
+✅ **VERIFICATION:** Expect `✓ Wrote .by/config.json with provider=local` (or whichever provider the user selected).
 
-After all rounds, write `.by/config.json` with the collected settings:
+The questionnaire collects answers in three rounds (compute, profile, campaign
+defaults) and writes `.by/config.json`. The **default provider is `local`** and
+`providers_priority` is `["local", "hpc", "tamarind"]`. If the user picks `hpc`, the
+skill records the HPC target (default `runpod`) and the env var name for the API key,
+but does NOT deploy anything — deployment lives in `by-deploy-compute`.
 
-```json
-{
-  "model_profile": "balanced",
-  "compute": {
-    "preferred_provider": "local",
-    "local": {
-      "boltzgen": {
-        "path": "/data/proteus/proteus-design",
-        "conda_env": "bg",
-        "weights": true
-      },
-      "protenix": {
-        "path": "/data/proteus/Protenix",
-        "conda_env": "protenix",
-        "model": "protenix_base_20250630_v1.0.0"
-      },
-      "pxdesign": {
-        "path": "/data/proteus/PXDesign",
-        "conda_env": "pxdesign",
-        "weights": true
-      }
-    },
-    "tamarind": {
-      "tier": "free",
-      "api_key_configured": true
-    },
-    "ssh": {
-      "host": null,
-      "user": null,
-      "key_path": null,
-      "gpu_type": null
-    },
-    "gpu": {
-      "name": "NVIDIA RTX PRO 6000",
-      "vram_gb": 98
-    }
-  },
-  "campaign_defaults": {
-    "tier": "standard",
-    "fold_validation": true
-  }
-}
+### Step 2b — Returning session: read config + environment
+
+```bash
+python3 .claude/skills/by-session/scripts/validate_config.py .by/config.json
 ```
 
-Only include sections that apply. For example, if the user selected "Tamarind Bio",
-omit the `local` block (or set paths to null). If no SSH was configured, omit the
-`ssh` block.
+✅ **VERIFICATION:** Expect `✓ Config valid: provider=<name>, profile=<name>`.
 
-Then show: "Configuration saved to .by/config.json. Ready."
+If validation fails, surface the specific field error to the user and ask before
+overwriting anything. Do NOT silently re-run the questionnaire.
 
----
+### Step 3 — Show banner
 
-## 2. Session Start (when .by/config.json EXISTS)
-
-When `.by/config.json` already exists, skip the questionnaire and go straight to
-the session banner and status.
-
-### Step 1: Show banner
-
-```
+```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  BY ► Protein Design Agent
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-### Step 2: Read config and environment
-
-Read `.by/config.json` for user preferences. Read `.by/environment.json` if it
-exists (written by the SessionStart hook). Determine:
-
-- Which compute providers are available and configured
-- Current model profile
-- Default campaign tier
-- API keys present (without exposing values)
-
-### Step 3: Check for existing campaigns
+### Step 4 — Check for in-progress campaigns
 
 ```bash
-ls .by/campaigns/*/campaign_log.json 2>/dev/null
+ls campaigns/*/campaign_log.json 2>/dev/null
 ```
 
-Count campaigns, check for any in active (non-complete) state.
+Count campaigns and inspect each `status` field. See `references/resume-protocol.md`
+for the exact rules on what counts as "in progress" and what gets restored.
 
-### Step 4: Display status
+### Step 5 — Display status
 
-Build the compute status line from config:
+Build the compute line from `compute.default_provider` and any populated provider
+blocks. Examples:
 
-- **Local GPU**: show tool names if local tools are configured
-  `Compute: Local GPU ✓ (BoltzGen, Protenix, PXDesign)`
-- **Tamarind Bio**: show tier
-  `Compute: Tamarind Bio ✓ (free tier)`
-- **SSH Remote**: show host
-  `Compute: SSH Remote ✓ (gpu-node.example.com)`
-- **Multiple**: list all with preferred marked
-  `Compute: Local GPU ✓ (preferred) | Tamarind Bio ✓`
+- `Compute: Local GPU ✓ (BoltzGen, Protenix, PXDesign)`
+- `Compute: HPC ✓ (target=runpod, key=RUNPOD_API_KEY)`
+- `Compute: Tamarind ✓ (free tier)`
 
 Full display:
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- BY ► Protein Design Agent
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+```text
 Compute: Local GPU ✓ (BoltzGen, Protenix, PXDesign)
 Profile: balanced | Default: standard (5,000/scaffold)
-Campaigns: [N] previous
+Campaigns: 3 previous, 1 active (anti-HER2 — designing 80%)
 
 Ready:
   "Design [modality] against [target]"
-  /by:plan-campaign -- guided setup
-  /by:status -- existing campaigns
+  /by:plan-campaign — guided setup
+  /by:status — existing campaigns
 ```
 
-If there are campaigns in active state, highlight them:
+### Anti-patterns
 
-```
-Campaigns: 3 previous, 1 active (anti-HER2 -- designing 80%)
-```
-
-If there are zero campaigns:
-
-```
-Campaigns: none yet
-
-Ready:
-  "Design nanobodies against [target]" -- start your first campaign
-  /by:welcome -- first-time walkthrough
-  /by:plan-campaign -- guided setup
-```
+⚠️ **CRITICAL — DO NOT:**
+- ❌ Re-run the questionnaire if `.by/config.json` already exists → STOP: read it instead
+- ❌ Default to `tamarind` → the new default is `local`; respect `providers_priority`
+- ❌ Silently overwrite unrelated fields in `config.json` → load, mutate only target field, save
+- ❌ Block the session on a single failed tool check → mark `✗` with reason, continue
+- ❌ Deploy HPC infrastructure here → that is `by-deploy-compute`'s job
 
 ---
 
-## 3. Environment Awareness
+## When Scripts Fail
 
-On every session start, read `.by/environment.json` for available tools and compute:
+Script-failure hierarchy (per the BY quality bar):
 
-- Which compute providers are configured (Tamarind, SSH hosts, local GPU)
-- Remaining quota / tier for cloud providers
-- Available local tools (Protenix, PXDesign, BoltzGen) with paths
-- API keys present (without exposing values)
-- GPU hardware details (model, VRAM)
+1. **Fix and Retry (90%)** — `python3 -m pip install -e .` may be needed if the project venv is stale; or set `PYTHONPATH` to include the templates dir. Re-run the script.
+2. **Modify Script (5%)** — If the questionnaire flow is missing a new option (e.g., a new HPC target), add a branch to `init_questionnaire.py`. Keep validation in `validate_config.py` in sync.
+3. **Use as Reference (4%)** — If the script's behavior is wrong for this user's edge case (e.g., heterogeneous multi-node setup), read the script and adapt the writes manually with `python -c "import json; ..."`.
+4. **Write from Scratch (1%)** — Only if `config.json` semantics have changed enough that the script is misleading; in that case, update `references/config-schema.md` first, then the script.
 
-Read `.by/config.json` for user preferences:
-
-- Model profile (quality / balanced / budget)
-- Default compute provider
-- Campaign defaults (tier, fold_validation)
-
-If `.by/environment.json` is stale (>24h), suggest running `/by:setup` to refresh.
+| Decision | Action |
+|---|---|
+| Missing `python3` | Step 1 — install Python 3.10+ |
+| Missing `argparse` (impossible: stdlib) | Step 1 — Python is broken; reinstall |
+| User wants to keep current config but switch one field | Step 3 — `python3 -c "import json,pathlib; p=pathlib.Path('.by/config.json'); c=json.loads(p.read_text()); c['compute']['default_provider']='hpc'; p.write_text(json.dumps(c, indent=2))"` |
+| Script crashes on malformed config | Step 2 — patch `validate_config.py` to surface a friendlier error |
 
 ---
 
-## 4. Config Update
+## Decision Points
 
-When the user wants to change settings after initial setup:
+### Default provider selection
 
-- `/by:set-profile` changes model_profile in config.json
-- `/by:setup` re-runs environment discovery and updates environment.json
-- Direct requests like "switch to Tamarind" update compute.preferred_provider
+| Situation | Recommended provider | Why |
+|---|---|---|
+| User has a local NVIDIA GPU with ≥ 24 GB VRAM | `local` | Fastest, no cloud cost; matches new default |
+| User has a local GPU but with < 24 GB VRAM | `local` for inference, `hpc` for design | BoltzGen design is memory-heavy |
+| User has no local GPU, has RunPod credits | `hpc` (target=runpod) | Predictable cost, full GPU control via `by-deploy-compute` |
+| User has no local GPU, no HPC credits | `tamarind` | Free tier covers small campaigns |
+| User is unsure | `auto` | Probes in order `local → hpc → tamarind` |
 
-Always read the existing config, modify only the changed fields, and write back.
-Never overwrite unrelated settings.
+### Model profile selection
+
+| Profile | Sub-agent models | When to choose |
+|---|---|---|
+| `balanced` | Sonnet for most agents | Default — good quality/cost ratio |
+| `quality` | Opus for research + design | Novel target, high-stakes campaign |
+| `budget` | Haiku where possible | Cost-constrained, well-studied target |
+
+### Campaign tier default
+
+| Tier | Designs/scaffold | When to default to it |
+|---|---|---|
+| `preview` | ~500 | Tutorials, feasibility checks |
+| `standard` | ~5,000 | Recommended; most campaigns |
+| `production` | ~20,000 | Hard targets, last-mile screening |
+
+---
+
+## Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| `.by/config.json` exists but `default_provider` is `tamarind` | Pre-2026-05 config — Tamarind used to be the default | Run `validate_config.py --suggest-fix` to surface; offer to flip to `local` |
+| Questionnaire re-runs every session | `.by/config.json` is being deleted by a hook or `.gitignore` exclusion | Confirm `.by/` is committed (or at least persisted between sessions); inspect `.git/info/exclude` and `.gitignore` |
+| `validate_config.py` reports `providers_priority` missing | Config predates the local-first migration | Run `init_questionnaire.py --defaults --keep-existing` to merge in the new field without nuking other settings |
+| `compute.hpc.target` is empty after picking `hpc` | User skipped Q4 | Re-ask Q4; default is `runpod` |
+| `RUNPOD_API_KEY` env var unset but provider is `hpc` | API key not exported in `.env` | Point user to `by-deploy-compute` for setup; do NOT block the session |
+| `TAMARIND_API_KEY` env var unset but provider is `tamarind` | Same as above for Tamarind | Show the signup URL; mark provider `✗` in status until set |
+| Local GPU tool paths point to nonexistent dirs | Tools moved or were never installed | Mark each tool `✗ <reason>` in the status block; do NOT change config without asking |
+| Banner prints garbled box-drawing characters | Terminal not UTF-8 | Document the limitation; suggest `export LANG=en_US.UTF-8` |
+| `environment.json` is older than 24h | User ran `/by:setup` long ago; tools may have changed | Suggest `/by:setup` to refresh; do NOT auto-refresh without consent |
+| Multiple `.by/` dirs in nested project roots | Monorepo with sub-projects | Use the closest `.by/` walking up from `cwd`; document the choice in the status block |
+| In-progress campaign was force-killed and `campaign_log.json` says `running` | Stale lock | See `references/resume-protocol.md` — surface to user, ask whether to resume or mark complete |
+| Sub-agent receives the wrong compute provider | Sub-agent did not read `.by/config.json` | Always include the compute config explicitly in `Task()` prompts; this skill cannot enforce that downstream |
+
+---
+
+## Best Practices
+
+1. 🚨 **CRITICAL:** Always check `.by/config.json` existence BEFORE running the questionnaire — re-running silently overwrites user preferences.
+2. ✅ **REQUIRED:** Use `scripts/init_questionnaire.py` and `scripts/validate_config.py` — do not write inline Python for these flows.
+3. ✅ Honor `providers_priority` (`["local", "hpc", "tamarind"]`) when `default_provider` is `auto`.
+4. ✅ When updating config, read-modify-write — never replace the file wholesale unless the user opts in.
+5. ✅ Surface compute-provider issues but do NOT block the session — the user may want to fix them mid-session.
+6. ✅ Treat `.by/environment.json` as advisory; the config is canonical for "which provider to use".
+7. ❌ Never expose API key VALUES in the banner or logs — only `present/missing`.
+8. ❌ Never silently fall back from `local` to `tamarind` — respect the user's explicit choice.
+9. ✨ **Optional:** Cache the questionnaire answers in `.by/.questionnaire-history.json` if the user re-runs setup, so we can suggest their previous choices as defaults.
+
+---
+
+## Suggested Next Steps
+
+After the session is initialized, common next moves:
+
+- **`by-design-workflow`** — when the user describes a target, this is the master orchestration skill that decides which design engine to invoke (it reads the compute provider from `.by/config.json` written here).
+- **`by-research`** — if the user is starting a new campaign against an unfamiliar target, research is always step 1.
+- **`by-campaign-manager`** — if the session detected an in-progress campaign, hand off to this skill for resume.
+- **`by-deploy-compute`** — if the user selected `hpc` but the actual deployment is not yet active.
+- **`/by:status`** — if the user just wants a campaign-status summary without starting work.
+
+The chaining matters: by-session's job is to *prepare the environment*; downstream
+skills consume `.by/config.json` and trust it. Keep that contract clean.
+
+---
+
+## Related Skills
+
+**Upstream (run before by-session):** None — this skill is the entry point.
+
+**Downstream (run after by-session):**
+- `by-design-workflow` — master orchestration; reads provider from config
+- `by-research` — first step of any new campaign
+- `by-campaign-manager` — for resume of in-progress campaigns
+
+**Alternative / Complementary:**
+- `by-deploy-compute` — handles the *deployment* side of HPC; by-session only records the *choice*
+- `status` (slash command skill) — read-only campaign status; does not modify config
+
+---
+
+## References
+
+**Detailed documentation (`references/`):**
+- [`references/config-schema.md`](references/config-schema.md) — Full JSON Schema for `.by/config.json` and `.by/environment.json`, including the post-2026-05 fields (`providers_priority`, `compute.hpc.target`, `compute.hpc.api_key_env`).
+- [`references/resume-protocol.md`](references/resume-protocol.md) — Detection rules for in-progress campaigns, checkpoint loading, and what is restored vs re-asked when a session reopens mid-campaign.
+
+**Scripts (`scripts/`):**
+- `scripts/init_questionnaire.py` — Interactive (or `--defaults`) first-run config flow. Asks: local GPU available? RunPod API key? Tamarind key? Writes `.by/config.json` with local-first defaults.
+- `scripts/validate_config.py` — Reads `.by/config.json`, validates against the schema documented in `references/config-schema.md`, prints actionable issues.
+
+**Project context:**
+- `templates/CLAUDE.md` — the "Compute Provider Selection" section is the authoritative prose explanation of the local-first ordering this skill enforces.
+- `templates/.by/config.json` — the canonical default config shipped with new projects.

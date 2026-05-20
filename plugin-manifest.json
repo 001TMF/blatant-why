@@ -36,16 +36,31 @@
     "by-knowledge"
   ],
   "skills": [
-    "by-design-workflow",
-    "by-scoring",
-    "by-epitope-analysis",
-    "by-screening",
+    "boltzgen",
     "by-campaign-manager",
+    "by-campaign-optimizer",
+    "by-causal-reasoning",
     "by-database",
+    "by-deploy-compute",
+    "by-design-workflow",
+    "by-display",
+    "by-epitope-analysis",
+    "by-experiment-results",
+    "by-failure-diagnosis",
+    "by-hypothesis-debate",
+    "by-knowledge",
+    "by-research",
+    "by-scoring",
+    "by-screening",
+    "by-session",
     "protenix",
-    "pxdesign",
-    "boltzgen"
+    "pxdesign"
   ],
+  "defaults": {
+    "compute": "local",
+    "compute_options": ["local", "hpc", "tamarind"],
+    "compute_description": "Default compute is local GPU. Set to 'hpc' for RunPod/Modal/SLURM via by-deploy-compute, or 'tamarind' for the Tamarind cloud."
+  },
   "scoring": {
     "ipSAE": {
       "description": "Open-source TM-align-inspired interface score from PAE matrices (DunbrackLab formula)",

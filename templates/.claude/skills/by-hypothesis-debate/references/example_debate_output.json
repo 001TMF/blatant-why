@@ -1,0 +1,204 @@
+{
+  "campaign_id": "il23r_20260520_001",
+  "target": "IL23R",
+  "debate_started_at": "2026-05-20T14:24:00Z",
+  "debate_completed_at": "2026-05-20T14:31:12Z",
+  "orchestrator_version": "1.0",
+  "rubric_preset": "balanced",
+  "rubric_weights": {
+    "W_RIGOR": 0.30,
+    "W_FEASIBILITY": 0.25,
+    "W_INNOVATION": 0.20,
+    "W_RISK": 0.25
+  },
+  "proposals": [
+    {
+      "agent": "conservative",
+      "version": "1.0",
+      "target": "IL23R",
+      "modality": "VHH",
+      "protocol": "nanobody-anything",
+      "scaffolds": ["caplacizumab", "ozoralizumab"],
+      "tier": "standard",
+      "num_designs_per_scaffold": 5000,
+      "compute_provider": "local",
+      "epitope": {
+        "pdb_id": "6WDQ",
+        "target_chain": "A",
+        "residues": [78, 79, 80, 112, 113, 114, 115],
+        "range_notation": "A78-A80,A112-A115"
+      },
+      "rationale": "IL23R has one crystal structure (6WDQ) at 2.3A resolution showing the IL-23/IL-23R interface. The proposed epitope (A78-A80 and A112-A115) covers two HIGH-confidence interface residue clusters from validated_findings.json. VHH is the safest modality given the cytokine-receptor topology — flat-ish surface, no deep pocket. Caplacizumab and ozoralizumab scaffolds have strong PDB co-crystal evidence against similar cytokine receptors. Standard tier (5000 designs/scaffold) is appropriate for a moderate-novelty target.",
+      "expected_hit_rate": "20-40%",
+      "expected_wall_time_hours": 8,
+      "key_risks": [
+        "N91 N-linked glycan adjacent to proposed epitope; BoltzGen does not model glycans",
+        "ipSAE may underestimate cytokine-receptor interface quality due to extended interface"
+      ],
+      "mitigation": [
+        "Run Protenix 5-seed ensemble validation on top 10 designs to confirm interface",
+        "Cross-check designs against deglycosylated reference structure"
+      ],
+      "confidence": 0.78,
+      "research_source_ids": ["src_001", "src_003", "src_007"]
+    },
+    {
+      "agent": "aggressive",
+      "version": "1.0",
+      "target": "IL23R",
+      "modality": "de_novo_binder",
+      "protocol": "protein-anything",
+      "scaffolds": ["custom_helical_bundle"],
+      "tier": "production",
+      "num_designs_per_scaffold": 20000,
+      "compute_provider": "local",
+      "epitope": {
+        "pdb_id": "6WDQ",
+        "target_chain": "A",
+        "residues": [85, 86, 87, 88, 89, 90],
+        "range_notation": "A85-A90"
+      },
+      "rationale": "The standard interface residues (A78-A80, A112-A115) are already covered by approved therapeutics like risankizumab. Targeting an unexplored region adjacent to the N91 glycan with a de novo helical bundle could yield a first-in-class binder with a differentiated mechanism. PXDesign supports de novo helical bundles natively. Even at 10% hit rate, this campaign validates whether the alt-epitope is druggable.",
+      "expected_hit_rate": "5-15%",
+      "expected_wall_time_hours": 40,
+      "key_risks": [
+        "N91 glycan steric occlusion of proposed epitope",
+        "De novo binders for cytokine receptors have lower precedent vs antibodies",
+        "Production tier requires 40h wall time on local GPU"
+      ],
+      "mitigation": [
+        "Pre-filter designs by glycan-clash heuristic"
+      ],
+      "confidence": 0.55,
+      "research_source_ids": ["src_009"]
+    },
+    {
+      "agent": "diverse",
+      "version": "1.0",
+      "target": "IL23R",
+      "modality": "mixed",
+      "protocol": "split_run",
+      "sub_runs": [
+        {
+          "sub_run_id": "sub_001_vhh_canonical",
+          "modality": "VHH",
+          "protocol": "nanobody-anything",
+          "scaffolds": ["caplacizumab"],
+          "num_designs": 3000,
+          "epitope": {
+            "range_notation": "A78-A80,A112-A115"
+          }
+        },
+        {
+          "sub_run_id": "sub_002_vhh_alt_epitope",
+          "modality": "VHH",
+          "protocol": "nanobody-anything",
+          "scaffolds": ["ozoralizumab"],
+          "num_designs": 1500,
+          "epitope": {
+            "range_notation": "A85-A90"
+          }
+        },
+        {
+          "sub_run_id": "sub_003_de_novo_probe",
+          "modality": "de_novo_binder",
+          "protocol": "protein-anything",
+          "scaffolds": ["custom_helical_bundle"],
+          "num_designs": 500,
+          "epitope": {
+            "range_notation": "A85-A90"
+          }
+        }
+      ],
+      "tier": "standard",
+      "total_designs": 5000,
+      "compute_provider": "local",
+      "rationale": "Hedge across two competing hypotheses: (1) standard IL23R epitope is the right target (VHH canonical sub-run), (2) alt-epitope around N91 is druggable (VHH alt + de novo probe). If sub_001 fails, sub_002+sub_003 may still produce hits. Cross-aggregation by composite_score lets us compare apples-to-apples.",
+      "expected_hit_rate": "15-30% across all sub-runs",
+      "expected_wall_time_hours": 10,
+      "key_risks": [
+        "Sub-run aggregation across modalities can be noisy",
+        "De novo probe (500 designs) may be underpowered"
+      ],
+      "mitigation": [
+        "Use modality-stratified ranking before cross-run aggregation",
+        "Treat sub_003 as exploratory signal, not statistical result"
+      ],
+      "confidence": 0.65,
+      "research_source_ids": ["src_001", "src_003", "src_009"]
+    }
+  ],
+  "ranking": {
+    "version": "1.0",
+    "target": "IL23R",
+    "ranked_at": "2026-05-20T14:30:55Z",
+    "candidates": [
+      {
+        "agent": "conservative",
+        "scientific_rigor": 0.85,
+        "scientific_rigor_justification": "Cites 3 HIGH-confidence sources; epitope traces directly to validated_findings.json findings 1, 3, 5.",
+        "feasibility": 0.90,
+        "feasibility_justification": "Standard nanobody-anything protocol with default scaffolds; 8h on local GPU is well within budget.",
+        "innovation": 0.40,
+        "innovation_justification": "Conventional VHH approach against well-characterized epitope; no novel modality or scaffold.",
+        "risk_adjusted_confidence": 0.72,
+        "risk_adjusted_confidence_justification": "Stated confidence 0.78; both risks have explicit mitigations; penalty (1 - 0.15 * 0.4) = 0.94; 0.78 * 0.94 = 0.732.",
+        "composite_score": 0.7625,
+        "rank": 1
+      },
+      {
+        "agent": "diverse",
+        "scientific_rigor": 0.70,
+        "scientific_rigor_justification": "Cites 2 HIGH and 1 MEDIUM source; one sub-hypothesis (alt-epitope) relies on inference.",
+        "feasibility": 0.75,
+        "feasibility_justification": "Three parallel sub-runs add coordination overhead; aggregation across modalities is non-trivial.",
+        "innovation": 0.70,
+        "innovation_justification": "Hedging across modality and epitope is a creative approach; de novo probe explores untested space.",
+        "risk_adjusted_confidence": 0.65,
+        "risk_adjusted_confidence_justification": "Stated confidence 0.65; risks acknowledged with partial mitigation; modality-stratified ranking is sound but unproven for this target class.",
+        "composite_score": 0.7100,
+        "rank": 2
+      },
+      {
+        "agent": "aggressive",
+        "scientific_rigor": 0.55,
+        "scientific_rigor_justification": "Cites only 1 source (src_009, MEDIUM confidence); epitope choice is speculative.",
+        "feasibility": 0.50,
+        "feasibility_justification": "Production tier (20000 designs) on local GPU is 40h — tight but possible; custom helical bundles are supported by PXDesign.",
+        "innovation": 0.95,
+        "innovation_justification": "Novel modality (de novo) + novel epitope; clear first-in-class differentiation.",
+        "risk_adjusted_confidence": 0.45,
+        "risk_adjusted_confidence_justification": "Stated 0.55 confidence; 3 risks with only 1 mitigation = 2 unmitigated; 0.55 * (1 - 0.15*2) = 0.385, raised slightly for partial coverage.",
+        "composite_score": 0.6125,
+        "rank": 3
+      }
+    ],
+    "winner": "conservative",
+    "tie_break_applied": false,
+    "tie_break_mode": "merge",
+    "score_delta_top_two": 0.0525,
+    "rationale": "Conservative wins on the strength of scientific rigor (0.85) and feasibility (0.90). The margin over Diverse (0.0525) is just above the tie-break threshold of 0.05, so no merge is forced — but the orchestrator should still consider the dissenting recommendations below. Aggressive is clearly third due to thin source coverage and high unmitigated risk count.",
+    "dissenting_notes": "The Aggressive proposal raised a real concern about the N91 N-glycan that the Conservative proposal addresses only as a downstream Protenix check. Strengthening this in the campaign_config by enabling cross_check_glycan_clash before screening would close the gap.",
+    "merged_recommendations": [
+      "Add 'cross_check_glycan_clash: true' to campaign_config.yaml screening block",
+      "If run_001 hit rate < 20%, automatically queue a run_002 using Diverse sub_002 epitope (A85-A90)",
+      "Reserve 1500 designs from the Conservative budget envelope as a contingency for the alt-epitope follow-up"
+    ],
+    "escalate_to_user": false,
+    "low_confidence": false,
+    "three_way_tie": false
+  },
+  "audit_trail": [
+    {"timestamp": "2026-05-20T14:24:00Z", "event": "debate_started", "research_dir": "campaigns/IL23R/campaign_20260520_001/research"},
+    {"timestamp": "2026-05-20T14:24:02Z", "event": "spawned_agent", "agent": "conservative", "task_id": "tsk_001"},
+    {"timestamp": "2026-05-20T14:24:02Z", "event": "spawned_agent", "agent": "aggressive", "task_id": "tsk_002"},
+    {"timestamp": "2026-05-20T14:24:02Z", "event": "spawned_agent", "agent": "diverse", "task_id": "tsk_003"},
+    {"timestamp": "2026-05-20T14:27:48Z", "event": "proposal_returned", "agent": "conservative", "validation": "passed"},
+    {"timestamp": "2026-05-20T14:28:14Z", "event": "proposal_returned", "agent": "diverse", "validation": "passed"},
+    {"timestamp": "2026-05-20T14:28:33Z", "event": "proposal_returned", "agent": "aggressive", "validation": "passed"},
+    {"timestamp": "2026-05-20T14:28:34Z", "event": "spawned_agent", "agent": "reflection", "task_id": "tsk_004"},
+    {"timestamp": "2026-05-20T14:30:55Z", "event": "ranking_returned", "validation": "passed"},
+    {"timestamp": "2026-05-20T14:31:00Z", "event": "campaign_config_updated", "winner": "conservative"},
+    {"timestamp": "2026-05-20T14:31:12Z", "event": "debate_completed"}
+  ]
+}

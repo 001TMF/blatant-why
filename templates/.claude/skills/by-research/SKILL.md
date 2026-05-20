@@ -1,6 +1,29 @@
 ---
-name: by-research
-description: Deep academic research for antibody design campaigns — target analysis, literature review, prior art search, epitope identification. Uses an 8-phase pipeline with quality gates and persistent memory. Use this skill whenever researching a protein target, starting a new design campaign, investigating prior art, analyzing epitopes, reviewing literature for design strategy, or when the user mentions target research, literature search, or prior art in the context of protein/antibody design.
+id: "skill_bf649c6b31b64e9797f3b685b50f0b77"
+name: "by-research"
+display-name: "BY Research"
+short-description: "Deep academic research for antibody/binder design campaigns with an 8-phase pipeline, quality gates, and persistent memory. Use when starting a new design campaign, investigating a target, searching prior art, or analyzing epitopes."
+category: "research"
+keywords: "target research, literature review, prior art, epitope analysis, PDB, UniProt, SAbDab, PubMed, bioRxiv, design strategy, scaffold selection, hotspot identification"
+version: "1.0"
+last-updated: "2026-05-20"
+mcp_tools:
+  - "mcp__by-research__research_get_target_info"
+  - "mcp__by-research__research_search_prior_art"
+  - "mcp__by-research__research_analyze_known_binders"
+  - "mcp__by-research__research_find_similar_targets"
+  - "mcp__by-pdb__pdb_search"
+  - "mcp__by-pdb__pdb_fetch_structure"
+  - "mcp__by-pdb__pdb_get_chains"
+  - "mcp__by-pdb__pdb_interface_residues"
+  - "mcp__by-uniprot__uniprot_search"
+  - "mcp__by-uniprot__uniprot_fetch_protein"
+  - "mcp__by-uniprot__uniprot_get_domains"
+  - "mcp__by-uniprot__uniprot_get_variants"
+  - "mcp__by-sabdab__sabdab_search_antibodies"
+  - "mcp__by-sabdab__sabdab_get_structure"
+  - "mcp__by-sabdab__sabdab_cdr_sequences"
+  - "mcp__by-sabdab__sabdab_search_by_antigen"
 ---
 
 # BY Research Skill
@@ -9,14 +32,108 @@ Thorough target research before design prevents wasted compute and failed campai
 This skill defines an 8-phase pipeline that retrieves, validates, and packages research
 findings with quality gates and anti-drift checkpoints at every stage.
 
-## When to Use
+## When to Use This Skill
 
-- Starting a new design campaign (target research is always step 1)
-- Investigating a protein target before committing to a design modality
-- Searching for prior art (existing antibodies, nanobodies, binders)
-- Analyzing epitope regions and binding sites from literature + structure
-- Literature review for design strategy or scaffold selection
-- Resuming interrupted research (checkpoint recovery)
+Use this skill when you have:
+
+- ✅ **A protein target name or identifier** (UniProt accession, gene name, PDB ID, or common name)
+- ✅ **A new design campaign starting** — research is always step 1 before planning
+- ✅ **A need to characterize prior art** — existing antibodies, nanobodies, or designed binders
+- ✅ **A target with unknown or partially characterized epitopes** — needs hotspot identification from literature + structure
+- ✅ **A need to choose modality or scaffold** — research informs VHH vs scFv vs de novo
+- ✅ **An interrupted research session** — resume from `research_progress.json` checkpoint
+
+Do NOT use this skill when:
+
+- ❌ **You already have a validated target report** in the campaign directory → load it instead of re-researching
+- ❌ **You are scoring or filtering existing designs** → use `by-scoring` or `by-screening`
+- ❌ **You are predicting structure of a known sequence** → use Protenix directly (no literature needed)
+- ❌ **You need lab submission logistics** → use `by-deploy-compute` or the lab-submission flow
+- ❌ **The user wants ranked design results** → use `by-display` / `results` skill
+- ❌ **You need a one-off database lookup** (single PDB fetch) → call the MCP tool directly, no 8-phase overhead
+
+## Quick Start
+
+```text
+User: "Research TNF-alpha for a nanobody design campaign."
+
+Agent:
+  1. Phase 1 SCOPE  → writes research/scope.json (target=TNF-alpha, modality=VHH, depth=quick)
+  2. Phase 2 PLAN   → writes research/research_plan.json
+  3. Phase 3 RETRIEVE → calls 4 research_* MCP tools in parallel, writes sources.json
+  4. Phase 4 TRIANGULATE → writes validated_findings.json
+  5. Phase 5 SYNTHESIZE → drafts research.md
+  6. Phase 6 CRITIQUE  → 3 personas, writes critique.json
+  7. Phase 7 REFINE   → closes gaps, updates sources.json + validated_findings.json
+  8. Phase 8 PACKAGE  → writes research.md + recommended_hotspots.json + design_recommendation.json
+
+Expected: 10-15 sources, 3+ HIGH confidence findings, 5-10 hotspot residues,
+         design_recommendation.json with modality/protocol/tier ready for campaign-manager.
+```
+
+## Inputs
+
+**Required:**
+- **Target identifier** (one of):
+  - Common name (e.g., `"TNF-alpha"`, `"PD-L1"`, `"HER2"`)
+  - UniProt accession (e.g., `"P01375"`) — most specific, preferred
+  - Gene name (e.g., `"TNFSF2"`)
+  - PDB ID (e.g., `"7S4S"`) — auto-derives UniProt
+- **Campaign directory** — path under `campaigns/{target}/campaign_{date}_{id}/` where outputs land
+
+**Optional:**
+- **Organism** — defaults to `Homo sapiens`. Specify for non-human orthologs.
+- **Modality preference** — `VHH` / `scFv` / `Fab` / `de_novo`. Influences scaffold search.
+- **Research depth** — `quick` / `standard` / `deep` / `ultradeep`. Auto-selected from indicator heuristics if absent (see depth table).
+- **Therapeutic area** — narrows literature search.
+- **Known information** — prior facts the user already has; skip redundant retrieval.
+- **Existing checkpoint** — `research/research_progress.json` from a paused session.
+
+See `references/literature-search-strategy.md` for query construction by organism/protein class.
+
+## Outputs
+
+All outputs go to the campaign directory at `campaigns/{target}/campaign_{date}_{id}/research/`:
+
+| File | Type | Phase | Purpose |
+|------|------|-------|---------|
+| `scope.json` | JSON | 1 | Research boundaries (target, organism, modality, depth) |
+| `research_plan.json` | JSON | 2 | Search strategy, priority order, time budget |
+| `sources.json` | JSON | 3, 7 | All retrieved sources with credibility scores |
+| `validated_findings.json` | JSON | 4, 7 | Cross-validated findings with confidence (HIGH/MEDIUM/LOW/CONTRADICTED) |
+| `critique.json` | JSON | 6 | Multi-persona red team concerns with severity |
+| `research_progress.json` | JSON | Every | Checkpoint for resume (current phase, completed phases, phase outputs) |
+| `research.md` | Markdown | 8 | Final formatted report — feeds campaign_plan.md |
+| `recommended_hotspots.json` | JSON | 8 | Residue list with range notation for design agent |
+| `design_recommendation.json` | JSON | 8 | Modality, protocol, scaffolds, tier, budget for campaign-manager |
+
+The two **downstream-critical** outputs are `recommended_hotspots.json` (consumed by `by-epitope-analysis`) and `design_recommendation.json` (consumed by `by-campaign-manager`).
+
+## Clarification Questions
+
+⚠️ **CRITICAL: ASK THIS FIRST** — confirm you have a usable target identifier and campaign directory before doing any retrieval.
+
+1. **Target identifier (ASK THIS FIRST)** — What is the target? Provide a UniProt accession if available, otherwise common name + organism. Without this, no retrieval is possible.
+2. **Campaign directory** — Where should research outputs land? Default is `campaigns/{target}/campaign_{YYYYMMDD}_{nnn}/research/`. Confirm the path or let the campaign-manager skill allocate one.
+3. **Modality preference** — VHH / scFv / Fab / de novo? Influences SAbDab scaffold filtering and the design recommendation. If unknown, the skill suggests based on target class.
+4. **Research depth** — Quick / Standard / Deep / UltraDeep? If unspecified, auto-select using the indicator heuristics (PDB/SAbDab/PubMed counts).
+5. **Therapeutic area or use case** — Autoimmune? Oncology? Diagnostics? Narrows the PubMed search and risk assessment.
+6. **Known prior art to include** — Has the user already identified key papers or structures? Add them as seed sources to avoid re-discovery.
+7. **Time budget** — Hard deadline? Sets which phases can be skipped if time runs low (see `references/methodology.md` Time Management).
+
+## Standard Workflow
+
+🚨 **MANDATORY: USE THE 8-PHASE PIPELINE EXACTLY AS DEFINED — DO NOT COMBINE OR SKIP PHASES** 🚨
+
+The 8-phase pipeline (SCOPE → PLAN → RETRIEVE → TRIANGULATE → SYNTHESIZE → CRITIQUE → REFINE → PACKAGE) is defined in the next section. Each phase has a discrete output written to the campaign directory. After every phase, update `research_progress.json` before moving on.
+
+**Discipline:**
+- ✅ Write the phase's JSON output before claiming the phase is complete
+- ✅ Update `research_progress.json` after every phase (it is the source of truth for resume)
+- ✅ Run RETRIEVE-stage tool calls in parallel where possible (single message, multiple tool calls)
+- ❌ Do NOT skip Phase 4 (TRIANGULATE) — without it, downstream confidence values are invented
+- ❌ Do NOT skip Phase 6 (CRITIQUE) for non-Quick depths — it catches the failure modes that waste compute
+- ❌ Do NOT write `research.md` from memory after phases finish — it must cite `sources.json` entries
 
 ## Research Depth
 
@@ -463,3 +580,112 @@ These are non-negotiable:
 
 For detailed methodology including database priority, query construction, and
 cross-validation rules, read `references/methodology.md`.
+
+---
+
+## When Scripts Fail
+
+This skill ships two scripts (`scripts/research_report_template.md` and
+`scripts/summarize_research.py`). If they fail, follow the standard hierarchy:
+
+1. **Fix and Retry (90%)** — Most failures are a missing dependency or wrong path.
+   - `summarize_research.py` only depends on Python stdlib (`json`, `argparse`, `pathlib`).
+     If it errors, check the input JSON path and run again.
+   - The template is a static markdown file — copy it, fill it, save.
+2. **Modify Script (5%)** — Edit the script in place if the report layout needs an
+   extra section or the summary needs a new field. Keep the CLI signature stable.
+3. **Use as Reference (4%)** — If the campaign needs a substantially different
+   report format, read the template, adapt the structure inline, but still cite
+   `sources.json` entries.
+4. **Write from Scratch (1%)** — Only if the 8-phase outputs cannot be reconciled
+   with the template (rare). Document why in `research/notes.md`.
+
+If the MCP retrieval tools fail (Phase 3), fall back per the database fallback chain
+in `CLAUDE.md`: research_* MCP → by-pdb/by-uniprot/by-sabdab MCP → PubMed/bioRxiv → WebSearch.
+Never silently substitute web search for structured databases.
+
+---
+
+## Common Issues
+
+| Issue | Cause | Solution | Details |
+|-------|-------|----------|---------|
+| `research_get_target_info` returns no UniProt hit | Common name matches multiple species or is ambiguous (e.g., "TNF") | Disambiguate with organism + canonical name (`"TNF-alpha"` + `"Homo sapiens"`) or pass UniProt accession directly | `references/literature-search-strategy.md` |
+| Fewer than 5 sources after Phase 3 | Query too narrow; "antibody" filter excludes general biology | Drop modality modifier, expand date range, search by gene family | `references/methodology.md` Query Construction |
+| `validated_findings.json` has 0 HIGH confidence findings | Single-source evidence only; no cross-validation possible | Phase 4 gate failure — proceed with caveat banner; recommend Preview tier only | `references/quality-gates.md` Phase 4 gate |
+| Conflicting affinity values across papers | Different assay formats (SPR vs ELISA vs computational) | Report as range; prefer SPR/BLI; flag CONTRADICTED if assay formats are equivalent | `references/methodology.md` Cross-Validation |
+| SAbDab returns 0 antibodies for known therapeutic target | SAbDab antigen_name uses long-form names | Retry with full name (`"tumor necrosis factor"` not `"TNF-alpha"`) | `references/methodology.md` Known Binders Query |
+| Context compacted mid-research | Long retrieval phases exhaust context window | Read `research/research_progress.json` first, then load only the JSON outputs you need to continue | `references/checkpoint-recovery.md` |
+| Phase 6 critique surfaces a CRITICAL concern | Adversarial Reviewer found a contradicting source set | Return to Phase 3 with targeted query addressing the contradiction; max 2 iterations | `references/checkpoint-recovery.md` Invalidating Downstream Phases |
+| Hotspots include glycosylation site (e.g., N-linked NXS/T) | BoltzGen does not model glycans by default | Implementation Engineer persona flags it in Phase 6 — shift hotspot window or document as a risk | SKILL.md Phase 6 |
+| PDB structure resolution > 3.5 A used for interface residues | Low-resolution structure has unreliable side-chain rotamers | Demote to MEDIUM confidence; require corroboration from mutagenesis or higher-resolution homolog | `references/quality-gates.md` Resolution-adjusted |
+| `research.md` contains a claim with no `[src_XXX]` citation | Phase 5 synthesis drifted from sources | Phase 8 gate — remove or demote claim; if claim is critical, re-retrieve to back it | `references/quality-gates.md` Phase 8 gate |
+| Computational prediction cited as experimental fact | Failed to label AlphaFold / docking output | Edit `sources.json` to set `type: "computational_prediction"` and credibility 0.50; relabel in prose as "predicted" | SKILL.md Anti-Hallucination Rules |
+| Resume from checkpoint loads wrong phase | `research_progress.json` not updated after last completed phase | Recompute `current_phase` from the largest key in `phase_outputs` + 1; rewrite the checkpoint | `references/checkpoint-recovery.md` Checkpoint Format |
+| UltraDeep mode times out before Phase 8 | 2-3 iterations of 3-7 exceed time budget | Cap iterations at 2; if still under-supported, package with explicit "preliminary" flag and Uncertainties section | `references/methodology.md` Time Management |
+
+---
+
+## Best Practices
+
+1. 🚨 **CRITICAL: Always run Phase 1 (SCOPE) before any retrieval.** Skipping scope leads to scope creep and wasted MCP calls.
+2. ✅ **REQUIRED: Update `research_progress.json` after every phase.** It is the only resilient resume mechanism.
+3. ✅ **REQUIRED: Cite every claim in `research.md` with a `[src_XXX]` reference.** Phase 8 gate enforces this; do not bypass.
+4. ✅ Run Phase 3 retrieval tools in parallel (single message, multiple MCP calls) — saves 60-80% wall time.
+5. ✅ Prefer UniProt accession over common name when calling `research_get_target_info` — disambiguates species.
+6. ✅ Label every computational source explicitly (`"predicted (AlphaFold)"`) — never present as experimental.
+7. ✅ Use the Implementation Engineer persona in Phase 6 to catch BoltzGen-specific topology issues (glycans, disordered loops).
+8. ❌ Do NOT skip Phase 4 even when you "already know" the findings agree — write them down explicitly.
+9. ❌ Do NOT fabricate PDB IDs, UniProt accessions, PMIDs, or affinity values. If a search returns no results, say "no data found."
+10. ✨ **Optional:** After Phase 8, persist novel target insights to `.claude/memory/` for reuse in future campaigns on the same target family.
+
+---
+
+## Suggested Next Steps
+
+After completing this skill, chain into these skills in order:
+
+1. **`by-epitope-analysis`** — consumes `recommended_hotspots.json` and runs deeper structural analysis on the proposed hotspot window (SASA, conservation, druggability). Use this whenever the design will target a specific epitope region.
+2. **`by-campaign-manager`** — consumes `design_recommendation.json` and writes `campaign_plan.md` with budget, scaffolds, fold validation criteria, and submission plan. Required before any compute is committed.
+3. **`by-hypothesis-debate`** (optional) — if the research yielded multiple viable design strategies, run a hypothesis debate before locking in the modality.
+4. **`by-design-workflow`** — orchestrates the full Research → Plan → Approve → Design → Screen → Rank pipeline; this skill is its Research stage.
+
+The chain works because each downstream skill expects exactly the JSON shapes this skill writes. Bypassing this skill and writing the JSON files by hand is permitted only when a validated target report already exists.
+
+---
+
+## Related Skills
+
+**Upstream (run before this):**
+- `by-session` — initializes the BY project, ensures campaign directory exists.
+
+**Downstream (run after this):**
+- `by-epitope-analysis` — deeper structural hotspot characterization.
+- `by-campaign-manager` — converts research into a budgeted campaign plan.
+- `by-design-workflow` — orchestrates the full design pipeline.
+
+**Alternative / complementary:**
+- `by-database` — direct database queries for one-off lookups without the 8-phase overhead.
+- `by-knowledge` — project knowledge graph for cross-campaign learnings on similar targets.
+- `by-hypothesis-debate` — adversarial strategy selection when multiple design paths are viable.
+
+---
+
+## References
+
+**Detailed documentation:**
+- [`references/methodology.md`](references/methodology.md) — database priority, query construction, cross-validation rules, anti-hallucination details, time management.
+- [`references/quality-gates.md`](references/quality-gates.md) — credibility scoring, confidence levels, minimum thresholds by depth, gate failure actions.
+- [`references/literature-search-strategy.md`](references/literature-search-strategy.md) — search strategy by organism/protein class, database-first decisions, query patterns, confidence tiering.
+- [`references/checkpoint-recovery.md`](references/checkpoint-recovery.md) — checkpoint format, resume protocol, invalidating downstream phases when upstream findings change.
+
+**Scripts:**
+- [`scripts/research_report_template.md`](scripts/research_report_template.md) — fillable markdown template covering all 8 phases.
+- [`scripts/summarize_research.py`](scripts/summarize_research.py) — CLI that reads 8-phase checkpoint outputs and writes a one-page markdown summary for inclusion in `campaign_plan.md`.
+
+**External documentation:**
+- PDB: https://www.rcsb.org/
+- UniProt: https://www.uniprot.org/
+- SAbDab: https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/
+- PubMed: https://pubmed.ncbi.nlm.nih.gov/
+- bioRxiv: https://www.biorxiv.org/

@@ -37,8 +37,8 @@ Delegate to a **by-environment** agent (model per profile table above):
 > Scan the compute environment and produce a complete inventory.
 >
 > **Local tools** — check env vars and PATH for installed tools:
-> - proteus-fold (Protenix): `$PROTEUS_FOLD_DIR` or `which protenix`
-> - proteus-prot (PXDesign): `$PROTEUS_PROT_DIR` or `which pxdesign`
+> - Protenix: `$PROTEUS_FOLD_DIR` or `which protenix`
+> - PXDesign: `$PROTEUS_PROT_DIR` or `which pxdesign`
 > - boltzgen: `$PROTEUS_AB_DIR` or `which boltzgen`
 >
 > **GPU** — run `nvidia-smi` if available. Report:

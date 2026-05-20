@@ -47,13 +47,15 @@ mkdir my-campaign && cd my-campaign
 npx blatant-why init
 ```
 
-This scaffolds everything: 11 MCP servers, 16 agents, 14 skills, 11 slash commands, and a CLAUDE.md orchestration file. Takes about 30 seconds.
+This scaffolds everything: 11 MCP servers, 21 agents, 19 skills, 13 slash commands, and a CLAUDE.md orchestration file. Takes about 30 seconds.
 
-### 3. Add your API key
+### 3. (Optional) Configure compute
+
+BY defaults to **local GPU** if one is available. Otherwise the first-run questionnaire will help you pick between local, HPC (RunPod / Modal / SLURM), or Tamarind cloud. See *Compute Options* below.
 
 ```bash
 cp .env.example .env
-# Open .env and add your Tamarind key (see Compute Setup below)
+# Add keys for whichever compute provider you'll use
 ```
 
 ### 4. Start designing
@@ -86,7 +88,7 @@ That's it. Claude Code handles the rest -- research, design, screening, and rank
 
 ## What It Does
 
-Give it a target protein. It researches across PDB, UniProt, and SAbDab. It plans a design campaign. It submits compute jobs to Tamarind Bio (free tier, no GPU required). It screens every design for structural quality, sequence liabilities, and developability. It ranks candidates by composite score. You get a table of lab-ready binders.
+Give it a target protein. It researches across PDB, UniProt, and SAbDab. It plans a design campaign with statistical-strategy debate when the target is novel. It runs compute jobs on your local GPU (default), on your HPC (RunPod / Modal / SLURM via the `by-deploy-compute` skill), or on Tamarind Bio cloud. It screens every design for structural quality, sequence liabilities, and developability. It ranks candidates by composite score. When you submit them to the lab and the results come back, it ingests the CSVs, diagnoses which in-silico features predicted reality, and feeds the calibration back into the next round.
 
 The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor lock-in.
 
@@ -96,10 +98,10 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 
 | Component | Count | Description |
 |-----------|-------|-------------|
-| MCP Servers | 11 | Biological databases, cloud compute, screening, campaign state, knowledge store |
-| Agents | 16 | Research, design, screening, evaluation, lab integration, and more |
-| Skills | 14 | BoltzGen, Protenix, PXDesign, scoring, epitope analysis, campaign management |
-| Slash Commands | 11 | Campaign control from the Claude Code prompt |
+| MCP Servers | 11 | Biological databases, compute (local + HPC + cloud), screening, campaign state, knowledge store |
+| Agents | 21 | Research, design, screening, evaluation, lab integration, prior-art, sequence/structure/epitope researchers |
+| Skills | 19 | BoltzGen, Protenix, PXDesign, scoring, screening, campaign management, HPC deployment, wet-lab feedback, mechanistic reasoning |
+| Slash Commands | 13 | Campaign control from the Claude Code prompt |
 
 <details>
 <summary><strong>MCP Servers (11)</strong></summary>
@@ -121,12 +123,17 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 </details>
 
 <details>
-<summary><strong>Agents (16)</strong></summary>
+<summary><strong>Agents (21)</strong></summary>
 
 | Agent | Role |
 |-------|------|
-| `by-research` | Target analysis, literature review, prior art |
-| `by-design` | Generate designs via cloud or local pipelines |
+| `by-research` | Target analysis, literature review, prior art (8-phase research pipeline) |
+| `by-prior-art-researcher` | Prior-art deep dive for novel targets |
+| `by-sequence-researcher` | Sequence-level analysis (orthologs, conservation, motifs) |
+| `by-structure-researcher` | Structural analysis (PDB, AlphaFold, conformations) |
+| `by-epitope-researcher` | Epitope-focused literature and structural research |
+| `by-research-synthesizer` | Synthesize outputs from the research sub-agents |
+| `by-design` | Generate designs via local, HPC, or cloud pipelines |
 | `by-screening` | Score, filter, rank candidates |
 | `by-evaluator` | Structural evaluation and quality assessment |
 | `by-visualization` | Structure and results visualization |
@@ -145,24 +152,31 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 </details>
 
 <details>
-<summary><strong>Skills (14)</strong></summary>
+<summary><strong>Skills (19)</strong></summary>
 
-| Skill | Description |
-|-------|-------------|
-| `boltzgen` | BoltzGen antibody/nanobody generation |
-| `protenix` | Protenix structure prediction |
-| `pxdesign` | PXDesign de novo binder design |
-| `by-scoring` | ipSAE + p_bind composite scoring |
-| `by-screening` | Full screening battery |
-| `by-epitope-analysis` | Epitope mapping and analysis |
-| `by-campaign-manager` | Campaign state and lifecycle |
-| `by-campaign-optimizer` | Active learning and iteration |
-| `by-design-workflow` | End-to-end design pipeline |
-| `by-research` | Target research and literature |
-| `by-knowledge` | Campaign knowledge operations |
-| `by-database` | Local results database |
-| `by-failure-diagnosis` | Pipeline failure analysis |
-| `by-hypothesis-debate` | Multi-agent hypothesis evaluation |
+| Skill | Category | Description |
+|-------|----------|-------------|
+| `boltzgen` | tool | BoltzGen antibody/nanobody generation |
+| `protenix` | tool | Protenix structure prediction (AF3-class) |
+| `pxdesign` | tool | PXDesign de novo binder design |
+| `by-design-workflow` | orchestration | Tool routing + intent → preset matrix |
+| `by-campaign-manager` | orchestration | Campaign state, checkpoints, cost model |
+| `by-research` | research | 8-phase research pipeline with confidence tiers |
+| `by-database` | research | PDB / UniProt / SAbDab lookups |
+| `by-epitope-analysis` | research | Hotspot scoring + interface classification |
+| `by-hypothesis-debate` | strategy | 3+1 agent topology for novel-target strategy selection |
+| `by-scoring` | scoring | ipSAE algorithm + composite scoring |
+| `by-screening` | filtering | Full screening battery, liability + developability rules |
+| `by-failure-diagnosis` | analysis | Mann-Whitney U statistical failure analysis |
+| `by-experiment-results` | analysis | **NEW.** Ingest lab CSV/Excel, diagnose in-silico vs lab divergence, close design → screen → lab → learn loop |
+| `by-causal-reasoning` | analysis | **NEW.** Evidence-anchored mechanistic hypotheses from knowledge graph |
+| `by-campaign-optimizer` | optimization | Active learning + RF feature importance |
+| `by-knowledge` | persistence | Campaign knowledge graph (entities + relationships) |
+| `by-session` | session | Session init, config questionnaire, resume protocol |
+| `by-display` | display | Canonical output formats (banners, score bars, status tables) |
+| `by-deploy-compute` | deployment | **NEW.** Deploy Protenix / BoltzGen / PXDesign on local GPU, RunPod, Modal, or SLURM |
+
+See [`templates/.claude/skills/README.md`](templates/.claude/skills/README.md) for the canonical terminology table and full skill-linkage map.
 
 </details>
 
@@ -193,37 +207,48 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 
 | Key | Required? | Where to get it | What it enables |
 |-----|-----------|-----------------|-----------------|
-| `TAMARIND_API_KEY` | Recommended | [tamarind.bio](https://tamarind.bio) (free account) | Cloud compute -- BoltzGen, Protenix, 200+ models. Free tier: 10 jobs/month |
+| `RUNPOD_API_KEY` | Optional | [runpod.io](https://runpod.io) | On-demand HPC GPU pods (~$0.40–$2.50/hr depending on GPU). Used by the `by-deploy-compute` skill. |
+| `TAMARIND_API_KEY` | Optional | [tamarind.bio](https://tamarind.bio) (free account) | Cloud compute fallback — BoltzGen, Protenix, 200+ models. Free tier: 10 jobs/month |
 | `ADAPTYV_API_TOKEN` | Optional | [adaptyvbio.com](https://www.adaptyvbio.com) | Lab testing submission (triple-gated) |
 
 Claude Code handles its own authentication. No separate Anthropic API key needed.
+
+**No keys needed for local-GPU mode** — if you have an NVIDIA card with enough VRAM, BY can run the whole pipeline without any cloud service.
 
 ### Configure your environment
 
 After `npx blatant-why init`:
 
-1. Copy `.env.example` to `.env`
-2. Add your Tamarind key:
-   ```
-   TAMARIND_API_KEY=your_key_here
-   ```
-3. For local GPU (optional):
+1. Copy `.env.example` to `.env`.
+2. **For local GPU (default)** — set the tool paths:
    ```
    PROTEUS_FOLD_DIR=/path/to/Protenix
    PROTEUS_PROT_DIR=/path/to/PXDesign
    PROTEUS_AB_DIR=/path/to/boltzgen
    ```
-4. For SSH remotes (optional):
-   Add host configs to `.by/config.json`
+3. **For HPC** (RunPod, Modal, SLURM) — add your provider key and let the `by-deploy-compute` skill handle deployment:
+   ```
+   RUNPOD_API_KEY=your_key_here   # or modal token, etc.
+   ```
+4. **For Tamarind cloud fallback** — add the API key:
+   ```
+   TAMARIND_API_KEY=your_key_here
+   ```
+5. **For SSH remotes** — add host configs to `.by/config.json` (`compute.ssh_hosts`).
+
+The first-run questionnaire (run by the `by-session` skill on session open) walks through this interactively. Default `compute.default_provider` is `"local"`; priority order is `["local", "hpc", "tamarind"]`.
 
 ### Compute Options
 
+BY defaults to local GPU. The `by-deploy-compute` skill knows how to deploy Protenix / BoltzGen / PXDesign (and supplementary tools like AlphaFold, RFAntibody, ImmuneBuilder, ThermoMPNN, Boltz-2) on any of the targets below.
+
 | Provider | Cost | Setup | Best for |
 |----------|------|-------|----------|
-| **Tamarind Bio** | Free tier: 10 jobs/month | Just add API key | Getting started, small campaigns |
-| **Tamarind Paid** | Pay per job | Same API key | Production campaigns |
-| **Local GPU** | Your hardware | Install tools + set env vars | Power users with GPUs |
-| **SSH Remote** | Your infrastructure | Configure in `.by/config.json` | HPC clusters, cloud GPUs |
+| **Local GPU** *(default)* | Your hardware | Install tools + set env vars | Power users with GPUs |
+| **RunPod** | ~$0.40–$2.50/hr GPU pods | `RUNPOD_API_KEY` + `by-deploy-compute` | On-demand HPC bursts |
+| **Modal** | Serverless, free tier | Modal token + `by-deploy-compute` | Cold-start-tolerant batch jobs |
+| **SSH Remote** | Your infrastructure | Configure in `.by/config.json` | HPC clusters, in-house GPUs |
+| **Tamarind Bio** | Free tier: 10 jobs/month | `TAMARIND_API_KEY` | Cloud fallback when no local GPU |
 
 <details>
 <summary><strong>Setting up Tamarind Bio (recommended -- no GPU needed)</strong></summary>
@@ -356,9 +381,9 @@ You can also use slash commands for more control:
 flowchart TB
     User([User]) -->|prompt| Claude[Claude Code + CLAUDE.md]
 
-    Claude -->|delegates| Agents[16 Agents]
-    Claude -->|invokes| Skills[14 Skills]
-    Claude -->|slash cmds| Commands[11 Commands]
+    Claude -->|delegates| Agents[21 Agents]
+    Claude -->|invokes| Skills[19 Skills]
+    Claude -->|slash cmds| Commands[13 Commands]
 
     Agents --> MCP[11 MCP Servers]
     Skills --> MCP
@@ -369,9 +394,10 @@ flowchart TB
         SAbDab[(SAbDab)]
     end
 
-    subgraph Compute["Compute"]
-        Tamarind["Tamarind Bio -- Free Cloud"]
-        LocalGPU["Local GPU -- Optional"]
+    subgraph Compute["Compute (local-first)"]
+        LocalGPU["Local GPU -- Default"]
+        HPC["HPC: RunPod / Modal / SLURM"]
+        Tamarind["Tamarind Bio -- Cloud Fallback"]
     end
 
     subgraph Models["Models"]
@@ -414,15 +440,32 @@ flowchart TB
 <details>
 <summary><strong>Learning System</strong></summary>
 
-Every campaign writes results to a JSON knowledge store. The knowledge MCP server provides keyword search over past campaigns, so the system learns which design strategies work for which target classes.
+Every campaign writes results to a JSON knowledge store. The `by-knowledge` skill provides structured queries (entity types, relationships) over past campaigns, so the system learns which design strategies work for which target classes.
 
 Stored per campaign:
-- Target metadata and research context
+- Target metadata and research context (with HIGH / MEDIUM / SPECULATIVE confidence tiers)
 - Design parameters and compute profiles
 - Screening results and composite scores
-- Success/failure annotations
+- Lab outcomes (via `by-experiment-results` — see below)
+- Validated / contradicted / inconclusive findings
 
 Over time, the agent develops institutional memory about what works.
+
+</details>
+
+<details>
+<summary><strong>Design → Screen → Lab → Learn loop</strong></summary>
+
+BY closes the loop between in-silico predictions and wet-lab reality:
+
+1. `by-screening` flags candidates as PASS in silico.
+2. You submit them to the lab (Adaptyv Bio or your own).
+3. Lab results arrive as CSV/Excel.
+4. `by-experiment-results` ingests the readouts, joins with the original in-silico features, and runs **Mann-Whitney U** stratified by REAL lab outcome — identifying which in-silico features actually predicted reality and which didn't.
+5. The calibration report goes to `by-campaign-optimizer` (which retrains the active-learning model) and to `by-knowledge` (storing validated/contradicted findings with confidence tiers).
+6. `by-causal-reasoning` produces evidence-anchored mechanistic hypotheses for any persistent failure pattern, ranked with HIGH / MEDIUM / SPECULATIVE confidence and falsifiable predictions. Confidence is assigned mechanically by an evidence-precedence table — the LLM only fills the claim and prediction slots, not the confidence scoring.
+
+This is what separates a designer from a scientist.
 
 </details>
 
@@ -437,9 +480,9 @@ blatant-why/
 │   └── proteus_cli/         # Python CLI (scoring, screening, campaign)
 ├── templates/               # Deployed by init CLI
 │   └── .claude/
-│       ├── agents/          # 16 specialized agents
-│       ├── commands/by/     # 11 slash commands
-│       ├── skills/          # 14 skills
+│       ├── agents/          # 21 specialized agents
+│       ├── commands/by/     # 13 slash commands
+│       ├── skills/          # 19 skills (see skills/README.md for catalog)
 │       └── mcp_servers/     # 11 MCP server implementations
 ├── tests/                   # Test suite
 ├── CLAUDE.md                # Agent orchestration rules

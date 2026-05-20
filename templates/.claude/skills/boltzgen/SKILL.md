@@ -44,11 +44,11 @@ User wants a binder...
 │   ├── YES, full antibody (VH/VL Fab)
 │   │   └── boltzgen  protocol: antibody-anything
 │   └── NO, any format acceptable
-│       └── Consider proteus-prot (de novo miniprotein) first;
-│           switch to boltzgen if proteus-prot fails
+│       └── Consider PXDesign (de novo miniprotein) first;
+│           switch to boltzgen if PXDesign fails
 │
 ├── Need to validate an existing antibody structure?
-│   └── Use proteus-fold instead
+│   └── Use Protenix instead
 │
 └── Need to score an existing antibody design?
     └── Use by-scoring skill (ipSAE)
@@ -267,7 +267,7 @@ before the expensive Protenix refolding step. Recommended for production runs
 |---------|-------------|-----|
 | `FileNotFoundError` on model weights | `PROTEUS_MODELS_DIR` not set or wrong path | Verify `~/.cache/boltzgen` exists with weights |
 | CUDA out of memory | GPU VRAM insufficient | Reduce `--num_designs` or `--budget`; use smaller batch |
-| All designs have ipTM < 0.4 | Bad epitope selection or target issue | Re-examine binding residues; verify target with proteus-fold |
+| All designs have ipTM < 0.4 | Bad epitope selection or target issue | Re-examine binding residues; verify target with Protenix |
 | No CSV output found | Run failed silently or wrong output path | Check stderr; look recursively for `final_designs_metrics_*.csv` |
 | Very similar sequences across all designs | Budget too low or diversity not explored | Increase `--budget`; try different binding residues |
 | `LAYERNORM_TYPE` error | Env var missing | Export `LAYERNORM_TYPE=openfold` before running |

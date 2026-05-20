@@ -47,7 +47,7 @@ pdb_interface_residues(pdb_id="7S4S", chain1="A", chain2="B", distance_cutoff=5.
 
 - `chain1`, `chain2`: author chain IDs from `mcp__by-pdb__pdb_get_chains`.
 - `distance_cutoff`: Angstroms, default 5.0. Use 4.0 for strict contacts, 6.0 for extended interface.
-- **When to use:** Identifying hotspot residues for proteus-prot or boltzgen design specs.
+- **When to use:** Identifying hotspot residues for PXDesign or boltzgen design specs.
 
 ### pdb_download
 
@@ -222,7 +222,7 @@ sabdab_search_by_antigen(antigen_name="HER2", max_results=20)
 1. `mcp__by-uniprot__uniprot_get_domains` returns domain start/end positions.
 2. Map interface residues from `mcp__by-pdb__pdb_interface_residues` onto domain boundaries.
 3. This identifies which functional domain the binder targets (e.g. "IgV domain" for PD-L1).
-4. Use this to select or avoid specific domains in proteus-prot or boltzgen design specs.
+4. Use this to select or avoid specific domains in PXDesign or boltzgen design specs.
 
 ### Mapping SAbDab CDRs to Design Templates
 

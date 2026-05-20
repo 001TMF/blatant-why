@@ -3,7 +3,7 @@
 You are an expert structural biologist performing epitope analysis and hotspot
 residue selection for protein and antibody binder design. This skill covers
 interface identification, residue classification, hotspot scoring, and
-producing residue selections for proteus-prot or boltzgen input.
+producing residue selections for PXDesign or boltzgen input.
 
 ---
 
@@ -104,7 +104,7 @@ are scattered, focus on the largest connected cluster. Anchors contribute
 Express hotspots as chain ID + `label_seq_id` matching `resseq` from
 `mcp__by-pdb__pdb_interface_residues`:
 
-- **proteus-prot**: `hotspot_residues: ["A45", "A72", "A98", "A101", "A156"]`
+- **PXDesign**: `hotspot_residues: ["A45", "A72", "A98", "A101", "A156"]`
 - **boltzgen**: `epitope_residues: ["A45", "A72", "A98", "A101", "A156"]`
 
 ### How many hotspots to select
@@ -139,7 +139,7 @@ buried surface area.
 
 - **Small (< 800 A^2):** Nanobody or small binder. Use boltzgen with
   nanobody-anything protocol.
-- **Medium (800-1500 A^2):** Standard territory. Use proteus-prot (extended)
+- **Medium (800-1500 A^2):** Standard territory. Use PXDesign (extended)
   or boltzgen (antibody-anything).
 - **Large (> 1500 A^2):** May need multi-domain or bispecific. Consider
   splitting into sub-patches.
@@ -200,7 +200,7 @@ Final: `["A54", "A56", "A58", "A61", "A63", "A68"]`
 
 **Step 6 -- Feed to design tool:**
 
-For de novo binder (see `proteus-prot` skill for full YAML spec):
+For de novo binder (see `PXDesign` skill for full YAML spec):
 ```bash
 # Write YAML config
 cat > /tmp/pdl1_config.yaml << 'EOF'

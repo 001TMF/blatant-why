@@ -6,14 +6,14 @@ description: >
   designed binders by refolding, (3) Generating confidence metrics (ipTM, pTM, pLDDT),
   (4) Multi-seed ensemble validation, (5) Predicting protein-ligand complexes.
 
-  For design generation, use proteus-prot or boltzgen instead.
+  For design generation, use PXDesign or boltzgen instead.
   For scoring existing predictions, use by-scoring.
   For full pipeline orchestration, use by-design-workflow.
 category: tool
 tags: [structure-prediction, protenix, fold, validation, confidence]
 ---
 
-# proteus-fold — Structure Prediction Skill
+# Protenix — Structure Prediction Skill
 
 Protenix v1 is an AF3-class structure prediction model (368M params). This skill
 teaches you to run predictions via the CLI using the Write → Bash → Read pattern.
@@ -37,19 +37,19 @@ teaches you to run predictions via the CLI using the Write → Bash → Read pat
 User wants to...
 |
 +-- Predict structure from sequence(s)
-|   --> proteus-fold (this skill)
+|   --> Protenix (this skill)
 |
 +-- Validate a designed binder (refold test)
-|   --> proteus-fold with binder + target chains
+|   --> Protenix with binder + target chains
 |
 +-- Get confidence metrics (ipTM, pLDDT, pTM)
-|   --> proteus-fold, then read confidence JSON
+|   --> Protenix, then read confidence JSON
 |
 +-- Predict protein-ligand complex
-|   --> proteus-fold with ligand entity type
+|   --> Protenix with ligand entity type
 |
 +-- Design a NEW binder
-|   --> NOT this skill. Use proteus-prot or boltzgen
+|   --> NOT this skill. Use PXDesign or boltzgen
 ```
 
 ---
@@ -313,6 +313,6 @@ Step 3 — Read confidence JSON from each seed directory.
 
 ## 11. Integration with Other Skills
 
-- **After proteus-fold:** Use `by-scoring` for ipSAE from PAE matrices, `by-screening` for full liability battery.
-- **Before proteus-fold:** Use `by-database` to fetch target sequences from PDB/UniProt.
-- **Workflow context:** `by-design-workflow` orchestrates when to call proteus-fold in the overall pipeline.
+- **After Protenix:** Use `by-scoring` for ipSAE from PAE matrices, `by-screening` for full liability battery.
+- **Before Protenix:** Use `by-database` to fetch target sequences from PDB/UniProt.
+- **Workflow context:** `by-design-workflow` orchestrates when to call Protenix in the overall pipeline.

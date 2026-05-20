@@ -54,10 +54,14 @@ check ".claude/mcp_servers/screening/server.py"
 check ".claude/mcp_servers/knowledge/server.py"
 check ".claude/mcp_servers/cloud/server.py"
 
-# Skills (spot check)
-check ".claude/skills/boltzgen/SKILL.md"
-check ".claude/skills/protenix/SKILL.md"
-check ".claude/skills/by-scoring/SKILL.md"
+# Skills — verify all 17 shipped skills exist
+for skill in boltzgen protenix pxdesign \
+             by-campaign-manager by-campaign-optimizer by-database \
+             by-deploy-compute by-design-workflow by-display \
+             by-epitope-analysis by-failure-diagnosis by-hypothesis-debate \
+             by-knowledge by-research by-scoring by-screening by-session; do
+  check ".claude/skills/${skill}/SKILL.md"
+done
 
 # Settings.json has MCP servers
 if grep -q "by-pdb" .claude/settings.json 2>/dev/null; then

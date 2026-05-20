@@ -1,6 +1,6 @@
 # BY Screening Skill
 
-Comprehensive screening battery for evaluating protein binder and antibody designs produced by proteus-prot (PXDesign) and boltzgen (BoltzGen). This skill encodes all quality filters, scoring thresholds, liability checks, and developability assessments used to triage designs before experimental validation.
+Comprehensive screening battery for evaluating protein binder and antibody designs produced by PXDesign (PXDesign) and boltzgen (BoltzGen). This skill encodes all quality filters, scoring thresholds, liability checks, and developability assessments used to triage designs before experimental validation.
 
 Always run the full screening pipeline before presenting final candidates to the user. Never present unscreened designs as ready for validation.
 
@@ -8,7 +8,7 @@ Always run the full screening pipeline before presenting final candidates to the
 
 ## Structural Screening
 
-Structural confidence metrics come from Protenix (proteus-fold) refolding predictions.
+Structural confidence metrics come from Protenix (Protenix) refolding predictions.
 
 ### ipTM (Interface Predicted TM-score)
 
@@ -273,7 +273,7 @@ The target-design interface is not forming a confident complex. Recovery:
 1. Re-examine the target structure -- epitope accessibility, crystal packing, missing cofactors.
 2. Try different hotspot residues. Current hotspots may not be druggable.
 3. For boltzgen: switch between nanobody-anything and antibody-anything protocols.
-4. For proteus-prot: try the extended preset with more backbone samples.
+4. For PXDesign: try the extended preset with more backbone samples.
 5. Check whether the target is intrinsically disordered at the binding site (AlphaFold pLDDT).
 
 ### All Designs Fail RMSD (> 5.0 A)
@@ -283,7 +283,7 @@ Designs do not refold to their designed conformation. Recovery:
 2. Check if deviations are in loops vs core. Loop RMSD is less concerning.
 3. If pLDDT is high but RMSD is high, design may refold to a different valid conformation.
 4. Reduce design complexity: shorter CDR-H3, fewer mutations from template.
-5. Run proteus-fold on just the design chain (no target) to check intrinsic stability.
+5. Run Protenix on just the design chain (no target) to check intrinsic stability.
 
 ### All Designs Have PTM Liabilities
 

@@ -5,7 +5,7 @@ description: >
   non-antibody protein binders against a target structure. Covers YAML config
   creation, CLI invocation, output parsing, and result interpretation.
   For antibody/nanobody binders, use boltzgen instead.
-  For structure prediction only, use proteus-fold.
+  For structure prediction only, use Protenix.
   For scoring and screening, use by-scoring and by-screening.
 category: tool
 tags: [pxdesign, binder-design, de-novo, protein-design, cli]
@@ -91,7 +91,7 @@ switch to BoltzGen protein-anything as fallback.
 
 ---
 
-## 2. When to Use proteus-prot
+## 2. When to Use PXDesign
 
 ```
 User wants a BINDER that is NOT an antibody/nanobody
@@ -470,7 +470,7 @@ After collecting PXDesign results:
 
 1. **Screen** all designs using the by-screening skill (structural
    confidence, liability checks, developability).
-2. **Refold** top candidates with proteus-fold for independent structure
+2. **Refold** top candidates with Protenix for independent structure
    validation.
 3. **Score** refolded structures with ipSAE (by-scoring skill) for
    interface quality assessment.

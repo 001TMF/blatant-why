@@ -52,12 +52,12 @@ plan at least two rounds with parameter variation.
 
 | Goal | Tool | CLI | Notes |
 |------|------|-----|-------|
-| De novo protein binder | **proteus-prot** | `pxdesign pipeline --preset extended -i config.yaml` | See `proteus-prot` skill |
+| De novo protein binder | **PXDesign** | `pxdesign pipeline --preset extended -i config.yaml` | See `PXDesign` skill |
 | Antibody / nanobody | **boltzgen** | `boltzgen run spec.yaml --protocol <proto>` | See `boltzgen` skill |
-| Structure validation | **proteus-fold** | `protenix pred -i input.json` | See `proteus-fold` skill |
+| Structure validation | **Protenix** | `protenix pred -i input.json` | See `Protenix` skill |
 
 If the user wants an antibody or nanobody scaffold, always use boltzgen. For
-general protein binders (non-immunoglobulin), use proteus-prot. Use proteus-fold
+general protein binders (non-immunoglobulin), use PXDesign. Use Protenix
 for independent structure validation of top candidates.
 
 ### 1.3 Size the Campaign
@@ -135,7 +135,7 @@ Vary one axis at a time to diagnose improvements:
 | Run 3 | Increased budget / diversity alpha | More backbone diversity |
 | Run 4 | Different protocol (e.g., nanobody to antibody) | Scaffold architecture change |
 
-For proteus-prot, vary: hotspot residues, num_designs, preset (preview vs extended).
+For PXDesign, vary: hotspot residues, num_designs, preset (preview vs extended).
 For boltzgen, vary: protocol, budget, diversity_alpha, MSA mode, prefilter toggle.
 
 ### 3.3 Aggregating Cross-Run Results
@@ -153,11 +153,11 @@ For boltzgen, vary: protocol, budget, diversity_alpha, MSA mode, prefilter toggl
 
 | Tool | Operation | Time | GPU Memory |
 |------|-----------|------|------------|
-| **proteus-fold** | Single prediction | 2-5 min | 16-24 GB |
-| **proteus-fold** | 5-seed ensemble | 10-25 min | 16-24 GB |
-| **proteus-prot** | Preview (5-10 designs) | 10-30 min | 24-40 GB |
-| **proteus-prot** | Extended (20-50 designs) | 1-4 hr | 24-40 GB |
-| **proteus-prot** | Production (100+ designs) | 4-12 hr | 24-40 GB |
+| **Protenix** | Single prediction | 2-5 min | 16-24 GB |
+| **Protenix** | 5-seed ensemble | 10-25 min | 16-24 GB |
+| **PXDesign** | Preview (5-10 designs) | 10-30 min | 24-40 GB |
+| **PXDesign** | Extended (20-50 designs) | 1-4 hr | 24-40 GB |
+| **PXDesign** | Production (100+ designs) | 4-12 hr | 24-40 GB |
 | **boltzgen** | Nanobody (10-20 designs) | 30-60 min | 24-40 GB |
 | **boltzgen** | Antibody (20-50 designs) | 1-2 hr | 40-80 GB |
 | **boltzgen** | Large (50-100 designs) | 2-4 hr | 40-80 GB |
@@ -174,7 +174,7 @@ battery for 30 designs takes 3-8 min total.
 total_time = design_generation + (num_designs * screening_per_design) + ranking
 ```
 
-Example -- standard proteus-prot, 30 designs: ~2 hr generation + ~5 min screening
+Example -- standard PXDesign, 30 designs: ~2 hr generation + ~5 min screening
 + ~1 min ranking = **~2 hours 6 min**. Always report estimated time before launching.
 
 ---
@@ -219,8 +219,8 @@ Progress: 12/30 designs | ETA: ~45 min
 
 | Tool | Target Type | Expected | Alarm |
 |------|-------------|----------|-------|
-| **proteus-prot** | Well-studied | 30-60% | < 15% |
-| **proteus-prot** | Novel | 10-30% | < 5% |
+| **PXDesign** | Well-studied | 30-60% | < 15% |
+| **PXDesign** | Novel | 10-30% | < 5% |
 | **boltzgen** (nanobody) | Standard | 20-40% | < 10% |
 | **boltzgen** (antibody) | Standard | 15-35% | < 8% |
 
@@ -249,7 +249,7 @@ Do NOT abort if:
 
 ### 6.4 Post-Campaign Actions
 
-- **Healthy (good scores, >30% pass):** Present top 3-5 candidates. Offer proteus-fold
+- **Healthy (good scores, >30% pass):** Present top 3-5 candidates. Offer Protenix
   ensemble validation. Suggest experimental ordering.
 - **Marginal (acceptable, 15-30% pass):** Present with caveats. Recommend follow-up
   run with varied parameters. Consider production tier.
@@ -262,7 +262,7 @@ Do NOT abort if:
 
 0. Run `/by:plan-campaign` to capture preferences (`campaign_context.json`).
 1. Classify target difficulty (well-studied / moderate / novel).
-2. Select tool (proteus-prot or boltzgen) and protocol.
+2. Select tool (PXDesign or boltzgen) and protocol.
 3. Choose campaign tier (preview first, then escalate).
 4. Identify hotspot residues from epitope analysis.
 5. Estimate compute time and confirm GPU availability.

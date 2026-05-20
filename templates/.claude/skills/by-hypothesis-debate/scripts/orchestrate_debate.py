@@ -517,7 +517,15 @@ def main() -> int:
     parser.add_argument("--research-dir", required=True, type=Path)
     parser.add_argument("--campaign-config", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
-    parser.add_argument("--num-agents", type=int, default=3, choices=[2, 3, 4])
+    parser.add_argument(
+        "--num-agents",
+        type=int,
+        default=3,
+        choices=[2, 3],
+        help="Number of hypothesis agents (conservative/aggressive/diverse). "
+             "Currently caps at 3 — the four-agent variant requires a fourth "
+             "profile in HYPOTHESIS_AGENTS and a directive in build_agent_directive.",
+    )
     parser.add_argument("--tie-break", default="merge", choices=TIE_BREAK_MODES)
     parser.add_argument("--reflection-temperature", type=float, default=0.2)
     parser.add_argument("--rubric-preset", default="balanced", choices=list(DEFAULT_WEIGHTS))

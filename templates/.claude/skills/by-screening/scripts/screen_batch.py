@@ -388,15 +388,22 @@ def screen_one(
     )
 
 
-def compute_composite(results: list[ScreenResult]) -> None:
-    """Compute composite scores in place: 0.50 ipSAE + 0.30 ipTM + 0.20 (1 - norm liab)."""
+def compute_composite(results: list[ScreenResult], liability_cap: int = 5) -> None:
+    """Compute composite scores in place: 0.50 ipSAE + 0.30 ipTM + 0.20 (1 - norm liab).
+
+    Normalises weighted liability count by an ABSOLUTE cap (default 5) so the
+    same design produces the same composite_score regardless of batch
+    composition. This matches by-scoring/composite_score.py and the formula
+    documented in by-scoring/references/composite-score.md.
+    """
     if not results:
         return
-    max_liab = max((r.weighted_liability_count for r in results), default=0) or 1
+    if liability_cap <= 0:
+        liability_cap = 1  # avoid div-by-zero; treat any liability as full
     for r in results:
         iptm = _to_float(r.raw.get("iptm"))
         ipsae = _to_float(r.raw.get("ipsae_min"))
-        norm_liab = min(1.0, r.weighted_liability_count / max_liab)
+        norm_liab = min(1.0, r.weighted_liability_count / liability_cap)
         r.composite_score = round(
             0.50 * ipsae + 0.30 * iptm + 0.20 * (1.0 - norm_liab),
             4,

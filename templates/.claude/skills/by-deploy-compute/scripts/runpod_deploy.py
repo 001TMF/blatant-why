@@ -156,9 +156,60 @@ def build_pod_request(manifest: dict[str, Any]) -> dict[str, Any]:
             {"key": "BY_WEIGHTS_URL", "value": manifest["weights_url"]},
         ],
     }
-    if manifest.get("region"):
-        pod_input["country"] = manifest["region"]
+    # RunPod's podFindAndDeployOnDemand expects a 2-letter ISO 3166-1 country
+    # code on the `country` field. Manifests may carry either an ISO code in
+    # `country` (preferred) or a legacy `region` field carrying an AWS-style
+    # region string ("us-east-1"); we translate the latter for backwards
+    # compatibility.
+    country_code = manifest.get("country")
+    if not country_code and manifest.get("region"):
+        country_code = _aws_region_to_iso_country(manifest["region"])
+    if country_code:
+        pod_input["country"] = country_code
     return pod_input
+
+
+# AWS region prefix -> ISO 3166-1 alpha-2 country code. Covers the regions
+# most commonly used as proxies for "where on Earth to land the pod".
+_AWS_PREFIX_TO_ISO = {
+    "us-": "US",
+    "ca-": "CA",
+    "sa-": "BR",
+    "eu-west": "IE",       # eu-west-1 is Ireland
+    "eu-central": "DE",    # eu-central-1 is Frankfurt
+    "eu-north": "SE",      # eu-north-1 is Stockholm
+    "eu-south": "IT",      # eu-south-1 is Milan
+    "eu-": "DE",           # generic eu fallback
+    "ap-northeast-1": "JP",
+    "ap-northeast-2": "KR",
+    "ap-northeast-3": "JP",
+    "ap-southeast-1": "SG",
+    "ap-southeast-2": "AU",
+    "ap-southeast-3": "ID",
+    "ap-south-": "IN",
+    "ap-east-": "HK",
+    "me-": "AE",
+    "af-": "ZA",
+}
+
+
+def _aws_region_to_iso_country(region: str) -> str | None:
+    """Translate an AWS-style region string to an ISO 3166-1 alpha-2 code.
+
+    Returns None if the region cannot be resolved (in which case the caller
+    omits the `country` field, letting RunPod pick automatically).
+    """
+    region = (region or "").lower().strip()
+    if not region:
+        return None
+    # Already an ISO code (2 letters, uppercase or lowercase) — accept as-is.
+    if len(region) == 2 and region.isalpha():
+        return region.upper()
+    # Match longest-prefix-first so eu-central beats eu-.
+    for prefix in sorted(_AWS_PREFIX_TO_ISO, key=len, reverse=True):
+        if region.startswith(prefix):
+            return _AWS_PREFIX_TO_ISO[prefix]
+    return None
 
 
 def submit_pod(api_key: str, pod_input: dict[str, Any]) -> str:

@@ -287,14 +287,15 @@ def main() -> int:
             print("\n✗ Aborted by user.", file=sys.stderr)
             return 1
 
-    # If --keep-existing, merge user's old fields over the new defaults
-    # (but the new local-first defaults win where the old config was silent).
+    # If --keep-existing, merge user's old fields over the new defaults.
+    # Layering rule: defaults < existing user fields < this run's interactive
+    # answers. With --defaults (no interactive answers) the existing config
+    # MUST win against DEFAULT_CONFIG; otherwise --defaults --keep-existing
+    # would silently overwrite the user's prior choices.
     if existing:
-        # Layer: defaults < existing user fields < this run's answers.
-        # The interactive answers should overwrite the existing config's choices
-        # where they conflict, since the user just made a fresh choice.
         merged = deep_merge(DEFAULT_CONFIG, existing)
-        merged = deep_merge(merged, config)
+        if not args.defaults:
+            merged = deep_merge(merged, config)
         config = merged
 
     try:

@@ -77,9 +77,14 @@ def load_json_array(path: Path) -> list[dict]:
 
 
 def save_json_array(path: Path, data: list[dict]) -> None:
-    """Atomic write: write to .tmp then rename."""
+    """Atomic write: write to <path>.tmp then rename.
+
+    Uses suffix-append (.json -> .json.tmp), not suffix-replace, so a partial
+    write left behind after a crash does not collide with sibling files that
+    share the same stem.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
+    tmp = path.with_suffix(path.suffix + ".tmp")
     with open(tmp, "w") as f:
         json.dump(data, f, indent=2)
     tmp.rename(path)
@@ -231,7 +236,13 @@ def cmd_export(output_path: Path) -> int:
 # ---------------------------------------------------------------------------
 
 
-def cmd_import(input_path: Path, strict: bool) -> int:
+def cmd_import(input_path: Path, strict: bool, replace: bool) -> int:
+    """Import NDJSON into the knowledge store.
+
+    By default this MERGES new records into the existing store, deduplicating
+    by record id (`id` field). Pass replace=True to wipe the existing store
+    and write only the imported records — destructive, intended for restore.
+    """
     if not input_path.exists():
         print(f"✗ Input file not found: {input_path}", file=sys.stderr)
         return 1
@@ -283,12 +294,49 @@ def cmd_import(input_path: Path, strict: bool) -> int:
                 )
 
     knowledge_dir = resolve_knowledge_dir()
-    save_json_array(knowledge_dir / "campaigns.json", campaigns_in)
-    save_json_array(knowledge_dir / "failures.json", failures_in)
+    campaigns_path = knowledge_dir / "campaigns.json"
+    failures_path = knowledge_dir / "failures.json"
+
+    if replace:
+        final_campaigns = campaigns_in
+        final_failures = failures_in
+        merge_note = "(replaced existing store)"
+    else:
+        # Merge: load existing, dedupe by `id`, prefer incoming records on conflict.
+        existing_campaigns = load_json_array(campaigns_path)
+        existing_failures = load_json_array(failures_path)
+
+        def _merge(existing: list[dict], incoming: list[dict]) -> list[dict]:
+            by_id: dict = {}
+            for rec in existing:
+                rid = rec.get("id")
+                if rid is None:
+                    by_id[id(rec)] = rec  # keep unidentified records
+                else:
+                    by_id[rid] = rec
+            for rec in incoming:
+                rid = rec.get("id")
+                if rid is None:
+                    by_id[id(rec)] = rec
+                else:
+                    by_id[rid] = rec
+            return list(by_id.values())
+
+        final_campaigns = _merge(existing_campaigns, campaigns_in)
+        final_failures = _merge(existing_failures, failures_in)
+        merge_note = (
+            f"(merged into existing: {len(existing_campaigns)} + "
+            f"{len(existing_failures)} prior records)"
+        )
+
+    save_json_array(campaigns_path, final_campaigns)
+    save_json_array(failures_path, final_failures)
 
     print(
         f"✓ Import completed: {len(campaigns_in)} campaigns + "
-        f"{len(failures_in)} failures written to {knowledge_dir}"
+        f"{len(failures_in)} failures imported {merge_note}; "
+        f"store now has {len(final_campaigns)} campaigns + "
+        f"{len(final_failures)} failures at {knowledge_dir}"
     )
     if parse_errors:
         print(f"  ({parse_errors} parse errors, {validation_errors} validation issues)")
@@ -394,11 +442,14 @@ def main() -> None:
                        help="Print the full record for a single campaign id")
     parser.add_argument("--strict", action="store_true",
                         help="Treat validation issues as errors (exits non-zero)")
+    parser.add_argument("--replace", action="store_true",
+                        help="With --import: REPLACE the existing store instead "
+                             "of merging. Destructive; default is merge by id.")
 
     args = parser.parse_args()
 
     if args.import_path is not None:
-        sys.exit(cmd_import(args.import_path, strict=args.strict))
+        sys.exit(cmd_import(args.import_path, strict=args.strict, replace=args.replace))
     if args.export_path is not None:
         sys.exit(cmd_export(args.export_path))
     if args.validate:

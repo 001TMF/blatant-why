@@ -45,6 +45,10 @@ def _is_list_of_str(value: Any) -> bool:
     return isinstance(value, list) and all(isinstance(v, str) for v in value)
 
 
+def _is_nonempty_list_of_str(value: Any) -> bool:
+    return _is_list_of_str(value) and len(value) > 0
+
+
 def _is_positive_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
@@ -74,7 +78,7 @@ SCHEMA: dict[str, tuple[bool, Callable[[Any], bool], str]] = {
     "target": (True, _is_str, "non-empty string"),
     "modality": (True, _is_in_set(ALLOWED_MODALITIES), f"one of {sorted(ALLOWED_MODALITIES)}"),
     "protocol": (True, _is_in_set(ALLOWED_PROTOCOLS), f"one of {sorted(ALLOWED_PROTOCOLS)}"),
-    "scaffolds": (True, _is_list_of_str, "non-empty list of strings"),
+    "scaffolds": (True, _is_nonempty_list_of_str, "non-empty list of strings"),
     "tier": (True, _is_in_set(ALLOWED_TIERS), f"one of {sorted(ALLOWED_TIERS)}"),
     "compute_provider": (True, _is_in_set(ALLOWED_COMPUTE_PROVIDERS), f"one of {sorted(ALLOWED_COMPUTE_PROVIDERS)}"),
     "epitope": (True, _is_dict_with_keys({"range_notation"}), "dict with at least 'range_notation' key"),

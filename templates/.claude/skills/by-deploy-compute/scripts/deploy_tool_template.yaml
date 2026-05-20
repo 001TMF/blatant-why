@@ -49,7 +49,12 @@ example_protenix_runpod:
     - host: "/runpod-volume/outputs"
       container: "/workspace/protenix/outputs"
   gpu: "A40"
-  region: "us-east-1"
+  # RunPod expects a 2-letter ISO 3166-1 country code on the `country` field.
+  # If you set the legacy AWS-style `region` instead, runpod_deploy.py will
+  # translate the most common prefixes (us-east-* -> US, eu-central-* -> DE,
+  # ap-northeast-* -> JP, etc). Set `country` directly when you need to be
+  # exact (e.g., country: "DE", country: "US").
+  country: "US"
 
 # -----------------------------------------------------------------------------
 # Example 2: BoltzGen on local GPU

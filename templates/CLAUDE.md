@@ -32,12 +32,17 @@ Use MCP research tools FIRST. Never default to web search when structured databa
 
 Read `.by/config.json` for the user's chosen provider. **Respect their choice — no silent fallback.**
 
-- If `compute.preferred_provider` is `"local"` — use local GPU tools ONLY. If a local tool fails, report the error. Do NOT silently switch to Tamarind.
-- If `compute.preferred_provider` is `"tamarind"` — use Tamarind ONLY.
-- If `compute.preferred_provider` is `"auto"` — detect and pick the best available.
+**Default provider is `"local"`**. The compute order of preference is `local → hpc → tamarind` (see `compute.providers_priority`).
+
+- If `compute.default_provider` is `"local"` — use local GPU tools ONLY. If a local tool fails, report the error and offer to deploy via HPC. Do NOT silently switch to Tamarind.
+- If `compute.default_provider` is `"hpc"` — use the HPC target configured in `compute.hpc.target` (default: RunPod). See the **by-deploy-compute** skill for deployment.
+- If `compute.default_provider` is `"tamarind"` — use Tamarind ONLY.
+- If `compute.default_provider` is `"auto"` — detect and pick the best available in priority order.
 - If `compute.fallback_allowed` is `false` — NEVER switch providers without asking.
 
 **Local GPU paths** are in `config.json` under `compute.local.{boltzgen,protenix,pxdesign}` with `path`, `conda_env`, and `binary` fields. Pass these to sub-agents in Task() prompts.
+
+**HPC deployment** is handled by the **by-deploy-compute** skill — covers RunPod, local-network HPC, and Modal targets for Protenix, BoltzGen, PXDesign, and supplementary tools.
 
 When spawning design agents, include the compute config explicitly:
 ```

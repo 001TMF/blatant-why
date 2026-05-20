@@ -53,7 +53,7 @@ Below the table, show provider and environment info:
 
 ```markdown
 **Provider:** {Tamarind Bio | Local GPU}
-**Environment:** proteus-fold {version} | proteus-prot {version} | boltzgen {version} | GPU: {name}
+**Environment:** Protenix {version} | PXDesign {version} | BoltzGen {version} | GPU: {name}
 **Tamarind API:** {configured | missing}
 ```
 

@@ -65,8 +65,8 @@ def _detect_local_tools() -> dict[str, dict]:
 def _get_available_providers() -> list[str]:
     """Detect available compute providers from environment."""
     providers = []
-    if os.environ.get("TAMARIND_API_KEY"):
-        providers.append("tamarind")
+    # Migration note: Tamarind detection removed; cloud jobs go via the
+    # by-cloud MCP "modal" provider, not this local-compute server.
     if os.environ.get("PROTEUS_SSH_HOST"):
         providers.append("ssh")
     # Check for local GPU

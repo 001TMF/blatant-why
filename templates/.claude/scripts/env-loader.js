@@ -65,11 +65,10 @@ for (const [key, value] of Object.entries(envVars)) {
 // ---------------------------------------------------------------------------
 const providers = [];
 
-// Tamarind Bio — detected via API key
-const hasTamarind = !!process.env.TAMARIND_API_KEY;
-if (hasTamarind) {
-  const tier = process.env.TAMARIND_TIER || 'Pro';
-  providers.push(`Tamarind (${tier})`);
+// Modal serverless GPU — detected via token env (or ~/.modal.toml at runtime)
+const hasModal = !!process.env.MODAL_TOKEN_ID;
+if (hasModal) {
+  providers.push('Modal');
 }
 
 // Local GPU — detected via tool directories or CUDA env
@@ -140,10 +139,10 @@ if (root) {
 // ---------------------------------------------------------------------------
 const providerSummary = providers.length > 0
   ? providers.join(', ')
-  : 'none detected — set TAMARIND_API_KEY or PROTEUS_*_DIR';
+  : 'none detected — set MODAL_TOKEN_ID or PROTEUS_*_DIR';
 
 // Build environment status line (symbol format matching BY display patterns)
-const envLine = `Tamarind ${hasTamarind ? '\u2713' : '\u25CB'} | Local GPU ${hasLocalGpu ? '\u2713' : '\u25CB'} | SSH ${hasSsh ? '\u2713' : '\u25CB'}`;
+const envLine = `Modal ${hasModal ? '\u2713' : '\u25CB'} | Local GPU ${hasLocalGpu ? '\u2713' : '\u25CB'} | SSH ${hasSsh ? '\u2713' : '\u25CB'}`;
 
 const parts = [];
 

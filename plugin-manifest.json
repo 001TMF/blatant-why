@@ -28,7 +28,7 @@
     "uniprot",
     "sabdab",
     "by-screening",
-    "tamarind",
+    "cloud",
     "adaptyv",
     "by-campaign",
     "by-research",
@@ -58,8 +58,8 @@
   ],
   "defaults": {
     "compute": "local",
-    "compute_options": ["local", "hpc", "tamarind"],
-    "compute_description": "Default compute is local GPU. Set to 'hpc' for RunPod/Modal/SLURM via by-deploy-compute, or 'tamarind' for the Tamarind cloud."
+    "compute_options": ["local", "hpc", "modal"],
+    "compute_description": "Default compute is local GPU. Set to 'hpc' for RunPod/SLURM via by-deploy-compute, or 'modal' for Modal serverless GPU (by-cloud)."
   },
   "scoring": {
     "ipSAE": {

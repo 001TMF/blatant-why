@@ -2,7 +2,7 @@
   "model_profile": "balanced",
   "compute": {
     "default_provider": "local",
-    "providers_priority": ["local", "hpc", "tamarind"],
+    "providers_priority": ["local", "hpc", "modal"],
     "ssh_hosts": [],
     "local_gpu": true,
     "hpc": {

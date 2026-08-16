@@ -80,11 +80,12 @@ def get_available_providers() -> list[str]:
     local = detect_local_tools()
     if any(local.values()):
         providers.append("local")
-    if os.getenv("TAMARIND_API_KEY"):
-        providers.append("tamarind")
+    # Migration note: Tamarind detection removed; "modal" is the cloud backend.
+    if os.getenv("MODAL_TOKEN_ID") or (Path.home() / ".modal.toml").exists():
+        providers.append("modal")
     if os.getenv("PROTEUS_SSH_HOST"):
         providers.append("ssh")
-    return providers if providers else ["tamarind"]  # default fallback
+    return providers if providers else ["modal"]  # default fallback
 
 
 def validate_tool_path(tool_name: str) -> Path:

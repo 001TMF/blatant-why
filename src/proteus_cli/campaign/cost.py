@@ -7,8 +7,10 @@ from typing import Any
 from .config import CampaignConfig
 
 # GPU hourly rates by provider (USD).
+# Migration note: "tamarind" removed; "modal" is the cloud provider.
+# ~$3/hr is a rough A100 blended rate — tune from real Modal invoices.
 HOURLY_RATES: dict[str, float] = {
-    "tamarind": 2.50,
+    "modal": 3.00,
     "local": 0.0,
 }
 
@@ -46,7 +48,7 @@ def estimate_cost(config: CampaignConfig) -> CostEstimate:
     budget = config.boltzgen.budget
     total_designs = num_scaffolds * num_designs
 
-    # Design generation time (BoltzGen on Tamarind)
+    # Design generation time (BoltzGen on Modal)
     design_gpu_hours = total_designs * BOLTZGEN_HOURS_PER_DESIGN
 
     # Screening time: runs on budget designs (post-BoltzGen ranking)
@@ -57,7 +59,7 @@ def estimate_cost(config: CampaignConfig) -> CostEstimate:
     total_gpu_hours = design_gpu_hours + screening_gpu_hours
 
     # Cloud cost
-    rate = HOURLY_RATES.get(config.compute.provider, HOURLY_RATES["tamarind"])
+    rate = HOURLY_RATES.get(config.compute.provider, HOURLY_RATES["modal"])
     cloud_cost_usd = total_gpu_hours * rate
 
     # Lab cost

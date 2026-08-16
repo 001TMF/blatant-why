@@ -82,7 +82,7 @@ class LabConfig:
 @dataclass
 class ComputeConfig:
     """Compute backend configuration."""
-    provider: str = "tamarind"      # tamarind | local | ssh
+    provider: str = "modal"         # modal | local | ssh
     gpu_type: str = "A100"
     gpu_ids: str = ""               # for local: "0,1" for specific GPUs
     # SSH options
@@ -174,7 +174,7 @@ def _dict_to_config(raw: dict[str, Any]) -> CampaignConfig:
 
     compute_raw = raw.get("compute", {})
     compute = ComputeConfig(
-        provider=compute_raw.get("provider", "tamarind"),
+        provider=compute_raw.get("provider", "modal"),
         gpu_type=compute_raw.get("gpu_type", "A100"),
         gpu_ids=compute_raw.get("gpu_ids", ""),
         ssh_host=compute_raw.get("ssh_host", ""),

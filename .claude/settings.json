@@ -3,7 +3,6 @@
     "by-pdb": { "command": "uv", "args": ["run", "--script", "mcp_servers/pdb/server.py"], "type": "stdio" },
     "by-uniprot": { "command": "uv", "args": ["run", "--script", "mcp_servers/uniprot/server.py"], "type": "stdio" },
     "by-sabdab": { "command": "uv", "args": ["run", "--script", "mcp_servers/sabdab/server.py"], "type": "stdio" },
-    "by-tamarind": { "command": "uv", "args": ["run", "--script", "mcp_servers/tamarind/server.py"], "type": "stdio" },
     "by-cloud": { "command": "uv", "args": ["run", "--script", "mcp_servers/cloud/server.py"], "type": "stdio" },
     "by-adaptyv": { "command": "uv", "args": ["run", "--script", "mcp_servers/adaptyv/server.py"], "type": "stdio" },
     "by-screening": { "command": "uv", "args": ["run", "--script", "mcp_servers/screening/server.py"], "type": "stdio" },

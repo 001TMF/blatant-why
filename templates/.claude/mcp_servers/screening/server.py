@@ -1077,10 +1077,6 @@ def _score_naturalness(sequence: str, chain_type: str = "heavy") -> dict:
             "interpretation": "AbLang2 not installed — cannot compute naturalness score",
             "source": "unavailable",
             "install_hint": "pip install ablang2",
-            "tamarind_alternative": (
-                "Use Tamarind Bio cloud API for naturalness scoring: "
-                "cloud_submit_job(tool='ablang2', ...)"
-            ),
         }
 
     try:
@@ -1957,8 +1953,8 @@ async def screen_naturalness(
     human antibody repertoire. Higher (less negative) PLL scores
     indicate more natural sequences.
 
-    Falls back gracefully if ablang2 is not installed, suggesting the
-    Tamarind Bio cloud alternative.
+    Falls back gracefully if ablang2 is not installed, returning an
+    install hint.
 
     Typical PLL ranges:
     - Natural antibodies: -1 to -3
@@ -1970,8 +1966,7 @@ async def screen_naturalness(
 
     Returns:
         JSON object with naturalness_score, chain_type, interpretation,
-        source, and install_hint / tamarind_alternative if ablang2 is
-        not available.
+        source, and install_hint if ablang2 is not available.
     """
     if not sequence or not sequence.strip():
         return _error("Sequence must not be empty.")

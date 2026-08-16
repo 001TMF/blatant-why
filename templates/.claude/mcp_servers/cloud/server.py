@@ -2,18 +2,22 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#   "mcp>=1.0.0",
-#   "httpx>=0.27",
+#   "mcp>=1.2,<2",
+#   "modal>=1.0",
 #   "paramiko>=3.0.0",
 # ]
 # ///
-"""Unified Cloud Compute MCP Server — consolidates Tamarind API + SSH remote
-compute into a single interface for the BY campaign orchestrator.
+"""Unified Cloud Compute MCP Server — consolidates Modal serverless GPU +
+SSH remote compute into a single interface for the BY campaign orchestrator.
 
 Providers:
-  - tamarind: Tamarind Bio cloud API (free tier, 200+ tools)
+  - modal: Modal serverless GPU apps, one deployed app per design tool
+    (see CATALOGUE below). Jobs run via modal.Function spawn/lookup.
   - ssh: Remote GPU hosts via SSH/SFTP (paramiko)
-  - local: Local GPU compute (CUDA_VISIBLE_DEVICES)
+  - local: Local GPU compute — served by the separate by-local-compute MCP.
+
+Migration note: the former Tamarind Bio cloud-API provider was removed in
+the compute/modal-local rewrite; `modal` replaces it as the cloud backend.
 """
 from __future__ import annotations
 
@@ -27,7 +31,6 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-import httpx
 import paramiko
 from mcp.server.fastmcp import FastMCP
 
@@ -85,50 +88,32 @@ def _load_config() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Tamarind helpers
+# Modal backend — catalogue manifest (tool -> {app, function, gpu, image})
 # ---------------------------------------------------------------------------
+# Migration note: this block replaced the Tamarind Bio cloud-API helpers.
+# Modal needs no API key here — it reads ~/.modal.toml / MODAL_TOKEN_* creds.
+# GPU tiers are per-tool sizing knobs; tune after first real runs.
+# ponytail: one dict + resolve() beats a provider-registry class.
 
-_TAMARIND_DEFAULT_URL = "https://app.tamarind.bio/api"
-_TAMARIND_TIMEOUT = 60.0
-_TAMARIND_MAX_UPLOAD = 10 * 1024 * 1024  # 10 MB
-
-# Tier concurrency limits (best-effort defaults)
-_TIER_CONCURRENCY: dict[str, int] = {
-    "free": 2,
-    "basic": 5,
-    "pro": 20,
-    "enterprise": 50,
+CATALOGUE: dict[str, dict[str, str]] = {
+    "boltz":       {"app": "by-boltz",       "function": "predict", "gpu": "A100", "image": "boltz"},
+    "boltzgen":    {"app": "by-boltzgen",    "function": "design",  "gpu": "A100", "image": "boltzgen"},
+    "protenix":    {"app": "by-protenix",    "function": "predict", "gpu": "A100", "image": "protenix"},
+    "rfdiffusion": {"app": "by-rfdiffusion", "function": "design",  "gpu": "A10G", "image": "rfdiffusion"},
+    "proteinmpnn": {"app": "by-proteinmpnn", "function": "design",  "gpu": "T4",   "image": "proteinmpnn"},
+    "pxdesign":    {"app": "by-pxdesign",    "function": "design",  "gpu": "A100", "image": "pxdesign"},
+    "chai":        {"app": "by-chai",        "function": "predict", "gpu": "A100", "image": "chai"},
 }
 
-
-def _tam_base_url() -> str:
-    return os.environ.get("TAMARIND_BASE_URL", _TAMARIND_DEFAULT_URL).rstrip("/")
+_MODAL_TIMEOUT = 60.0
 
 
-def _tam_api_key() -> str | None:
-    key = os.environ.get("TAMARIND_API_KEY")
-    if not key:
-        env = _load_environment()
-        key = env.get("tamarind", {}).get("api_key")
-    return key
-
-
-def _tam_headers() -> dict[str, str]:
-    key = _tam_api_key()
-    if not key:
-        return {}
-    return {"x-api-key": key}
-
-
-def _tam_check() -> str | None:
-    """Return error JSON if Tamarind API key is missing, else None."""
-    if not _tam_api_key():
-        return _error(
-            "TAMARIND_API_KEY is not set. "
-            "Get a free key at https://app.tamarind.bio and set it: "
-            "export TAMARIND_API_KEY=<your-key>"
-        )
-    return None
+def resolve(tool: str) -> dict[str, str]:
+    """Resolve a tool name to its Modal catalogue entry, or raise KeyError."""
+    t = tool.strip().lower()
+    if t not in CATALOGUE:
+        raise KeyError(f"Unknown tool {tool!r}. Known: {sorted(CATALOGUE)}")
+    return CATALOGUE[t]
 
 
 def _get_alternative_providers() -> list[dict]:
@@ -167,40 +152,6 @@ def _structured_error(
     }
     payload.update(extra)
     return json.dumps(payload, indent=2)
-
-
-def _tam_handle_http(resp: httpx.Response) -> str | None:
-    """Return structured error JSON for auth/rate-limit/server issues, or None."""
-    if resp.status_code == 401:
-        return _structured_error(
-            "Invalid TAMARIND_API_KEY. Get one at https://app.tamarind.bio",
-            error_code="auth_error",
-            retry_eligible=False,
-        )
-    if resp.status_code == 429:
-        return _structured_error(
-            "Rate limited by Tamarind. Check your tier quota with "
-            "cloud_list_providers(). Upgrade at tamarind.bio/pricing",
-            error_code="rate_limited",
-            retry_eligible=True,
-            suggestion="Wait a few minutes or switch to an alternative provider.",
-        )
-    if resp.status_code >= 500:
-        body = resp.text[:500]
-        return _structured_error(
-            f"Tamarind server error ({resp.status_code}): {body}",
-            error_code="server_error",
-            retry_eligible=True,
-            suggestion="Tamarind may be temporarily down. Try again in a few minutes.",
-        )
-    if resp.status_code >= 400:
-        body = resp.text[:500]
-        return _structured_error(
-            f"Tamarind API error ({resp.status_code}): {body}",
-            error_code="api_error",
-            retry_eligible=False,
-        )
-    return None
 
 
 # ---------------------------------------------------------------------------
@@ -285,12 +236,13 @@ _batches: dict[str, dict] = {}
 async def cloud_list_providers() -> str:
     """List available compute providers with status, quota, and capability details.
 
-    Reads ~/.by/environment.json for Tamarind config, pings each SSH
-    host from ~/.by/config.json, and checks CUDA_VISIBLE_DEVICES for
-    local GPU availability.
+    Lists the Modal catalogue (one deployed app per design tool), pings
+    each SSH host from ~/.by/config.json, and checks CUDA_VISIBLE_DEVICES
+    for local GPU availability.
 
-    Returns quota/credit information for cloud providers and capabilities
-    (which tools each provider supports) for all providers.
+    Returns capabilities (which tools each provider supports) for all
+    providers. Modal has no per-account quota to report — billing is
+    per-second GPU usage under the account's own Modal token.
 
     Returns:
         JSON list of {name, type, status, details, capabilities, recommended} objects.
@@ -299,74 +251,28 @@ async def cloud_list_providers() -> str:
     cfg = _load_config()
     default_provider = cfg.get("default_provider")
 
-    # --- Tamarind ---
-    tam_entry: dict[str, Any] = {
-        "name": "tamarind",
-        "type": "cloud_api",
-        "status": "unavailable",
-        "details": {},
-        "capabilities": ["boltzgen", "protenix", "pxdesign", "tap"],
+    # --- Modal ---
+    # Status is "online" iff Modal creds are present; the catalogue itself
+    # is static (no network call — resolving a tool never spends GPU).
+    modal_creds = bool(
+        os.environ.get("MODAL_TOKEN_ID") or (Path.home() / ".modal.toml").exists()
+    )
+    modal_entry: dict[str, Any] = {
+        "name": "modal",
+        "type": "cloud_serverless",
+        "status": "online" if modal_creds else "unavailable",
+        "details": (
+            {"apps": {t: e["app"] for t, e in CATALOGUE.items()}}
+            if modal_creds
+            else {
+                "error": "Modal credentials not found",
+                "setup": "run `modal token new` or set MODAL_TOKEN_ID/SECRET",
+            }
+        ),
+        "capabilities": sorted(CATALOGUE),
         "recommended": False,
     }
-    key = _tam_api_key()
-    if key:
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{_tam_base_url()}/account",
-                    headers=_tam_headers(),
-                    timeout=10.0,
-                )
-                if resp.status_code == 200:
-                    acct = resp.json()
-                    tier = acct.get("tier", acct.get("plan", "free"))
-                    tam_entry["status"] = "online"
-                    tam_entry["details"] = {
-                        "tier": tier,
-                        "max_concurrent": _TIER_CONCURRENCY.get(
-                            str(tier).lower(),
-                            _TIER_CONCURRENCY["free"],
-                        ),
-                        "api_url": _tam_base_url(),
-                    }
-                    # Extract quota/credit info from account response
-                    # Adaptively inspect fields -- Tamarind may use different names
-                    quota_used = acct.get("jobs_used", acct.get("usage", acct.get("quota_used")))
-                    quota_limit = acct.get("jobs_limit", acct.get("limit", acct.get("quota_limit")))
-                    quota_remaining = acct.get("quota_remaining", acct.get("jobs_remaining"))
-                    # Compute remaining if we have used and limit but not remaining
-                    if quota_remaining is None and quota_used is not None and quota_limit is not None:
-                        try:
-                            quota_remaining = int(quota_limit) - int(quota_used)
-                        except (ValueError, TypeError):
-                            quota_remaining = None
-                    tam_entry["details"]["quota_used"] = quota_used
-                    tam_entry["details"]["quota_limit"] = quota_limit
-                    tam_entry["details"]["quota_remaining"] = quota_remaining
-                elif resp.status_code == 401:
-                    tam_entry["status"] = "auth_error"
-                    tam_entry["details"] = {"error": "Invalid API key"}
-                else:
-                    # API key is set but /account may not exist -- still usable
-                    tam_entry["status"] = "online"
-                    tam_entry["details"] = {
-                        "tier": "unknown",
-                        "max_concurrent": _TIER_CONCURRENCY["free"],
-                        "api_url": _tam_base_url(),
-                        "note": f"/account returned {resp.status_code}",
-                        "quota_used": None,
-                        "quota_limit": None,
-                        "quota_remaining": None,
-                    }
-        except Exception as exc:
-            tam_entry["status"] = "error"
-            tam_entry["details"] = {"error": str(exc)}
-    else:
-        tam_entry["details"] = {
-            "error": "TAMARIND_API_KEY not set",
-            "signup": "https://app.tamarind.bio",
-        }
-    providers.append(tam_entry)
+    providers.append(modal_entry)
 
     # --- SSH hosts ---
     for host_cfg in _ssh_hosts():
@@ -446,7 +352,7 @@ async def cloud_list_providers() -> str:
                 p["recommended"] = True
                 recommended_set = True
                 break
-    # If no default set, recommend the first online provider (prefer Tamarind)
+    # If no default set, recommend the first online provider (prefer Modal)
     if not recommended_set:
         for p in providers:
             if p["status"] == "online":
@@ -483,7 +389,7 @@ async def cloud_estimate_cost(
     cloud_submit_batch to avoid surprise quota exhaustion.
 
     Args:
-        provider: Provider name -- "tamarind", an SSH host name, or "local".
+        provider: Provider name -- "modal", an SSH host name, or "local".
         tool: Tool/pipeline name (e.g. "boltzgen", "protenix", "pxdesign").
         num_jobs: Number of jobs to submit (default 1).
         num_designs_per_job: Designs per job, affects time estimate (default 10).
@@ -516,62 +422,15 @@ async def cloud_estimate_cost(
         "warnings": warnings,
     }
 
-    if provider == "tamarind":
-        # Fetch current quota from Tamarind /account
-        key = _tam_api_key()
-        if not key:
-            result["jobs_within_quota"] = False
-            warnings.append("TAMARIND_API_KEY not set. Cannot check quota.")
-            result["warnings"] = warnings
-            return _ok(result)
-
+    if provider == "modal":
+        # Modal bills per-second GPU usage — no fixed quota to check.
+        # Report estimated GPU-hours and the tool's GPU tier from the catalogue.
+        gpu_hours = round(estimated_time / 60, 2)
+        result["estimated_gpu_hours"] = gpu_hours
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{_tam_base_url()}/account",
-                    headers=_tam_headers(),
-                    timeout=10.0,
-                )
-                if resp.status_code == 200:
-                    acct = resp.json()
-                    quota_used = acct.get("jobs_used", acct.get("usage", acct.get("quota_used")))
-                    quota_limit = acct.get("jobs_limit", acct.get("limit", acct.get("quota_limit")))
-                    quota_remaining = acct.get("quota_remaining", acct.get("jobs_remaining"))
-
-                    if quota_remaining is None and quota_used is not None and quota_limit is not None:
-                        try:
-                            quota_remaining = int(quota_limit) - int(quota_used)
-                        except (ValueError, TypeError):
-                            quota_remaining = None
-
-                    if quota_remaining is not None:
-                        remaining_int = int(quota_remaining)
-                        result["quota_after"] = remaining_int - num_jobs
-                        result["jobs_within_quota"] = num_jobs <= remaining_int
-
-                        if not result["jobs_within_quota"]:
-                            warnings.append(
-                                f"Batch of {num_jobs} jobs exceeds remaining quota "
-                                f"({remaining_int} remaining). Reduce batch or switch provider."
-                            )
-                        elif remaining_int > 0 and num_jobs / remaining_int > 0.8:
-                            warnings.append(
-                                f"This batch uses {num_jobs}/{remaining_int} remaining "
-                                f"quota (>{80}%). Consider reserving quota for future runs."
-                            )
-                    else:
-                        warnings.append(
-                            "Quota information not available from Tamarind API. "
-                            "Proceeding without quota check."
-                        )
-                        result["quota_after"] = None
-                else:
-                    warnings.append(
-                        f"Could not fetch account info (HTTP {resp.status_code}). "
-                        "Quota check skipped."
-                    )
-        except Exception as exc:
-            warnings.append(f"Failed to check Tamarind quota: {exc}")
+            result["gpu"] = resolve(tool)["gpu"]
+        except KeyError as exc:
+            warnings.append(str(exc))
 
     elif provider == "local":
         # Local GPU -- estimate GPU hours, no quota concept
@@ -604,12 +463,13 @@ async def cloud_submit_job(
 ) -> str:
     """Submit a single compute job to a cloud provider.
 
-    Routes to Tamarind API or SSH backend based on the provider name.
+    Routes to the Modal catalogue or an SSH backend based on the provider name.
+    For the "local" provider, use the by-local-compute MCP server instead.
 
     Args:
-        provider: Provider name — "tamarind" or an SSH host name from config.
-        tool: Tool/pipeline name (e.g. "boltzgen", "protenix", "tap").
-        input_files: List of local file paths to upload as inputs.
+        provider: Provider name — "modal" or an SSH host name from config.
+        tool: Tool/pipeline name (e.g. "boltzgen", "protenix", "chai").
+        input_files: List of local file paths to pass as inputs.
         parameters: Tool-specific parameters dict (matches the tool schema).
 
     Returns:
@@ -619,10 +479,16 @@ async def cloud_submit_job(
     parameters = parameters or {}
     provider = provider.strip().lower()
 
-    if provider == "tamarind":
-        return await _submit_tamarind(tool, input_files, parameters)
+    if provider == "modal":
+        return await _submit_modal(tool, input_files, parameters)
 
-    # Check SSH hosts
+    if provider == "local":
+        return _error(
+            "The 'local' provider is served by the by-local-compute MCP "
+            "server — call its run tools directly, not cloud_submit_job."
+        )
+
+    # ponytail: ssh path untouched by the modal migration.
     hosts = _ssh_hosts()
     host_cfg = next(
         (h for h in hosts if h.get("name", h["host"]).lower() == provider),
@@ -637,115 +503,68 @@ async def cloud_submit_job(
     )
 
 
-async def _submit_tamarind(
+async def _submit_modal(
     tool: str,
     input_files: list[str],
     parameters: dict,
 ) -> str:
-    """Submit a job to Tamarind Bio."""
-    err = _tam_check()
-    if err:
-        return err
+    """Submit a job to a deployed Modal app resolved from the CATALOGUE.
 
+    Looks up the tool's {app, function, gpu} entry and spawns the deployed
+    Modal function asynchronously (returns a call id used by cloud_get_status
+    / cloud_get_results). Requires the app to be `modal deploy`-ed already.
+    """
     if not tool.strip():
         return _error("tool must not be empty.")
+    try:
+        entry = resolve(tool)
+    except KeyError as exc:
+        return _error(str(exc))
 
-    # Upload input files first
-    uploaded_refs: list[dict] = []
     for fpath in input_files:
         p = Path(fpath).resolve()
         if not p.exists():
             return _error(f"Input file not found: {p}")
-        if p.stat().st_size > _TAMARIND_MAX_UPLOAD:
-            return _error(
-                f"File exceeds {_TAMARIND_MAX_UPLOAD // (1024 * 1024)} MB "
-                f"limit: {p}"
-            )
-
-        upload_url = f"{_tam_base_url()}/files"
-        try:
-            file_content = p.read_bytes()
-            files = {"file": (p.name, file_content, "application/octet-stream")}
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    upload_url,
-                    headers=_tam_headers(),
-                    files=files,
-                    timeout=_TAMARIND_TIMEOUT,
-                )
-                http_err = _tam_handle_http(resp)
-                if http_err:
-                    return http_err
-                resp.raise_for_status()
-                uploaded_refs.append(resp.json())
-        except httpx.HTTPError as exc:
-            return _error(f"Failed to upload {p.name} to Tamarind: {exc}")
-
-    # Merge uploaded file references into parameters if the tool expects them
-    if uploaded_refs:
-        parameters["_uploaded_files"] = uploaded_refs
 
     job_name = _gen_id(f"by_{tool}")
-    submit_url = f"{_tam_base_url()}/submit-job"
-    body = {
-        "jobName": job_name,
-        "type": tool,
-        "settings": parameters,
-    }
-
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                submit_url,
-                headers={**_tam_headers(), "Content-Type": "application/json"},
-                json=body,
-                timeout=_TAMARIND_TIMEOUT,
-            )
-            http_err = _tam_handle_http(resp)
-            if http_err:
-                return http_err
-            resp.raise_for_status()
-            data = resp.json()
+        import modal  # imported lazily; catalogue resolution never needs it
 
-            job_record = {
-                "job_id": job_name,
-                "provider": "tamarind",
-                "tool": tool,
-                "status": "submitted",
-                "submitted_at": time.time(),
-                "tamarind_response": data,
-            }
-            _jobs[job_name] = job_record
+        fn = modal.Function.from_name(entry["app"], entry["function"])
+        # ponytail: pass file paths + params straight through; the deployed
+        # function is responsible for reading inputs from a shared volume.
+        call = fn.spawn(input_files=[str(Path(f).resolve()) for f in input_files],
+                        parameters=parameters)
+        object_id = getattr(call, "object_id", None)
 
-            return _ok({
-                "job_id": job_name,
-                "provider": "tamarind",
-                "status": "submitted",
-            })
-
-    except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+        _jobs[job_name] = {
+            "job_id": job_name,
+            "provider": "modal",
+            "provider_type": "modal",
+            "tool": tool,
+            "app": entry["app"],
+            "function": entry["function"],
+            "object_id": object_id,
+            "status": "submitted",
+            "submitted_at": time.time(),
+        }
+        return _ok({
+            "job_id": job_name,
+            "provider": "modal",
+            "object_id": object_id,
+            "status": "submitted",
+        })
+    except Exception as exc:  # modal.exception.NotFoundError, auth, network
         return _structured_error(
-            "Cannot reach Tamarind API. Network may be down or API "
-            "may be temporarily unavailable.",
-            error_code="unreachable",
+            f"Failed to spawn Modal job for '{tool}' on app "
+            f"'{entry['app']}': {exc}",
+            error_code="modal_error",
             retry_eligible=True,
-            suggestion="Check your network connection. Try again in 30 seconds.",
+            suggestion=(
+                f"Ensure `modal deploy` was run for app '{entry['app']}' and "
+                f"that MODAL_TOKEN_ID/SECRET (or ~/.modal.toml) are set."
+            ),
         )
-    except httpx.TimeoutException as exc:
-        return _structured_error(
-            f"Tamarind API request timed out after {_TAMARIND_TIMEOUT}s.",
-            error_code="unreachable",
-            retry_eligible=True,
-            suggestion="Tamarind may be slow. Try again in a minute.",
-        )
-    except httpx.HTTPError as exc:
-        return _structured_error(
-            f"Failed to submit Tamarind job: {exc}",
-            error_code="server_error",
-            retry_eligible=True,
-        )
-    except Exception as exc:
-        return _error(f"Unexpected error submitting Tamarind job: {exc}")
 
 
 async def _submit_ssh(
@@ -879,17 +698,16 @@ async def cloud_submit_batch(
     Each job dict must have 'tool' (str) and may have 'input_files' (list)
     and 'parameters' (dict).
 
-    For Tamarind, performs a quota pre-check before submitting. If
-    quota_remaining < len(jobs), returns an error with alternatives
-    unless force=True.
+    Modal auto-scales, so there is no fixed quota pre-check; jobs are
+    dispatched respecting max_concurrent.
 
     Args:
-        provider: Provider name -- "tamarind" or an SSH host name.
+        provider: Provider name -- "modal" or an SSH host name.
         jobs: List of job spec dicts, each with 'tool', optional
             'input_files', and optional 'parameters'.
-        max_concurrent: Maximum concurrent jobs. If None, auto-detects
-            from provider tier (Tamarind) or defaults to 2 (SSH).
-        force: If True, skip the quota pre-check (quota info may be stale).
+        max_concurrent: Maximum concurrent jobs. Defaults to 4 for Modal
+            (auto-scaling) or 2 for SSH.
+        force: Reserved for future provider-specific pre-checks.
 
     Returns:
         JSON with batch_id, job_ids, queued_count.
@@ -899,67 +717,10 @@ async def cloud_submit_batch(
     if not jobs:
         return _error("jobs list must not be empty.")
 
-    # --- Quota pre-check for Tamarind ---
-    if provider == "tamarind" and not force:
-        key = _tam_api_key()
-        if key:
-            try:
-                async with httpx.AsyncClient() as client:
-                    resp = await client.get(
-                        f"{_tam_base_url()}/account",
-                        headers=_tam_headers(),
-                        timeout=10.0,
-                    )
-                    if resp.status_code == 200:
-                        acct = resp.json()
-                        quota_used = acct.get(
-                            "jobs_used", acct.get("usage", acct.get("quota_used"))
-                        )
-                        quota_limit = acct.get(
-                            "jobs_limit", acct.get("limit", acct.get("quota_limit"))
-                        )
-                        quota_remaining = acct.get(
-                            "quota_remaining", acct.get("jobs_remaining")
-                        )
-                        if (
-                            quota_remaining is None
-                            and quota_used is not None
-                            and quota_limit is not None
-                        ):
-                            try:
-                                quota_remaining = int(quota_limit) - int(quota_used)
-                            except (ValueError, TypeError):
-                                quota_remaining = None
-
-                        if quota_remaining is not None:
-                            remaining_int = int(quota_remaining)
-                            if remaining_int < len(jobs):
-                                return _structured_error(
-                                    f"Insufficient quota: {remaining_int} jobs remaining "
-                                    f"but {len(jobs)} requested.",
-                                    error_code="insufficient_quota",
-                                    retry_eligible=False,
-                                    quota_remaining=remaining_int,
-                                    jobs_requested=len(jobs),
-                                    suggestion=(
-                                        f"Reduce batch to {remaining_int} jobs, "
-                                        f"or use an alternative provider. "
-                                        f"Pass force=True to override this check."
-                                    ),
-                                )
-            except Exception:
-                pass  # Quota check is best-effort; proceed on failure
-
     # Determine concurrency limit
     if max_concurrent is None:
-        if provider == "tamarind":
-            env = _load_environment()
-            tier = env.get("tamarind", {}).get("tier", "free")
-            max_concurrent = _TIER_CONCURRENCY.get(
-                str(tier).lower(), _TIER_CONCURRENCY["free"]
-            )
-        else:
-            max_concurrent = 2
+        # ponytail: Modal auto-scales; 4 is a polite default fan-out, tune later.
+        max_concurrent = 4 if provider == "modal" else 2
 
     max_concurrent = max(1, max_concurrent)
 
@@ -1052,59 +813,39 @@ async def cloud_get_status(job_id: str, provider: str = "") -> str:
     if record:
         elapsed = round(time.time() - record.get("submitted_at", time.time()), 1)
 
-    # --- Tamarind ---
-    if provider == "tamarind" or (record and record.get("provider") == "tamarind"):
-        err = _tam_check()
-        if err:
-            return err
-
-        # Tamarind uses job_name = job_id in our system
-        url = f"{_tam_base_url()}/jobs"
+    # --- Modal ---
+    if provider == "modal" or (record and record.get("provider") == "modal"):
+        if not record:
+            return _error(f"Job '{job_id}' not found in this session.")
+        object_id = record.get("object_id")
+        if not object_id:
+            return _ok({
+                "job_id": job_id,
+                "provider": "modal",
+                "status": record.get("status", "unknown"),
+                "elapsed_seconds": elapsed,
+            })
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    url, headers=_tam_headers(), timeout=_TAMARIND_TIMEOUT
-                )
-                http_err = _tam_handle_http(resp)
-                if http_err:
-                    return http_err
-                resp.raise_for_status()
-                data = resp.json()
+            import modal
 
-                jobs_list = data if isinstance(data, list) else data.get("jobs", [data])
-                matching = [j for j in jobs_list if j.get("JobName") == job_id]
-                if not matching:
-                    return _error(f"Job '{job_id}' not found on Tamarind.")
-
-                job = matching[-1]
-                tam_status = job.get("JobStatus", "Unknown")
-
-                # Normalize Tamarind statuses
-                status_map = {
-                    "Submitted": "queued",
-                    "In Queue": "queued",
-                    "Running": "running",
-                    "Complete": "completed",
-                    "Failed": "failed",
-                }
-                normalized = status_map.get(tam_status, tam_status.lower())
-
-                # Update local record
-                if record:
-                    record["status"] = normalized
-
-                return _ok({
-                    "job_id": job_id,
-                    "provider": "tamarind",
-                    "status": normalized,
-                    "raw_status": tam_status,
-                    "elapsed_seconds": elapsed,
-                })
-
-        except httpx.HTTPError as exc:
-            return _error(f"Failed to get Tamarind job status: {exc}")
+            call = modal.functions.FunctionCall.from_id(object_id)
+            # ponytail: poll with a 0s timeout — raises if still running,
+            # returns/raises terminal result otherwise. No GPU spend to poll.
+            try:
+                call.get(timeout=0)
+                status = "completed"
+            except TimeoutError:
+                status = "running"
+            record["status"] = status
+            return _ok({
+                "job_id": job_id,
+                "provider": "modal",
+                "status": status,
+                "object_id": object_id,
+                "elapsed_seconds": elapsed,
+            })
         except Exception as exc:
-            return _error(f"Unexpected error getting Tamarind status: {exc}")
+            return _error(f"Failed to get Modal job status: {exc}")
 
     # --- SSH ---
     if record and record.get("provider_type") == "ssh":
@@ -1364,8 +1105,8 @@ async def cloud_get_results(
 ) -> str:
     """Download results from a completed job.
 
-    For Tamarind: fetches results via the jobs API (Score field contains
-    output data and metrics).
+    For Modal: fetches the spawned function's return value by call id and
+    writes it to <output_dir>/<job_id>_results.json.
     For SSH: downloads output files from the remote job directory via SFTP.
 
     Args:
@@ -1390,84 +1131,35 @@ async def cloud_get_results(
         provider = record.get("provider", "")
     provider = provider.strip().lower()
 
-    # --- Tamarind results ---
-    if provider == "tamarind" or (record and record.get("provider") == "tamarind"):
-        err = _tam_check()
-        if err:
-            return err
-
-        url = f"{_tam_base_url()}/jobs"
+    # --- Modal results ---
+    if provider == "modal" or (record and record.get("provider") == "modal"):
+        if not record:
+            return _error(f"Job '{job_id}' not found in this session.")
+        object_id = record.get("object_id")
+        if not object_id:
+            return _error(f"No Modal call id recorded for job '{job_id}'.")
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    url, headers=_tam_headers(), timeout=_TAMARIND_TIMEOUT
+            import modal
+
+            call = modal.functions.FunctionCall.from_id(object_id)
+            try:
+                result_data = call.get(timeout=0)
+            except TimeoutError:
+                return _error(
+                    f"Job '{job_id}' is not complete yet. Wait for completion first."
                 )
-                http_err = _tam_handle_http(resp)
-                if http_err:
-                    return http_err
-                resp.raise_for_status()
-                data = resp.json()
-
-                jobs_list = data if isinstance(data, list) else data.get("jobs", [data])
-                matching = [j for j in jobs_list if j.get("JobName") == job_id]
-
-                if not matching:
-                    return _error(f"Job '{job_id}' not found on Tamarind.")
-
-                job = matching[-1]
-                tam_status = job.get("JobStatus", "Unknown")
-
-                if tam_status != "Complete":
-                    return _error(
-                        f"Job '{job_id}' is not complete "
-                        f"(status: {tam_status}). Wait for completion first."
-                    )
-
-                # Parse and save Score (results)
-                score = job.get("Score")
-                if isinstance(score, str) and score.strip():
-                    try:
-                        score = json.loads(score)
-                    except json.JSONDecodeError:
-                        score = {"raw": score}
-                elif not isinstance(score, dict):
-                    score = {}
-
-                results_file = out_path / f"{job_id}_results.json"
-                results_file.write_text(json.dumps(score, indent=2))
-
-                downloaded: list[str] = [str(results_file)]
-
-                # Check for downloadable file URLs in results
-                if isinstance(score, dict):
-                    for key, val in score.items():
-                        if isinstance(val, str) and val.startswith("http"):
-                            try:
-                                file_resp = await client.get(
-                                    val,
-                                    headers=_tam_headers(),
-                                    timeout=120.0,
-                                )
-                                if file_resp.status_code == 200:
-                                    fname = key.replace("/", "_")
-                                    fpath = out_path / fname
-                                    fpath.write_bytes(file_resp.content)
-                                    downloaded.append(str(fpath))
-                            except Exception:
-                                pass
-
-                return _ok({
-                    "job_id": job_id,
-                    "provider": "tamarind",
-                    "output_dir": str(out_path),
-                    "files": downloaded,
-                    "results": score,
-                })
-
-        except httpx.HTTPError as exc:
-            return _error(f"Failed to get Tamarind results: {exc}")
+            results_file = out_path / f"{job_id}_results.json"
+            # ponytail: assume the function returns JSON-serialisable output.
+            results_file.write_text(json.dumps(result_data, indent=2, default=str))
+            return _ok({
+                "job_id": job_id,
+                "provider": "modal",
+                "output_dir": str(out_path),
+                "files": [str(results_file)],
+                "results": result_data,
+            })
         except Exception as exc:
-            return _error(f"Unexpected error getting Tamarind results: {exc}")
+            return _error(f"Failed to get Modal results: {exc}")
 
     # --- SSH results ---
     if record and record.get("provider_type") == "ssh":
@@ -1535,5 +1227,42 @@ async def cloud_get_results(
 # Main
 # ---------------------------------------------------------------------------
 
+def _selfcheck() -> None:
+    """Dry-run routing check — no GPU, no deploy, no network (spawn never called)."""
+    # modal: tool resolves to a catalogue entry with app/function/gpu/image
+    m = {"provider": "modal", **resolve("boltzgen")}
+    assert m["provider"] == "modal" and m["image"] == "boltzgen" and m["gpu"] == "A100", m
+    assert set(CATALOGUE) == {
+        "boltz", "boltzgen", "protenix", "rfdiffusion",
+        "proteinmpnn", "pxdesign", "chai",
+    }, sorted(CATALOGUE)
+    # unknown tool is rejected, not silently dispatched
+    try:
+        resolve("nope")
+        raise AssertionError("resolve() accepted an unknown tool")
+    except KeyError:
+        pass
+    # local: routes to a filesystem tool dir (mirrors local_compute), no catalogue
+    base = Path(os.environ.get("BY_TOOLS_DIR", str(Path.home() / ".local/share/by-tools")))
+    local_route = {"provider": "local", "path": str(base / "boltzgen")}
+    assert local_route["path"].endswith("by-tools/boltzgen"), local_route
+    # reference Modal app imports without deploying or touching a GPU
+    import importlib.util
+    ref = Path(__file__).parent / "modal_apps" / "reference_app.py"
+    spec = importlib.util.spec_from_file_location("reference_app", ref)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.app.name == "by-boltzgen", mod.app.name
+    print("OK modal ->", m)
+    print("OK local ->", local_route)
+    print("OK app   ->", mod.app.name)
+    print("PASS")
+
+
 if __name__ == "__main__":
-    mcp.run()
+    import sys
+
+    if "--selfcheck" in sys.argv:
+        _selfcheck()
+    else:
+        mcp.run()

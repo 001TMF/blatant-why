@@ -1,4 +1,4 @@
-"""Antibody naturalness scoring via AbLang2 or Tamarind Bio."""
+"""Antibody naturalness scoring via AbLang2 (local)."""
 from __future__ import annotations
 
 
@@ -35,14 +35,11 @@ def score_naturalness(sequence: str, chain_type: str = "heavy") -> dict:
             "warning": "Naturalness scoring skipped — ablang2 not installed",
             "screening_incomplete": True,
             "interpretation": (
-                "AbLang2 not installed locally. Use Tamarind Bio's ablang tool "
-                "instead (tamarind_screen_naturalness)."
+                "AbLang2 not installed locally. Install it to enable "
+                "naturalness scoring."
             ),
             "source": "not_available",
             "install_hint": "pip install ablang2",
-            "tamarind_alternative": (
-                "Use tamarind_screen_naturalness MCP tool for cloud-based scoring"
-            ),
         }
     except Exception as e:
         return {

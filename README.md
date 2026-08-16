@@ -112,8 +112,7 @@ The whole pipeline runs inside Claude Code. No platform. No dashboard. No vendor
 | `uniprot` | UniProt protein annotation |
 | `sabdab` | Structural Antibody Database |
 | `screening` | Screening battery orchestration |
-| `tamarind` | Tamarind Bio cloud compute |
-| `cloud` | Cloud compute abstraction |
+| `cloud` | Modal serverless GPU + SSH compute |
 | `adaptyv` | Adaptyv Bio lab submission (gated) |
 | `campaign` | Campaign state management |
 | `research` | Literature and target research |
@@ -236,7 +235,7 @@ After `npx blatant-why init`:
    ```
 5. **For SSH remotes** — add host configs to `.by/config.json` (`compute.ssh_hosts`).
 
-The first-run questionnaire (run by the `by-session` skill on session open) walks through this interactively. Default `compute.default_provider` is `"local"`; priority order is `["local", "hpc", "tamarind"]`.
+The first-run questionnaire (run by the `by-session` skill on session open) walks through this interactively. Default `compute.default_provider` is `"local"`; priority order is `["local", "hpc", "modal"]`.
 
 ### Compute Options
 
@@ -248,7 +247,6 @@ BY defaults to local GPU. The `by-deploy-compute` skill knows how to deploy Prot
 | **RunPod** | ~$0.40–$2.50/hr GPU pods | `RUNPOD_API_KEY` + `by-deploy-compute` | On-demand HPC bursts |
 | **Modal** | Serverless, free tier | Modal token + `by-deploy-compute` | Cold-start-tolerant batch jobs |
 | **SSH Remote** | Your infrastructure | Configure in `.by/config.json` | HPC clusters, in-house GPUs |
-| **Tamarind Bio** | Free tier: 10 jobs/month | `TAMARIND_API_KEY` | Cloud fallback when no local GPU |
 
 <details>
 <summary><strong>Setting up Tamarind Bio (recommended -- no GPU needed)</strong></summary>

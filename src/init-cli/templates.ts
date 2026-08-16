@@ -175,13 +175,13 @@ export async function registerMcpServers(
 
   // Map which servers need which env vars
   const serverEnvMap: Record<string, string[]> = {
+    // Migration note: Tamarind removed; the cloud server uses Modal
+    // (creds via ~/.modal.toml or MODAL_TOKEN_ID/SECRET), no key mapped here.
     cloud: [
-      "TAMARIND_API_KEY",
       "PROTEUS_FOLD_DIR",
       "PROTEUS_PROT_DIR",
       "PROTEUS_AB_DIR",
     ],
-    tamarind: ["TAMARIND_API_KEY"],
     local_compute: ["PROTEUS_FOLD_DIR", "PROTEUS_PROT_DIR", "PROTEUS_AB_DIR"],
   };
 

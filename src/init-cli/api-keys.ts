@@ -10,7 +10,8 @@ export async function promptApiKeys(targetDir: string, skip: boolean): Promise<v
 
   console.log("\n  API Keys (press Enter to skip)\n");
 
-  const tamarind = await ask("  TAMARIND_API_KEY: ");
+  // Migration note: Modal (the cloud provider) uses `modal token new` /
+  // ~/.modal.toml, so no key is prompted here.
   const adaptyv = await ask("  ADAPTYV_API_KEY: ");
 
   rl.close();
@@ -18,7 +19,6 @@ export async function promptApiKeys(targetDir: string, skip: boolean): Promise<v
   const localSettings: Record<string, unknown> = {};
   const env: Record<string, string> = {};
 
-  if (tamarind.trim()) env.TAMARIND_API_KEY = tamarind.trim();
   if (adaptyv.trim()) env.ADAPTYV_API_KEY = adaptyv.trim();
 
   if (Object.keys(env).length > 0) {

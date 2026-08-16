@@ -54,7 +54,7 @@ function run() {
 
   // 2. Detect provider from environment.json
   const envInfo = readJson(resolve(byDir, 'environment.json'));
-  const provider = envInfo?.primary_provider || 'Tamarind';
+  const provider = envInfo?.primary_provider || 'Modal';
   const providerTier = envInfo?.provider_tier || '';
   const providerLabel = providerTier ? `${provider} (${providerTier})` : provider;
 

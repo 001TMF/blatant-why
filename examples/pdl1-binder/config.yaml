@@ -44,5 +44,5 @@ lab:
   provider: "adaptyv_bio"
 
 compute:
-  provider: "tamarind"
+  provider: "modal"
   gpu_type: "A100"

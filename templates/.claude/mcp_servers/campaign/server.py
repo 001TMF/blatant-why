@@ -598,7 +598,7 @@ def _suggest_from_campaign(
         import numpy as np
 
         # Build feature matrix from scores
-        feature_keys = [k for k in ("ipsae", "ipsae_min", "iptm", "plddt", "rmsd", "liabilities")
+        feature_keys = [k for k in ("iptm", "plddt", "rmsd", "liabilities")
                         if any(isinstance(s.get(k), (int, float)) for s in scores)]
         if len(feature_keys) >= 2:
             X = []
